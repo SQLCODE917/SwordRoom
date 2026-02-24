@@ -1,0 +1,21 @@
+{
+  "name": "universal-hello-world-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --recursive --parallel run dev",
+    "build": "pnpm --recursive run build",
+    "test": "pnpm --recursive run test",
+    "type-check": "pnpm --recursive run type-check",
+    "clean": "pnpm --recursive exec rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  }
+}

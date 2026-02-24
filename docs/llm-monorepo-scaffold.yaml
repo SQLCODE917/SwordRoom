@@ -1,0 +1,143 @@
+kind: llm_scaffold_template
+version: 2
+name: universal_core_server_client_hello_world
+description: >
+  Ready-to-use monorepo starter for any project: shared core package,
+  Node/TypeScript server, React/TypeScript client, devcontainer, and tests.
+
+distribution:
+  template_path: scaffolds/hello-world-monorepo
+  usage:
+    - "Copy template directory to a new repository root."
+    - "Run pnpm install, pnpm build, pnpm test."
+
+technology:
+  package_manager: pnpm
+  node: ">=20"
+  language: TypeScript ESM
+  client: React + Vite
+  server: Express
+  tests: Vitest
+
+packages:
+  core:
+    name: "@starter/core"
+    purpose: "Single source of truth for shared domain types/validation/utilities"
+    key_files:
+      - "packages/core/src/types.ts"
+      - "packages/core/src/validation.ts"
+      - "packages/core/src/index.ts"
+      - "packages/core/src/index.test.ts"
+  server:
+    name: "@starter/server"
+    purpose: "HTTP API consuming core types and validation"
+    depends_on:
+      - "@starter/core"
+    key_files:
+      - "packages/server/src/apiTypes.ts"
+      - "packages/server/src/index.ts"
+      - "packages/server/src/cli.ts"
+      - "packages/server/src/index.test.ts"
+  client:
+    name: "@starter/client"
+    purpose: "React app consuming core and server API types"
+    depends_on:
+      - "@starter/core"
+      - "@starter/server"
+    key_files:
+      - "packages/client/src/services/api.ts"
+      - "packages/client/src/services/api.test.ts"
+      - "packages/client/src/App.tsx"
+      - "packages/client/src/App.test.tsx"
+
+invariants:
+  - "Domain types live in core only; never duplicate in server/client."
+  - "Validation rules live in core only; server/client reuse them."
+  - "Server API contract types are exported from server and consumed by client."
+  - "Root workspace scripts build/test all packages recursively."
+
+hello_world_contract:
+  core_types:
+    request: HelloRequest
+    response: HelloResponse
+  route:
+    method: GET
+    path: /api/hello
+    query:
+      name: string
+  expected_response_shape:
+    message: string
+    source: "core"
+    timestamp: string
+
+project_layout:
+  - package.json
+  - pnpm-workspace.yaml
+  - tsconfig.json
+  - .devcontainer/devcontainer.json
+  - packages/core
+  - packages/server
+  - packages/client
+
+commands:
+  install: "pnpm install"
+  build: "pnpm build"
+  test: "pnpm test"
+  dev_server: "pnpm --filter @starter/server dev"
+  dev_client: "pnpm --filter @starter/client dev"
+
+verification:
+  - id: verify_1_build_and_tests
+    objective: "All three packages build cleanly and all tests pass"
+    run:
+      - "pnpm build"
+      - "pnpm test"
+    pass_if:
+      - "core build/test succeeds"
+      - "server build/test succeeds"
+      - "client build/test succeeds"
+
+  - id: verify_2_server_consumes_core
+    objective: "Server uses core types + validation and returns typed sample data"
+    static_checks:
+      - "packages/server/package.json has @starter/core workspace dependency"
+      - "packages/server/src/apiTypes.ts imports from @starter/core"
+      - "packages/server/src/index.ts imports createHelloResponse and validateHelloRequest from @starter/core"
+    runtime_checks:
+      - "Run: pnpm --filter @starter/server test"
+      - "Server test asserts GET /api/hello?name=Codex returns message/source/timestamp"
+
+  - id: verify_3_client_consumes_core_and_server
+    objective: "Client uses shared types and requests/parses server sample data"
+    static_checks:
+      - "packages/client/src/services/api.ts imports HelloRequest from @starter/core"
+      - "packages/client/src/services/api.ts imports GetHelloResponse from @starter/server/types"
+    runtime_checks:
+      - "Run: pnpm --filter @starter/client test"
+      - "API unit test verifies fetch URL and parsed response shape"
+      - "App unit test verifies rendered message from typed API response"
+
+customization_for_new_projects:
+  - step: "Rename package scope"
+    change:
+      - "@starter/core -> @your-org/core"
+      - "@starter/server -> @your-org/server"
+      - "@starter/client -> @your-org/client"
+  - step: "Replace hello domain with your domain"
+    edit:
+      - "packages/core/src/types.ts"
+      - "packages/core/src/validation.ts"
+      - "packages/core/src/index.ts"
+      - "packages/server/src/apiTypes.ts"
+      - "packages/server/src/index.ts"
+      - "packages/client/src/services/api.ts"
+  - step: "Add endpoints/features"
+    rule: "Keep all shared types/validation in core and import them from server/client"
+
+agent_checklist:
+  - "Copy scaffold template"
+  - "Install dependencies"
+  - "Run build and tests"
+  - "Confirm server endpoint contract"
+  - "Confirm client API contract consumption"
+  - "Start extending domain-specific features"

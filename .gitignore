@@ -1,0 +1,5 @@
+node_modules
+dist
+coverage
+*.swp
+.pnpm-store

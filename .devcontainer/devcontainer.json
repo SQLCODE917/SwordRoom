@@ -1,0 +1,12 @@
+{
+  "name": "hello-world-monorepo-dev",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "postCreateCommand": "corepack prepare pnpm@9.15.0 --activate && pnpm install"
+}
