@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "pnpm --recursive --if-present --parallel run dev",
     "build": "pnpm --recursive --if-present run build",
-    "test": "pnpm --recursive --if-present run test",
+    "test": "RUN_LOCAL_DDB_TESTS=1 pnpm --recursive --if-present run test",
     "type-check": "pnpm --recursive --if-present run type-check",
     "clean": "pnpm --recursive --if-present exec rm -rf dist"
   },
