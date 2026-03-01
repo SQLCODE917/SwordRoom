@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { loadVerticalSliceFixturesText } from '../../services/shared/src/index.js';
+import { loadVerticalSliceFixturesYamlText } from '@starter/shared';
 
 describe('e2e fixture contract checks', () => {
   it('contains integration command sequence for approval flow', () => {
-    const text = loadVerticalSliceFixturesText();
+    const text = loadVerticalSliceFixturesYamlText();
 
     expect(text).toContain('command_sequences_for_integration:');
     expect(text).toContain('id: e2e.good.human_rune_master_sequence');
@@ -12,7 +12,7 @@ describe('e2e fixture contract checks', () => {
   });
 
   it('contains required good and bad fixtures for deterministic verification', () => {
-    const text = loadVerticalSliceFixturesText();
+    const text = loadVerticalSliceFixturesYamlText();
 
     expect(text).toContain('id: good.dwarf_race_starting_package');
     expect(text).toContain('id: bad.sorcerer_only_discount_when_neither');

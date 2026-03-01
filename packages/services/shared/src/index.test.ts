@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { dbKeys, loadVerticalSliceFixturesText } from './index.js';
+import { commandLogKeys, gameStateKeys, loadVerticalSliceFixturesText } from './index.js';
 
 describe('services/shared', () => {
-  it('provides deterministic db key helpers', () => {
-    expect(dbKeys.commandLogPk('g1', 'c1')).toBe('GAME#g1#CMD#c1');
-    expect(dbKeys.characterPk('g1', 'ch1')).toBe('GAME#g1#CHAR#ch1');
-    expect(dbKeys.inboxPk('g1', 'p1')).toBe('GAME#g1#INBOX#p1');
+  it('re-exports deterministic db key helpers from @starter/shared', () => {
+    expect(commandLogKeys.command('c1')).toEqual({ pk: 'COMMAND#c1', sk: 'METADATA' });
+    expect(gameStateKeys.character('g1', 'ch1')).toEqual({ pk: 'GAME#g1', sk: 'CHAR#ch1' });
+    expect(gameStateKeys.playerInboxItem('p1', '2026-03-01T00:00:00.000Z', 'prompt-1')).toEqual({
+      pk: 'PLAYER#p1',
+      sk: 'INBOX#2026-03-01T00:00:00.000Z#prompt-1',
+    });
   });
 
   it('loads source-of-truth fixtures', () => {

@@ -13,14 +13,13 @@
     }
   },
   "scripts": {
-    "build": "node ../../../node_modules/typescript/bin/tsc -b",
+    "build": "tsc -b",
     "dev": "node -e \"console.log('services-api scaffold')\"",
-    "test": "node ../../../node_modules/vitest/vitest.mjs --run",
-    "type-check": "node ../../../node_modules/typescript/bin/tsc --noEmit"
+    "test": "vitest --run",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@starter/engine": "workspace:*",
-    "@starter/services-shared": "workspace:*"
+    "@starter/engine": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",

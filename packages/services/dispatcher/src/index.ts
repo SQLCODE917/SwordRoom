@@ -1,4 +1,4 @@
-import type { CommandEnvelope, CommandType } from '@starter/services-shared';
+import type { CommandEnvelope, CommandType } from '@starter/shared';
 
 export type CommandHandler = (command: CommandEnvelope) => { ok: true };
 

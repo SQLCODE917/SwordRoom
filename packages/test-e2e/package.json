@@ -10,7 +10,7 @@
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "@starter/services-shared": "workspace:*"
+    "@starter/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.3.3",

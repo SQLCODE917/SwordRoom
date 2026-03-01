@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@starter/engine": "workspace:*",
-    "@starter/services-shared": "workspace:*"
+    "@starter/shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.3.3",

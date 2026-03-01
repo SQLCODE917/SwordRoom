@@ -1,0 +1,49 @@
+{
+  "name": "@starter/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./contracts/db": {
+      "import": "./dist/contracts/db.js",
+      "default": "./dist/contracts/db.js",
+      "types": "./dist/contracts/db.d.ts"
+    },
+    "./contracts/commands": {
+      "import": "./dist/contracts/commands.js",
+      "default": "./dist/contracts/commands.js",
+      "types": "./dist/contracts/commands.d.ts"
+    },
+    "./contracts/errors": {
+      "import": "./dist/contracts/errors.js",
+      "default": "./dist/contracts/errors.js",
+      "types": "./dist/contracts/errors.d.ts"
+    },
+    "./fixtures": {
+      "import": "./dist/fixtures/index.js",
+      "default": "./dist/fixtures/index.js",
+      "types": "./dist/fixtures/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest --run",
+    "type-check": "tsc --noEmit",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  },
+  "dependencies": {
+    "yaml": "^2.8.2",
+    "zod": "^4.3.6"
+  }
+}
