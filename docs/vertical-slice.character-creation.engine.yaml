@@ -1,0 +1,139 @@
+# file: vertical-slice.character-creation.engine.yaml
+doc_type: work_plan
+slice: character_creation_vertical_slice
+deliverable: game_engine_logic
+version: 1
+design_rules:
+  - "Pure functions: no AWS calls inside engine."
+  - "Deterministic: dice rolls are inputs (or seeded + recorded)."
+  - "Validation returns stable error codes (for async UX)."
+
+rulebook_context:
+  - id: subability_rolls_by_race
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Table 1-3 determines sub-ability scores A~H per race; includes 1/2D rounded up."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 1728, end: 1808 }
+  - id: ability_formulas
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "DEX=A+B, AGI=B+C, INT=C+D, STR=E+F, LF=F+G, MP=G+H."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 1735, end: 1748 }
+  - id: bonus
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Ability bonus = floor(ability/6)."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 1946, end: 1952 }
+  - id: starting_skills_humans_backgrounds
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Humans/half-elves raised by humans roll 2D on Backgrounds (Table 1-5)."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 1981, end: 1985 }
+  - id: spending_exp_adventurer_only
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Starting EXP can buy/increase adventurer skills; general skills cannot be acquired/increased."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 2279, end: 2318 }
+  - id: sorcerer_sage_special_rule
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Bundled Sorcerer+Sage costs; forbidden to buy only Sorcerer for 1500 if you have neither."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 2365, end: 2389 }
+  - id: equipment_restrictions
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Skill-based equipment limits (ranger/thief light armor; sorcerer specific armor + no shield + mage staff; shaman limited armor + no shield)."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 2830, end: 3012 }
+
+public_api:
+  types:
+    - name: CharacterCreationState
+      notes:
+        - "Matches GameState.Character.draft schema; engine reads/writes this object."
+    - name: EngineError
+      shape: { code: string, message: string, details: object|null }
+
+functions:
+  - id: eng-01-choose-race
+    signature: "chooseRace(state, {race, raisedBy?}) -> {state, errors[]}"
+    rules:
+      - "Race must be one of: HUMAN, DWARF, GRASSRUNNER, ELF, HALF_ELF."
+      - "HALF_ELF requires raisedBy=HUMANS|ELVES to determine restrictions later."
+    tests:
+      - "Reject invalid race code"
+      - "Require raisedBy for HALF_ELF"
+  - id: eng-02-apply-subability-rolls
+    signature: "applySubAbilityRolls(state, {A..H}) -> {state, errors[]}"
+    rules:
+      - "Accept dice results as final numeric values (A..H)."
+      - "Optionally validate plausible ranges by race (soft check; warn not fail)."
+    tests:
+      - "Missing A..H fails with MISSING_SUBABILITY"
+  - id: eng-03-compute-abilities-and-bonuses
+    signature: "computeAbilitiesAndBonuses(state) -> {state, errors[]}"
+    rules:
+      - "Abilities computed from A..H: DEX=A+B, AGI=B+C, INT=C+D, STR=E+F, LF=F+G, MP=G+H. (sw_1_120.txt:1735-1748)"
+      - "Bonus = floor(score/6). (sw_1_120.txt:1950-1952)"
+    tests:
+      - "Known A..H yields correct abilities"
+      - "Bonus floor division verified (e.g., 14 -> 2)"
+  - id: eng-04-assign-background-or-race-starting-package
+    signature: "applyStartingPackage(state, {backgroundRoll2d?}) -> {state, errors[]}"
+    rules:
+      - "If HUMAN or HALF_ELF raisedBy=HUMANS: backgroundRoll2d required unless using 'ordinary citizen always' shortcut."
+      - "Other races: starting skills/exp/money determined by race table (Table 1-6 section)."
+      - "Background special cases: Ordinary citizen => GM chooses a general skill at level 3; Merchant/Scholar => Merchant 3 OR Sage 3/1 per text."
+    tests:
+      - "Human missing backgroundRoll2d fails unless shortcut flag set"
+      - "Dwarf gets fixed starting traits package scaffolded (store as notes/flags)"
+  - id: eng-05-spend-starting-exp
+    signature: "spendStartingExp(state, {purchases:[{skill, newLevel}]}) -> {state, errors[]}"
+    rules:
+      - "Only adventurer skills can be purchased with starting EXP. (sw_1_120.txt:2286-2318)"
+      - "EXP cost is per-level incremental (e.g., 0->2 costs L1+L2). (sw_1_120.txt:2306-2312)"
+      - "Sorcerer/Sage rule: if neither present, cannot buy Sorcerer-only at discounted 1500; must buy Sorcerer+Sage bundle 2000. (sw_1_120.txt:2365-2389)"
+    tests:
+      - "Buying 2 levels charges L1+L2"
+      - "Reject general skill upgrade"
+      - "Reject Sorcerer-only discount violation"
+  - id: eng-06-purchase-equipment_validate
+    signature: "purchaseEquipment(state, {cart}) -> {state, errors[]}"
+    rules:
+      - "Price uses formulas like x20+40 applied to required strength (conceptual validation). (sw_1_120.txt:2813-2826)"
+      - "General rule: choose requiredStrength ~= character STR; cannot equip reqStr > STR. (sw_1_120.txt:2832-2834, 2925-2926)"
+      - "Ranger/Thief: armor light (<= ceil(STR/2)); no metal armor except ring mail. (sw_1_120.txt:2938-2968)"
+      - "Sorcerer: cloth or soft leather only; no shield; must buy mage staff. (sw_1_120.txt:2978-2992)"
+      - "Shaman: cloth/soft/hard leather; no shield. (sw_1_120.txt:3000-3006)"
+    tests:
+      - "Reject armor too heavy for ranger"
+      - "Reject shield when sorcerer or shaman"
+      - "Require mage staff when sorcerer present"
+  - id: eng-07-finalize-and-submit
+    signature: "finalizeCharacter(state) -> {state, errors[]}"
+    rules:
+      - "Must have: race, abilities, bonuses, starting package, identity.name at minimum"
+      - "Status transition: DRAFT -> PENDING on submit"
+    tests:
+      - "Missing name fails"
+      - "Successful finalize sets completeness flag"
+
+work_units:
+  - id: engine-01-domain-types
+    goal: "Define TS types + zod schemas for CharacterCreationState, Command payloads, errors."
+    done_when:
+      - "Schemas compile"
+      - "Unit tests validate schema constraints"
+  - id: engine-02-rules-core
+    goal: "Implement computeAbilitiesAndBonuses + unit tests."
+    done_when:
+      - "All formula tests pass"
+  - id: engine-03-starting-package
+    goal: "Implement applyStartingPackage for Human + Dwarf/Elf/Grassrunner baseline scaffolds."
+    done_when:
+      - "Human background roll path works"
+      - "Non-human path sets exp/money placeholders + starting skills list"
+  - id: engine-04-exp-spend
+    goal: "Implement spendStartingExp with Sorcerer/Sage special rule."
+    done_when:
+      - "Forbidden case returns stable error code"
+  - id: engine-05-equipment-validation
+    goal: "Implement purchaseEquipment validation rules (restrictive subset for slice)."
+    done_when:
+      - "Ranger/Thief/Sorcerer/Shaman checks enforced"
+
+notes_for_vertical_slice:
+  - "You do NOT need full equipment tables in slice; use a tiny catalog: mage_staff, cloth_armor, soft_leather, ring_mail, small_shield, broadsword."
+  - "Add full tables later as data files."

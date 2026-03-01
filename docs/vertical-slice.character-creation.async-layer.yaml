@@ -1,0 +1,134 @@
+# file: vertical-slice.character-creation.async-layer.yaml
+doc_type: work_plan
+slice: character_creation_vertical_slice
+deliverable: async_communication_layer
+version: 1
+
+aws_components:
+  auth:
+    cognito:
+      user_pool: required
+      hosted_ui: recommended_for_speed
+      jwt_authorizer: api_gateway_http_api
+  api:
+    gateway: http_api
+    endpoints:
+      - { method: POST, path: /commands, auth: required }
+      - { method: GET, path: /commands/{commandId}, auth: required }
+      - { method: GET, path: /me/inbox, auth: required }
+      - { method: GET, path: /games/{gameId}/characters/{characterId}, auth: required }
+      - { method: GET, path: /gm/{gameId}/inbox, auth: gm_required }
+  queue:
+    name: commands.fifo
+    fifo: true
+    message_group_id: gameId
+    deduplication_id: commandId
+    dlq: commands-dlq
+  lambdas:
+    - name: commandApi
+      purpose: "Auth + validate + write CommandLog(ACCEPTED) + enqueue SQS FIFO"
+    - name: dispatcher
+      purpose: "Thin dispatch: idempotency + load state + call engine handler + write state + update CommandLog"
+    - name: notifier
+      purpose: "Send email via SES when inbox items created (optional in slice: triggered by dispatcher directly)"
+  notifications:
+    primary: ses_email
+    templates:
+      - char_submitted_to_gm
+      - char_approved
+      - char_rejected
+
+command_contracts:
+  envelope:
+    fields:
+      commandId: uuid
+      gameId: string
+      actorId: string   # from JWT sub
+      type: string
+      schemaVersion: number
+      payload: object
+      createdAt: string
+  types:
+    - type: CreateCharacterDraft
+      payload: { characterId: string, race: string, raisedBy: string|null }
+      authz: "actorId == ownerPlayerId"
+    - type: SetCharacterSubAbilities
+      payload: { characterId: string, subAbility: {A:int,B:int,C:int,D:int,E:int,F:int,G:int,H:int} }
+      authz: "actorId == ownerPlayerId"
+    - type: ApplyStartingPackage
+      payload: { characterId: string, backgroundRoll2d?: int, useOrdinaryCitizenShortcut?: bool }
+      authz: "actorId == ownerPlayerId"
+    - type: SpendStartingExp
+      payload: { characterId: string, purchases: [ { skill: string, targetLevel: int } ] }
+      authz: "actorId == ownerPlayerId"
+    - type: PurchaseStarterEquipment
+      payload: { characterId: string, cart: object }
+      authz: "actorId == ownerPlayerId"
+    - type: SubmitCharacterForApproval
+      payload: { characterId: string, noteToGm?: string }
+      authz: "actorId == ownerPlayerId"
+    - type: GMReviewCharacter
+      payload: { characterId: string, decision: "APPROVE|REJECT", gmNote?: string }
+      authz: "actorId == gmPlayerId"
+
+dispatcher_rules:
+  idempotency:
+    - "If CommandLog status == PROCESSED: no-op"
+    - "If FAILED: allow retry only if explicitly re-enqueued with new commandId"
+  ordering:
+    - "SQS FIFO MessageGroupId=gameId guarantees per-game ordering"
+  state_write_safety:
+    - "Use DynamoDB conditional writes on Character.version (optimistic concurrency)"
+    - "Prefer DynamoDB TransactWrite for multi-item updates (Character + inbox + commandlog status)"
+  errors:
+    - "Engine validation errors -> CommandLog FAILED with errorCode; do not mutate character"
+    - "Unexpected exceptions -> CommandLog FAILED; message to DLQ after retries"
+
+work_units:
+  - id: async-01-cognito-bootstrap
+    goal: "Create Cognito User Pool + Hosted UI + JWT authorizer wired to API Gateway."
+    done_when:
+      - "Can login in browser and obtain JWT"
+      - "API rejects requests without valid JWT"
+  - id: async-02-command-api-enqueue
+    goal: "Implement POST /commands -> validate -> write CommandLog(ACCEPTED) -> enqueue SQS FIFO."
+    done_when:
+      - "DeduplicationId == commandId"
+      - "MessageGroupId == gameId"
+      - "CommandLog record exists with ACCEPTED"
+  - id: async-03-dispatcher-skeleton
+    goal: "Implement dispatcher that reads SQS, marks PROCESSING, routes to handler, marks PROCESSED/FAILED."
+    done_when:
+      - "Duplicate message does not reapply effects"
+      - "Failures land in DLQ after retry policy"
+  - id: async-04-character-handlers
+    goal: "Wire handlers for the character creation commands to engine functions + DynamoDB writes."
+    done_when:
+      - "Create draft, set sub-abilities, compute abilities, apply package, spend exp, purchase equipment all persist"
+  - id: async-05-gm-approval-workflow
+    goal: "Submit -> GM inbox item created; GMReview -> status updated; player inbox item created."
+    done_when:
+      - "GM inbox query shows pending character after submit"
+      - "Approve moves status to APPROVED and notifies player via inbox + email"
+      - "Reject moves status to REJECTED with gmNote"
+  - id: async-06-read-apis
+    goal: "Implement GET endpoints for command status, character state, inbox, GM inbox."
+    done_when:
+      - "Player sees their character status progression"
+      - "GM sees pending list"
+
+integration_tests:
+  - name: e2e_character_approval
+    steps:
+      - "Player logs in, sends CreateCharacterDraft"
+      - "Player sends SetCharacterSubAbilities (fixed values)"
+      - "Player sends ApplyStartingPackage (background roll fixed)"
+      - "Player sends SpendStartingExp (valid purchases)"
+      - "Player sends PurchaseStarterEquipment (valid cart)"
+      - "Player sends SubmitCharacterForApproval"
+      - "GM sends GMReviewCharacter APPROVE"
+    asserts:
+      - "CommandLog shows PROCESSED for each command"
+      - "Character.status == APPROVED"
+      - "Player inbox has CHAR_APPROVED item"
+      - "GM inbox pending item removed or marked resolved"

@@ -1,0 +1,15 @@
+{
+  "name": "@starter/infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'infra: no build step yet'",
+    "test": "vitest --run",
+    "type-check": "echo 'infra: no type-check step yet'",
+    "dev": "echo 'infra: no dev step yet'"
+  },
+  "devDependencies": {
+    "vitest": "^1.1.0"
+  }
+}

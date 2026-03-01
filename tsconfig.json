@@ -13,8 +13,10 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@starter/core": ["packages/core/src"],
-      "@starter/server": ["packages/server/src"]
+      "@starter/engine": ["packages/engine/src"],
+      "@starter/services-api": ["packages/services/api/src"],
+      "@starter/services-shared": ["packages/services/shared/src"],
+      "@starter/services-dispatcher": ["packages/services/dispatcher/src"]
     }
   },
   "include": ["packages"],

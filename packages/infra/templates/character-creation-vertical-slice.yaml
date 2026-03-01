@@ -1,0 +1,11 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Character creation vertical slice infrastructure scaffold.
+
+# TODO / future: implement only resources defined in vertical-slice.character-creation.async-layer.yaml
+# - Cognito User Pool + Hosted UI + JWT authorizer
+# - API Gateway HTTP API with contract endpoints
+# - SQS FIFO queue commands.fifo and DLQ commands-dlq
+# - Lambda functions: commandApi, dispatcher, notifier
+# - DynamoDB tables for command log, character state, inbox
+# - SES configuration for notification templates
+Resources: {}

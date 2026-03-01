@@ -1,41 +1,26 @@
-# Universal Hello World Monorepo Scaffold
+# Character Creation Vertical Slice Monorepo
 
-This is a ready-to-use starter for new projects with:
+Source-of-truth contracts live in:
+- `design-decisions/character-creation-vertical-slice/vertical-slice.character-creation.engine.yaml`
+- `design-decisions/character-creation-vertical-slice/vertical-slice.character-creation.async-layer.yaml`
+- `design-decisions/character-creation-vertical-slice/vertical-slice.character-creation.db-schema.yaml`
+- `design-decisions/character-creation-vertical-slice/vertical-slice.character-creation.fixtures.yaml`
 
-- `@starter/core` - shared types/utilities/validation
-- `@starter/server` - Node + Express API consuming core
-- `@starter/client` - React + Vite app consuming core + server API types
+Mapped workspace layout:
+- `packages/engine` (pure TS + zod + unit tests, zero AWS deps)
+- `packages/infra` (CloudFormation scaffold)
+- `packages/services/api`
+- `packages/services/dispatcher`
+- `packages/services/shared`
+- `packages/web` (basic placeholder)
+- `packages/test-e2e`
+- `fixtures/vertical-slice.character-creation.fixtures.yaml` (symlink to source-of-truth)
+- `docs/vertical-slice.character-creation.*.yaml` (symlinks to source-of-truth)
 
-## Quick Start
+## Commands
 
 ```bash
-pnpm install
-pnpm build
 pnpm test
+pnpm type-check
+pnpm build
 ```
-
-Run in development (from this folder):
-
-```bash
-pnpm --filter @starter/server dev
-pnpm --filter @starter/client dev
-```
-
-Server endpoint:
-
-- `GET http://localhost:3000/api/hello?name=YourName`
-
-## Why this scaffold
-
-- Single source of truth for BE/FE contracts in `core`
-- Server contract types exported and consumed by client
-- Shared validation logic in `core` (no duplication)
-- Monorepo build and test pipeline via root scripts
-- Devcontainer for reproducible environment
-
-## Customize for your project
-
-1. Rename package scope from `@starter/*` to your org scope.
-2. Replace Hello domain types in `packages/core/src/types.ts` with your domain.
-3. Expand server routes while keeping request/response types tied to core.
-4. Replace client UI while keeping API layer typed by server exports.
