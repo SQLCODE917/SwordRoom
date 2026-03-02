@@ -1,5 +1,3 @@
-# Character Creation Vertical Slice Monorepo
-
 # Sword Room
 
 ## Repo layout
