@@ -16,7 +16,7 @@ export type CommandType = z.infer<typeof commandTypeSchema>;
 export const createCharacterDraftPayloadSchema = z.object({
   characterId: z.string(),
   race: z.string(),
-  raisedBy: z.string().nullable(),
+  raisedBy: z.string().nullable().optional(),
 });
 
 export const setCharacterSubAbilitiesPayloadSchema = z.object({
@@ -36,6 +36,8 @@ export const setCharacterSubAbilitiesPayloadSchema = z.object({
 export const applyStartingPackagePayloadSchema = z.object({
   characterId: z.string(),
   backgroundRoll2d: z.number().int().optional(),
+  backgroundRoll2dTotal: z.number().int().optional(),
+  startingMoneyRoll2dTotal: z.number().int().optional(),
   useOrdinaryCitizenShortcut: z.boolean().optional(),
 });
 

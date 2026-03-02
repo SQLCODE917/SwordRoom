@@ -9,7 +9,7 @@
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts", "node_modules", "dist"],
-  "references": [{ "path": "../../engine" }, { "path": "../shared" }],
+  "references": [{ "path": "../../engine" }, { "path": "../../shared" }, { "path": "../shared" }],
   "ts-node": {
     "esm": true,
     "experimentalEsm": true,

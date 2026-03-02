@@ -1,11 +1,142 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Character creation vertical slice infrastructure scaffold.
+Description: Character creation vertical slice async layer resources.
 
-# TODO / future: implement only resources defined in vertical-slice.character-creation.async-layer.yaml
-# - Cognito User Pool + Hosted UI + JWT authorizer
-# - API Gateway HTTP API with contract endpoints
-# - SQS FIFO queue commands.fifo and DLQ commands-dlq
-# - Lambda functions: commandApi, dispatcher, notifier
-# - DynamoDB tables for command log, character state, inbox
-# - SES configuration for notification templates
-Resources: {}
+Parameters:
+  LambdaCodeS3Bucket:
+    Type: String
+    Default: placeholder-bucket
+  LambdaCodeS3Key:
+    Type: String
+    Default: placeholder-key.zip
+
+Resources:
+  GameStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: GameState
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+
+  CommandLogTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: CommandLog
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+
+  CommandsDlq:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: commands-dlq
+
+  CommandsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: commands.fifo
+      FifoQueue: true
+      ContentBasedDeduplication: false
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt CommandsDlq.Arn
+        maxReceiveCount: 5
+
+  CharacterCreationUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: character-creation-user-pool
+      AutoVerifiedAttributes: [email]
+
+  CharacterCreationUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CharacterCreationUserPool
+      ClientName: character-creation-client
+      GenerateSecret: false
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthFlows: [code]
+      AllowedOAuthScopes: [openid, email, profile]
+      SupportedIdentityProviders: [COGNITO]
+      CallbackURLs: [https://example.com/callback]
+      LogoutURLs: [https://example.com/logout]
+
+  CharacterCreationUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      UserPoolId: !Ref CharacterCreationUserPool
+      Domain: character-creation-vertical-slice-demo
+
+  AsyncHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: character-creation-async-api
+      ProtocolType: HTTP
+
+  HttpJwtAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref AsyncHttpApi
+      AuthorizerType: JWT
+      IdentitySource: ['$request.header.Authorization']
+      JwtConfiguration:
+        Audience:
+          - !Ref CharacterCreationUserPoolClient
+        Issuer: !Sub "https://cognito-idp.${AWS::Region}.amazonaws.com/${CharacterCreationUserPool}"
+      Name: cognito-jwt-authorizer
+
+  CommandApiLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: commandApi
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: arn:aws:iam::123456789012:role/placeholder
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+
+  DispatcherLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: dispatcher
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: arn:aws:iam::123456789012:role/placeholder
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+
+  NotifierLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: notifier
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Role: arn:aws:iam::123456789012:role/placeholder
+      Code:
+        S3Bucket: !Ref LambdaCodeS3Bucket
+        S3Key: !Ref LambdaCodeS3Key
+
+Outputs:
+  ApiId:
+    Value: !Ref AsyncHttpApi
+  CommandsQueueUrl:
+    Value: !Ref CommandsQueue
+  CommandsQueueArn:
+    Value: !GetAtt CommandsQueue.Arn

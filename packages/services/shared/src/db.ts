@@ -3,6 +3,7 @@ import {
   type ConditionalCheckFailedException,
 } from '@aws-sdk/client-dynamodb';
 import {
+  DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
@@ -45,6 +46,7 @@ export interface DbAccess {
     addPlayerInboxItem(input: AddPlayerInboxItemInput): Promise<PlayerInboxItem>;
     queryGmInbox(gameId: string): Promise<GMInboxItem[]>;
     queryPlayerInbox(playerId: string): Promise<PlayerInboxItem[]>;
+    resolveGmInboxItem(gameId: string, submittedAt: string, characterId: string): Promise<void>;
   };
   commandLogRepository: {
     createAccepted(input: CreateAcceptedCommandInput): Promise<CommandLogItem>;
@@ -294,6 +296,15 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
 
         return (result.Items ?? []).map((item) => playerInboxItemSchema.parse(item));
       },
+      async resolveGmInboxItem(gameId, submittedAt, characterId) {
+        const key = gameStateKeys.gmInboxItem(gameId, submittedAt, characterId);
+        await client.send(
+          new DeleteCommand({
+            TableName: tables.gameStateTableName,
+            Key: key,
+          })
+        );
+      },
     },
     commandLogRepository: {
       async createAccepted(input) {
@@ -301,6 +312,7 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
         const item: CommandLogItem = {
           ...key,
           type: 'Command',
+          commandType: input.type,
           commandId: input.commandId,
           gameId: input.gameId,
           actorId: input.actorId,

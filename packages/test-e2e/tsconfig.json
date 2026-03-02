@@ -11,5 +11,10 @@
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "../shared" }]
+  "references": [
+    { "path": "../shared" },
+    { "path": "../services/shared" },
+    { "path": "../services/api" },
+    { "path": "../services/dispatcher" }
+  ]
 }

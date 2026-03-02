@@ -5,6 +5,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@starter/shared': resolve(__dirname, '../shared/src/index.ts'),
+      '@starter/services-shared': resolve(__dirname, '../services/shared/src/index.ts'),
+      '@starter/services-api': resolve(__dirname, '../services/api/src/index.ts'),
+      '@starter/services-dispatcher': resolve(__dirname, '../services/dispatcher/src/index.ts'),
     },
   },
   test: {

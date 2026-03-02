@@ -174,6 +174,7 @@ export const playerInboxItemSchema = pkSkSchema.extend({
 
 export const commandLogItemSchema = pkSkSchema.extend({
   type: z.literal('Command'),
+  commandType: z.string(),
   commandId: z.string(),
   gameId: z.string(),
   actorId: z.string(),

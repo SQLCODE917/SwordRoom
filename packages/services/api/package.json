@@ -19,7 +19,9 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@starter/engine": "workspace:*"
+    "@starter/engine": "workspace:*",
+    "@starter/services-shared": "workspace:*",
+    "@starter/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",

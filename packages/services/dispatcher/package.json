@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@starter/engine": "workspace:*",
+    "@starter/services-shared": "workspace:*",
     "@starter/shared": "workspace:*"
   },
   "devDependencies": {
