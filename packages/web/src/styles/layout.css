@@ -1,0 +1,71 @@
+.l-page {
+  min-height: 100vh;
+  padding: var(--page-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  width: 100%;
+  max-width: var(--max-content);
+  margin: 0 auto;
+}
+
+.l-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.l-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+
+.l-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.l-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
+.l-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.l-split {
+  display: flex;
+  gap: var(--gap);
+  flex-direction: column;
+}
+
+.l-grow {
+  flex: 1;
+}
+
+.l-tight {
+  gap: var(--s-2);
+}
+
+.l-sticky-bottom {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg);
+  padding: var(--s-3) 0;
+}
+
+@media (min-width: 640px) {
+  .l-split {
+    flex-direction: row;
+  }
+}

@@ -1,0 +1,85 @@
+# file: vertical-slice.character-appearance-upload.yaml
+doc_type: work_plan
+slice: character_creation_vertical_slice
+deliverable: character_appearance_image_upload
+version: 1
+
+storage:
+  prod:
+    s3:
+      bucket_name: "swordworld-character-uploads"
+      key_format: "games/{gameId}/characters/{characterId}/appearance/{uploadId}.jpg"
+      access: "private"
+      serving:
+        method: "CloudFront signed URL OR S3 presigned GET"
+        note: "Start with presigned GET for simplicity."
+  local:
+    recommended:
+      - "LocalStack S3 (extend SERVICES to include s3)"
+      - "or MinIO if you prefer a stable S3 clone"
+
+dynamodb_changes:
+  target_item: "GameState.Character"
+  new_fields:
+    draft:
+      appearance:
+        imageKey: "string|null"
+        imageUrl: "string|null"  # presigned GET URL (short-lived) or CloudFront URL
+        updatedAt: "string|null"
+
+api_endpoints:
+  - id: appearance-upload-url
+    method: POST
+    path: "/games/{gameId}/characters/{characterId}/appearance/upload-url"
+    authz:
+      - "actorId == ownerPlayerId OR actorId == gmPlayerId (optional for GM upload)"
+    request:
+      body:
+        contentType: "image/jpeg|image/png|image/webp"
+        fileName: "string"
+        fileSizeBytes: "number"
+    response:
+      body:
+        uploadId: "uuid"
+        s3Key: "string"
+        putUrl: "string"     # presigned PUT
+        getUrl: "string"     # optional presigned GET for immediate preview
+        expiresInSeconds: 900
+    rules:
+      - "Validate fileSizeBytes max (e.g., 5MB)"
+      - "Validate contentType in allow-list"
+      - "Do not write DynamoDB yet (until confirm)."
+
+  - id: appearance-confirm
+    method: POST
+    path: "/games/{gameId}/characters/{characterId}/appearance/confirm"
+    authz:
+      - "actorId == ownerPlayerId OR actorId == gmPlayerId (optional)"
+    request:
+      body:
+        uploadId: "uuid"
+        s3Key: "string"
+    response:
+      body:
+        ok: true
+    rules:
+      - "Write appearance.imageKey = s3Key"
+      - "Optionally store contentType, size, and updatedAt"
+      - "Optionally emit PlayerInboxItem kind=ACTION_REQUIRED or info item"
+
+frontend_flow:
+  - step: "User chooses image file"
+  - step: "FE calls upload-url endpoint"
+  - step: "FE PUTs file to putUrl (direct to S3)"
+  - step: "FE calls confirm endpoint"
+  - step: "FE refetches character and updates ImageBox preview using imageUrl (presigned GET)"
+  ux_rules:
+    - "ImageBox reserves space for preview always"
+    - "Upload button disabled while uploading; error state visible without collapsing layout"
+
+tests:
+  backend:
+    - "Upload URL returns valid presigned PUT"
+    - "Confirm writes DynamoDB fields"
+  e2e:
+    - "Playwright uploads an image and sees it rendered on sheet"

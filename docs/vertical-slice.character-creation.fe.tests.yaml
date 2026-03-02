@@ -1,0 +1,56 @@
+# file: vertical-slice.character-creation.fe.tests.yaml
+doc_type: test_plan
+slice: character_creation_vertical_slice
+deliverable: frontend_e2e
+version: 1
+
+playwright_config:
+  base_url: "http://localhost:5173"
+  api_base: "http://localhost:3000"
+  auth_modes:
+    - dev:
+        env:
+          AUTH_MODE: "dev"
+          DEV_ACTOR_ID_PLAYER: "player-aaa"
+          DEV_ACTOR_ID_GM: "gm-zzz"
+    - oidc:
+        env:
+          AUTH_MODE: "oidc"
+          KEYCLOAK_ISSUER: "http://localhost:8080/realms/swordworld"
+          OIDC_AUDIENCE: "swordworld-web"
+
+tests:
+  - id: pw-player-create-submit
+    role: player
+    steps:
+      - "Open /games/game-1/character/new"
+      - "Choose race HUMAN"
+      - "Enter dice A..H matching fixture good.human_rune_master_sorcerer_starter"
+      - "Enter background roll total=3 and money roll total=9"
+      - "Enter name"
+      - "Submit for approval"
+    asserts:
+      - "CommandStatusPanel shows PROCESSED"
+      - "Character status shows PENDING"
+      - "Player inbox includes CHAR_SUBMITTED (if implemented)"
+  - id: pw-gm-approve
+    role: gm
+    steps:
+      - "Open /gm/game-1/inbox"
+      - "Select pending character"
+      - "Approve with note"
+    asserts:
+      - "CommandStatusPanel shows PROCESSED"
+      - "Character status shows APPROVED"
+      - "Player inbox later shows CHAR_APPROVED"
+  - id: pw-upload-appearance
+    role: player
+    steps:
+      - "Open /games/game-1/characters/char-human-1"
+      - "Upload image file test-assets/portrait.jpg"
+    asserts:
+      - "ImageBox shows preview"
+      - "After refresh, preview still present (stored reference)"
+
+fixtures_binding:
+  - "Use fixtures/vertical-slice.character-creation.fixtures.yaml as the data source for the wizard auto-fill in tests."

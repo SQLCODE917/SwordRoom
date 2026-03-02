@@ -1,8 +1,33 @@
+import { useMemo } from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AppShell } from './components/AppShell';
+import { AuthProviderContext } from './auth/AuthProvider';
+import { createDevAuthProvider } from './auth/DevAuthProvider';
+import { CharacterSheetPage } from './routes/CharacterSheetPage';
+import { CharacterWizardPage } from './routes/CharacterWizardPage';
+import { GMInboxPage } from './routes/GMInboxPage';
+import { HomePage } from './routes/HomePage';
+import { LoginPage } from './routes/LoginPage';
+import { PlayerInboxPage } from './routes/PlayerInboxPage';
+
 export default function App() {
+  const authProvider = useMemo(() => createDevAuthProvider(), []);
+
   return (
-    <main style={{ fontFamily: 'sans-serif', maxWidth: 720, margin: '2rem auto' }}>
-      <h1>Character Creation Vertical Slice</h1>
-      <p>Web client scaffold is intentionally basic for now.</p>
-    </main>
+    <AuthProviderContext.Provider value={authProvider}>
+      <BrowserRouter>
+        <AppShell>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/games/:gameId/character/new" element={<CharacterWizardPage />} />
+            <Route path="/me/inbox" element={<PlayerInboxPage />} />
+            <Route path="/games/:gameId/characters/:characterId" element={<CharacterSheetPage />} />
+            <Route path="/gm/:gameId/inbox" element={<GMInboxPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AppShell>
+      </BrowserRouter>
+    </AuthProviderContext.Provider>
   );
 }

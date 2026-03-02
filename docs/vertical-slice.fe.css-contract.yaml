@@ -1,0 +1,462 @@
+# file: vertical-slice.fe.css-contract.yaml
+doc_type: css_contract
+name: swordworld_fe_css_contract
+version: 1
+
+goals:
+  - "Lock down a stable, minimal CSS class + state system for the FE."
+  - "Ensure UX stability: reserved space, no layout jumps, disabled/active/error states."
+  - "Ensure consistent touch sizing and cross-device layout with Flexbox."
+  - "Enable theming via CSS variables only (no per-component inline colors)."
+  - "Map domain colors so related values (ability + bonus + derived modifiers) share color."
+
+non_goals:
+  - "Fancy visuals: no shadows, rounded corners, gradients."
+  - "Multiple button styles. There is exactly one Button component with state styling."
+
+conventions:
+  naming:
+    - "All component root classes start with c-"
+    - "All layout utility classes start with l-"
+    - "All state classes start with is-"
+    - "All semantic text classes start with t-"
+  state_application:
+    - "State classes apply to the component root element."
+    - "Never conditionally mount/unmount blocks to show errors; keep DOM stable and toggle states."
+  focus_policy:
+    - "Use :focus-visible for outlines."
+    - "Never remove focus outlines."
+
+theme:
+  file: "src/styles/theme.css"
+  variables:
+    base:
+      --bg: "#ffffff"
+      --fg: "#111111"
+      --muted: "#666666"
+      --panel: "#f7f7f7"
+      --line: "#d0d0d0"
+      --focus: "#1a73e8"
+      --error: "#b00020"
+      --ok: "#0b6b3a"
+      --warn: "#8a5a00"
+    control:
+      --btn-bg: "var(--fg)"
+      --btn-fg: "var(--bg)"
+      --btn-bg-disabled: "var(--line)"
+      --btn-fg-disabled: "var(--muted)"
+      --input-bg: "var(--bg)"
+      --input-fg: "var(--fg)"
+      --input-line: "var(--line)"
+      --input-line-error: "var(--error)"
+    spacing:
+      --s-1: "4px"
+      --s-2: "8px"
+      --s-3: "12px"
+      --s-4: "16px"
+      --s-5: "24px"
+      --s-6: "32px"
+    radius:
+      --r-0: "0px"
+    touch:
+      --touch-h: "44px"
+      --touch-pad-x: "12px"
+    typography:
+      --font: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+      --fs-0: "12px"
+      --fs-1: "14px"
+      --fs-2: "16px"
+      --fs-3: "18px"
+      --fs-4: "22px"
+      --lh: "1.25"
+    layout:
+      --page-pad: "16px"
+      --panel-pad: "12px"
+      --gap: "12px"
+      --max-content: "1600px" # desktop can grow; do not clamp too low
+    domain_colors:
+      # Use subtle, pragmatic mapping. Keep contrast accessible.
+      --c-dex: "#1f5fbf"
+      --c-agi: "#2b7a2b"
+      --c-int: "#7a4bb3"
+      --c-str: "#b33b3b"
+      --c-lf: "#b36b00"
+      --c-mp: "#006c8a"
+
+breakpoints:
+  phone_max_px: 639
+  tablet_max_px: 1023
+  desktop_min_px: 1024
+
+layout_utilities:
+  file: "src/styles/layout.css"
+  classes:
+    - name: l-page
+      purpose: "Page container with responsive padding and max width behavior."
+      rules:
+        - "min-height: 100vh"
+        - "padding: var(--page-pad)"
+        - "display:flex; flex-direction:column; gap: var(--gap)"
+    - name: l-shell
+      purpose: "App shell wrapper for header + main."
+      rules:
+        - "display:flex; flex-direction:column; min-height:100vh"
+    - name: l-header
+      purpose: "Top bar (title + nav)."
+      rules:
+        - "display:flex; align-items:center; justify-content:space-between; gap: var(--gap)"
+    - name: l-main
+      purpose: "Main content area."
+      rules:
+        - "flex:1; display:flex; flex-direction:column; gap: var(--gap)"
+    - name: l-row
+      purpose: "Horizontal flex row; wraps."
+      rules:
+        - "display:flex; flex-direction:row; flex-wrap:wrap; gap: var(--gap)"
+    - name: l-col
+      purpose: "Vertical flex column."
+      rules:
+        - "display:flex; flex-direction:column; gap: var(--gap)"
+    - name: l-split
+      purpose: "Two/three column responsive split; phone stacks."
+      rules:
+        - "display:flex; gap: var(--gap)"
+        - "flex-direction:column on phone"
+        - "flex-direction:row on tablet/desktop"
+    - name: l-grow
+      purpose: "Allow a child to grow."
+      rules:
+        - "flex:1"
+    - name: l-tight
+      purpose: "Reduce spacing for dense blocks without new components."
+      rules:
+        - "gap: var(--s-2)"
+    - name: l-sticky-bottom
+      purpose: "Phone wizard: fixed action bar."
+      rules:
+        - "position:sticky; bottom:0; background:var(--bg); padding:var(--s-3) 0"
+
+text_semantics:
+  file: "src/styles/text.css"
+  classes:
+    - {
+        name: t-h1,
+        rules:
+          ["font-size:var(--fs-4)", "font-weight:700", "line-height:var(--lh)"],
+      }
+    - {
+        name: t-h2,
+        rules:
+          ["font-size:var(--fs-3)", "font-weight:700", "line-height:var(--lh)"],
+      }
+    - {
+        name: t-h3,
+        rules:
+          ["font-size:var(--fs-2)", "font-weight:700", "line-height:var(--lh)"],
+      }
+    - {
+        name: t-body,
+        rules: ["font-size:var(--fs-2)", "font-weight:400", "line-height:1.4"],
+      }
+    - {
+        name: t-small,
+        rules:
+          ["font-size:var(--fs-1)", "color:var(--muted)", "line-height:1.35"],
+      }
+    - {
+        name: t-mono,
+        rules:
+          [
+            "font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+            "font-size:var(--fs-1)",
+          ],
+      }
+
+state_classes:
+  definition:
+    - name: is-disabled
+      meaning: "Component is not interactive; dim visuals; pointer events off for interactive controls."
+    - name: is-active
+      meaning: "Pressed/selected state; do not animate layout."
+    - name: is-error
+      meaning: "Validation error state; show message; highlight borders."
+    - name: is-ok
+      meaning: "Positive state; used for success notices and status."
+    - name: is-loading
+      meaning: "Processing; show spinner in reserved space; disable submits."
+  rules:
+    - "Do not use display:none to hide error blocks; use visibility/opacity while keeping height reserved if needed."
+
+components:
+  file: "src/styles/components.css"
+  list:
+    - id: AppShell
+      root: c-shell
+      markup_contract:
+        - "div.c-shell.l-shell"
+        - "header.c-shell__header.l-header"
+        - "main.c-shell__main.l-main"
+      rules:
+        - "header has bottom border 1px solid var(--line)"
+        - "header padding uses var(--s-3)"
+        - "main uses var(--page-pad) and max width behavior (desktop uses full width up to --max-content)"
+
+    - id: Panel
+      root: c-panel
+      elements:
+        - c-panel__hd
+        - c-panel__bd
+        - c-panel__ft
+      variants:
+        - name: c-panel--lined
+          rules: ["border:1px solid var(--line)", "background:var(--bg)"]
+        - name: c-panel--plain
+          rules: ["border:1px solid transparent", "background:var(--panel)"]
+      base_rules:
+        - "border-radius: var(--r-0)"
+        - "padding: var(--panel-pad)"
+        - "display:flex; flex-direction:column; gap: var(--s-3)"
+      stability_rules:
+        - "Footer always exists; may contain disabled buttons; do not remove footer region."
+
+    - id: Button
+      root: c-btn
+      markup_contract:
+        - "button.c-btn"
+      rules:
+        sizing:
+          - "min-height: var(--touch-h)"
+          - "padding: 0 var(--touch-pad-x)"
+        visuals:
+          - "border:1px solid var(--fg)"
+          - "background: var(--btn-bg)"
+          - "color: var(--btn-fg)"
+          - "border-radius: var(--r-0)"
+        states:
+          enabled:
+            - "cursor:pointer"
+          is-disabled:
+            - "background: var(--btn-bg-disabled)"
+            - "color: var(--btn-fg-disabled)"
+            - "border-color: var(--line)"
+            - "cursor:not-allowed"
+            - "opacity:1" # keep readable; no faded ghost buttons
+          is-active:
+            - "filter: brightness(0.92)"
+          is-error:
+            - "border-color: var(--error)"
+            - "background: var(--error)"
+            - "color: var(--bg)"
+        focus:
+          - ":focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }"
+
+    - id: TextField
+      root: c-field
+      elements:
+        - c-field__label
+        - c-field__control
+        - c-field__hint
+        - c-field__err
+      markup_contract:
+        - "div.c-field"
+        - "label.c-field__label"
+        - "input.c-field__control OR textarea.c-field__control"
+        - "div.c-field__hint (reserved space)"
+        - "div.c-field__err (reserved space)"
+      rules:
+        label:
+          - "font-size: var(--fs-1)"
+          - "color: var(--muted)"
+        control:
+          - "min-height: var(--touch-h)"
+          - "padding: 0 var(--touch-pad-x)"
+          - "border:1px solid var(--input-line)"
+          - "border-radius: var(--r-0)"
+          - "background: var(--input-bg)"
+          - "color: var(--input-fg)"
+        reserved_space:
+          - "c-field__hint and c-field__err must have min-height: 18px to prevent jump"
+        states:
+          is-error:
+            - ".c-field.is-error .c-field__control { border-color: var(--input-line-error); }"
+            - ".c-field.is-error .c-field__err { color: var(--error); }"
+          is-disabled:
+            - ".c-field.is-disabled .c-field__control { background: var(--panel); color: var(--muted); }"
+
+    - id: SelectField
+      root: c-field # same wrapper as TextField
+      markup_contract:
+        - "select.c-field__control"
+      rules:
+        - "Same as TextField; do not create separate select styling system."
+
+    - id: NumberField
+      root: c-field # same wrapper as TextField
+      markup_contract:
+        - "input[type=number].c-field__control"
+      rules:
+        - "Same as TextField; numeric alignment right optional."
+
+    - id: Notice
+      root: c-note
+      variants:
+        - name: c-note--info
+          rules: ["border-left:4px solid var(--focus)"]
+        - name: c-note--error
+          rules: ["border-left:4px solid var(--error)"]
+        - name: c-note--ok
+          rules: ["border-left:4px solid var(--ok)"]
+      base_rules:
+        - "border:1px solid var(--line)"
+        - "background: var(--bg)"
+        - "padding: var(--s-3)"
+        - "border-radius: var(--r-0)"
+        - "min-height: 44px" # stable blocks
+        - "display:flex; align-items:center"
+
+    - id: CommandStatusPanel
+      root: c-cmd
+      elements:
+        - c-cmd__state
+        - c-cmd__msg
+        - c-cmd__spinner
+      stability_rules:
+        - "Must have fixed min-height (e.g. 64px) even when empty"
+        - "Show 'Idle' state instead of hiding"
+      states:
+        - "Idle"
+        - "Queued"
+        - "Processing"
+        - "Processed"
+        - "Failed"
+      markup_contract:
+        - "div.c-cmd"
+        - "div.c-cmd__state"
+        - "div.c-cmd__msg"
+      css_rules:
+        - "border:1px solid var(--line)"
+        - "background: var(--panel)"
+        - "min-height:64px"
+        - "padding: var(--s-3)"
+        - "display:flex; flex-direction:column; gap: var(--s-2)"
+
+    - id: ImageBox
+      root: c-imgbox
+      elements:
+        - c-imgbox__frame
+        - c-imgbox__img
+        - c-imgbox__placeholder
+        - c-imgbox__actions
+        - c-imgbox__err
+      markup_contract:
+        - "div.c-imgbox"
+        - "div.c-imgbox__frame"
+        - "img.c-imgbox__img OR div.c-imgbox__placeholder"
+        - "div.c-imgbox__actions (contains Button)"
+        - "div.c-imgbox__err (reserved space)"
+      rules:
+        frame:
+          - "border:1px solid var(--line)"
+          - "background: var(--panel)"
+          - "aspect-ratio: 16 / 9"
+          - "width: 100%"
+          - "display:flex; align-items:center; justify-content:center"
+        img:
+          - "max-width:100%; max-height:100%; object-fit:contain"
+        reserved_space:
+          - "c-imgbox__err min-height: 18px"
+      states:
+        is-error:
+          - "frame border-color var(--error)"
+        is-loading:
+          - "actions button disabled; show spinner inside reserved area"
+
+    - id: StatBox
+      root: c-stat
+      elements:
+        - c-stat__label
+        - c-stat__value
+        - c-stat__sub
+      variants:
+        - "c-stat--dex | c-stat--agi | c-stat--int | c-stat--str | c-stat--lf | c-stat--mp"
+      markup_contract:
+        - "div.c-stat.c-stat--dex (example)"
+        - "div.c-stat__label"
+        - "div.c-stat__value"
+        - "div.c-stat__sub (bonus or note; always present but can be blank)"
+      rules:
+        - "border:1px solid var(--line)"
+        - "border-left-width: 6px"
+        - "padding: var(--s-3)"
+        - "min-height: 72px"
+        - "display:flex; flex-direction:column; justify-content:space-between"
+        - "border-radius: var(--r-0)"
+      domain_color_mapping:
+        c-stat--dex: { border_left_color: "var(--c-dex)" }
+        c-stat--agi: { border_left_color: "var(--c-agi)" }
+        c-stat--int: { border_left_color: "var(--c-int)" }
+        c-stat--str: { border_left_color: "var(--c-str)" }
+        c-stat--lf: { border_left_color: "var(--c-lf)" }
+        c-stat--mp: { border_left_color: "var(--c-mp)" }
+
+    - id: TableLite
+      root: c-table
+      elements:
+        - c-table__row
+        - c-table__cell
+        - c-table__head
+      markup_contract:
+        - "div.c-table"
+        - "div.c-table__head (optional but if present keep it always present)"
+        - "div.c-table__row repeated"
+        - "div.c-table__cell repeated"
+      rules:
+        - "Use flex rows for responsiveness"
+        - "Row border-bottom: 1px solid var(--line)"
+        - "Cells wrap on phone; do not hide columns; show labels within cells if needed"
+      stability_rules:
+        - "If empty, show a single placeholder row with muted text; keep height >= 44px"
+
+    - id: Stepper
+      root: c-stepper
+      elements:
+        - c-stepper__step
+        - c-stepper__title
+        - c-stepper__panel
+      markup_contract:
+        - "div.c-stepper"
+        - "div.c-stepper__step repeated"
+        - "div.c-stepper__panel per step (always mounted)"
+      rules:
+        - "Each step panel always exists; not applicable => is-disabled"
+        - "Active step => is-active"
+        - "Error step => is-error"
+      stability_rules:
+        - "Panels have min-height; do not collapse to zero on disable"
+
+responsive_rules:
+  phone:
+    - "l-split becomes column"
+    - "Buttons full width by default in action bars"
+    - "Tables wrap"
+  tablet:
+    - "Allow 2 columns splits"
+  desktop:
+    - "Allow 3 columns where page model calls for it"
+    - "No narrow max-width clamps; let content expand to --max-content"
+
+file_manifest:
+  required_css_files:
+    - "src/styles/theme.css"
+    - "src/styles/layout.css"
+    - "src/styles/text.css"
+    - "src/styles/components.css"
+    - "src/styles/index.css"
+  required_import_order:
+    - "index.css imports theme -> layout -> text -> components"
+
+developer_notes:
+  - "Keep markup minimal: prefer 1 wrapper per component root + a few named children."
+  - "Avoid nested div soup. Use semantic components and reuse c-field wrapper."
+  - "Use aria-invalid on controls when is-error."
+  - "Do not animate height; avoid transition that causes perceived jumping."

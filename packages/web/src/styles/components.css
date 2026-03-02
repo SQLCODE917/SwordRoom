@@ -1,0 +1,87 @@
+.c-shell {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.c-shell__header {
+  border-bottom: 1px solid var(--line);
+  padding: var(--s-3);
+}
+
+.c-shell__main {
+  padding: var(--page-pad);
+  width: 100%;
+  max-width: var(--max-content);
+  margin: 0 auto;
+}
+
+.c-panel {
+  border-radius: var(--r-0);
+  padding: var(--panel-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.c-panel--lined {
+  border: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.c-panel--plain {
+  border: 1px solid transparent;
+  background: var(--panel);
+}
+
+.c-panel__hd,
+.c-panel__bd,
+.c-panel__ft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-panel__ft {
+  min-height: 44px;
+  justify-content: center;
+}
+
+.c-placeholder {
+  min-height: 120px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--s-3);
+  display: flex;
+  align-items: center;
+}
+
+.c-navlink {
+  min-height: var(--touch-h);
+  padding: 0 var(--touch-pad-x);
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  text-decoration: none;
+  color: var(--fg);
+}
+
+.c-navlink[aria-current='page'] {
+  border-color: var(--fg);
+}
+
+.c-navlink:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.is-disabled {
+  pointer-events: none;
+}
+
+.is-active {
+  filter: brightness(0.92);
+}
+
+.is-error {
+  border-color: var(--error);
+}
