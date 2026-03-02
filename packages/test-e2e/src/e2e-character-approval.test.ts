@@ -133,7 +133,6 @@ maybeDescribe('e2e.good.human_rune_master_sequence', () => {
       const dispatchResult = await dispatcher.dispatch(parsedEnvelope);
       expect(['PROCESSED', 'NOOP_ALREADY_PROCESSED']).toContain(dispatchResult.outcome);
       await queue.deleteMessage(QUEUE_URL, message.receiptHandle);
-
       const commandStatus = await api.readApis.getCommandStatus(commandId);
       expect(commandStatus?.status).toBe('PROCESSED');
 

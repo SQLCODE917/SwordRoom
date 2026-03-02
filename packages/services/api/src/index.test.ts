@@ -16,7 +16,11 @@ function makeDbMock(): DbAccess {
   const log = new Map<string, any>();
 
   return {
+    tables: { gameStateTableName: 'GameState', commandLogTableName: 'CommandLog' },
     keyBuilders: { gameState: {} as any, commandLog: {} as any },
+    async transactWrite() {
+      throw new Error('not implemented in api test mock');
+    },
     characterRepository: {
       async getCharacter() {
         return null;

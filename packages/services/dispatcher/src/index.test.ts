@@ -14,7 +14,11 @@ const ASYNC_DOC_PATH = resolve(
 
 function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
   return {
+    tables: { gameStateTableName: 'GameState', commandLogTableName: 'CommandLog' },
     keyBuilders: { gameState: {} as any, commandLog: {} as any },
+    async transactWrite() {
+      throw new Error('should not be called');
+    },
     characterRepository: {
       async getCharacter() {
         return null;

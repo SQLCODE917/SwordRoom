@@ -8,6 +8,8 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  TransactWriteCommand,
+  type TransactWriteCommandInput,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import {
@@ -32,10 +34,12 @@ export interface DbTables {
 }
 
 export interface DbAccess {
+  tables: DbTables;
   keyBuilders: {
     gameState: typeof gameStateKeys;
     commandLog: typeof commandLogKeys;
   };
+  transactWrite(items: NonNullable<TransactWriteCommandInput['TransactItems']>): Promise<void>;
   characterRepository: {
     getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
     putCharacterDraft(input: PutCharacterDraftInput): Promise<CharacterItem>;
@@ -138,9 +142,24 @@ export function createDynamoDbDocumentClient(input?: {
 
 export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables): DbAccess {
   return {
+    tables,
     keyBuilders: {
       gameState: gameStateKeys,
       commandLog: commandLogKeys,
+    },
+    async transactWrite(items) {
+      try {
+        await client.send(
+          new TransactWriteCommand({
+            TransactItems: items,
+          })
+        );
+      } catch (error) {
+        if (!isDynaliteUnknownTransactionError(error)) {
+          throw error;
+        }
+        await applyTransactFallback(client, items);
+      }
     },
     characterRepository: {
       async getCharacter(gameId, characterId) {
@@ -388,6 +407,35 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
 
 export function isConditionalCheckFailed(error: unknown): error is ConditionalCheckFailedException {
   return Boolean(error && typeof error === 'object' && (error as { name?: string }).name === 'ConditionalCheckFailedException');
+}
+
+function isDynaliteUnknownTransactionError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const name = (error as { name?: string }).name;
+  const message = (error as { message?: string }).message;
+  return name === 'UnknownError' || message === 'UnknownError';
+}
+
+async function applyTransactFallback(
+  client: DynamoDBDocumentClient,
+  items: NonNullable<TransactWriteCommandInput['TransactItems']>
+): Promise<void> {
+  for (const item of items) {
+    if (item.Put) {
+      await client.send(new PutCommand(item.Put));
+      continue;
+    }
+    if (item.Update) {
+      await client.send(new UpdateCommand(item.Update));
+      continue;
+    }
+    if (item.Delete) {
+      await client.send(new DeleteCommand(item.Delete));
+      continue;
+    }
+  }
 }
 
 async function updateCommandLogStatus(
