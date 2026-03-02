@@ -1,6 +1,6 @@
 import { anyCommandEnvelopeSchema, type AnyCommandEnvelope } from '@starter/shared';
-import { Buffer } from 'node:buffer';
 import type { DbAccess } from '@starter/services-shared';
+import { resolveActorId } from './auth.js';
 import type {
   ApiRoute,
   CommandStatusResponse,
@@ -41,9 +41,9 @@ export function createApiService(deps: ApiServiceDependencies): {
 } {
   return {
     async postCommands(request: PostCommandRequest): Promise<PostCommandResponse> {
-      const actorId = resolveActorId({
+      const actorId = await resolveActorId({
         bypassAllowed: deps.jwtBypass ?? process.env.JWT_BYPASS === '1',
-        authHeader: request.authHeader,
+        authorizationHeader: request.authHeader,
         bypassActorId: request.bypassActorId,
       });
 
@@ -113,35 +113,4 @@ function buildFifoMessage(input: { queueUrl: string; envelope: AnyCommandEnvelop
     messageGroupId: input.envelope.gameId,
     messageDeduplicationId: input.envelope.commandId,
   };
-}
-
-function resolveActorId(input: {
-  bypassAllowed: boolean;
-  authHeader?: string;
-  bypassActorId?: string;
-}): string {
-  if (input.bypassAllowed) {
-    if (!input.bypassActorId) {
-      throw new Error('JWT bypass enabled but bypassActorId not provided');
-    }
-    return input.bypassActorId;
-  }
-
-  if (!input.authHeader) {
-    throw new Error('missing Authorization header');
-  }
-
-  const token = input.authHeader.replace(/^Bearer\s+/i, '').trim();
-  const parts = token.split('.');
-  if (parts.length < 2) {
-    throw new Error('invalid JWT format');
-  }
-
-  const payloadJson = Buffer.from(parts[1]!, 'base64url').toString('utf8');
-  const payload = JSON.parse(payloadJson) as { sub?: string };
-  if (!payload.sub) {
-    throw new Error('JWT payload missing sub');
-  }
-
-  return payload.sub;
 }

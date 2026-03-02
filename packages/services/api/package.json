@@ -14,14 +14,16 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "dev": "node -e \"console.log('services-api scaffold')\"",
+    "dev": "pnpm run build && node dist/server.js",
     "test": "vitest --run",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1000.0",
     "@starter/engine": "workspace:*",
     "@starter/services-shared": "workspace:*",
-    "@starter/shared": "workspace:*"
+    "@starter/shared": "workspace:*",
+    "jose": "^6.1.3"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
