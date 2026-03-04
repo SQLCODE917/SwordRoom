@@ -158,6 +158,131 @@
   border-color: var(--error);
 }
 
+.c-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.c-field__label {
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+
+.c-field__control {
+  min-height: var(--touch-h);
+  padding: 0 var(--touch-pad-x);
+  border: 1px solid var(--input-line);
+  border-radius: var(--r-0);
+  background: var(--input-bg);
+  color: var(--input-fg);
+}
+
+.c-field__hint,
+.c-field__err {
+  min-height: 18px;
+  font-size: var(--fs-1);
+  line-height: 1.35;
+}
+
+.c-field__hint {
+  color: var(--muted);
+}
+
+.c-field.is-error .c-field__control {
+  border-color: var(--input-line-error);
+}
+
+.c-field.is-error .c-field__err {
+  color: var(--error);
+}
+
+.c-field.is-disabled .c-field__control {
+  background: var(--panel);
+  color: var(--muted);
+}
+
+.c-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.c-stepper__step {
+  flex: 1 1 220px;
+}
+
+.c-stepper__title {
+  font-size: var(--fs-1);
+}
+
+.c-stepper__panel {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--panel-pad);
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.c-stepper__panel.is-disabled {
+  background: var(--panel);
+}
+
+.c-stat {
+  border: 1px solid var(--line);
+  border-left-width: 6px;
+  padding: var(--s-3);
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: var(--r-0);
+  flex: 1;
+}
+
+.c-stat--dex {
+  border-left-color: var(--c-dex);
+}
+
+.c-stat--agi {
+  border-left-color: var(--c-agi);
+}
+
+.c-stat--int {
+  border-left-color: var(--c-int);
+}
+
+.c-stat--str {
+  border-left-color: var(--c-str);
+}
+
+.c-stat--lf {
+  border-left-color: var(--c-lf);
+}
+
+.c-stat--mp {
+  border-left-color: var(--c-mp);
+}
+
+.c-field__check {
+  min-height: var(--touch-h);
+  border: 1px solid var(--input-line);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: 0 var(--touch-pad-x);
+}
+
+.c-field__control--check {
+  min-height: auto;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0;
+}
+
 .is-disabled {
   pointer-events: none;
 }
