@@ -61,7 +61,11 @@ export interface PlayerInboxItem {
 }
 
 export interface GMInboxItem {
-  kind: string;
+  gameId: string;
+  characterId: string;
+  ownerPlayerId: string;
+  status: 'PENDING';
+  submittedAt: string;
   [key: string]: unknown;
 }
 

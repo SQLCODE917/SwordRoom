@@ -283,6 +283,31 @@
   margin: 0;
 }
 
+.c-table {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+}
+
+.c-table__head {
+  background: var(--panel);
+}
+
+.c-table__row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  min-height: 44px;
+}
+
+.c-table__cell {
+  flex: 1 1 220px;
+  padding: var(--s-2);
+  display: flex;
+  align-items: center;
+}
+
 .is-disabled {
   pointer-events: none;
 }
