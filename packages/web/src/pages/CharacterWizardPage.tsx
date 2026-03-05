@@ -1,4 +1,4 @@
-import { type Dispatch, type ReactNode, type SetStateAction, useMemo, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { Stepper, type StepperItem } from '../components/Stepper';
@@ -56,10 +56,35 @@ const stepTitles = ['Race', 'Dice A-H', 'Background rolls', 'Name/identity', 'EX
 export function CharacterWizardPage() {
   const [state, setState] = useState<WizardState>(() => buildInitialState());
   const [activeStepIndex, setActiveStepIndex] = useState(0);
+  const stepPanelRefs = useRef<Array<HTMLElement | null>>([]);
   const derived = useMemo(() => computeDerivedAbilities(state.subAbility), [state.subAbility]);
   const backgroundEligible = resolveBackgroundEligibility(state.race, state.raisedBy);
   const backgroundLabel = backgroundsByRoll[state.backgroundRoll2dTotal] ?? 'No background result for this roll.';
   const nameError = state.name.trim() === '' ? 'Name is required.' : ' ';
+
+  const setStepPanelRef = useCallback(
+    (index: number) => (element: HTMLElement | null) => {
+      stepPanelRefs.current[index] = element;
+    },
+    []
+  );
+
+  useEffect(() => {
+    const panel = stepPanelRefs.current[activeStepIndex];
+    if (!panel) {
+      return;
+    }
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    panel.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  }, [activeStepIndex]);
 
   const steps: StepperItem[] = [
     {
@@ -296,7 +321,12 @@ export function CharacterWizardPage() {
       <Panel title="Character Wizard" subtitle="All step panels stay mounted; only active step is enabled.">
         <div className="l-split">
           <div className="l-col l-grow">
-            <Stepper steps={steps} activeStepIndex={activeStepIndex} onStepChange={setActiveStepIndex} />
+            <Stepper
+              steps={steps}
+              activeStepIndex={activeStepIndex}
+              onStepChange={setActiveStepIndex}
+              getPanelRef={setStepPanelRef}
+            />
             <div className="l-sticky-bottom l-row">
               <button
                 className={`c-btn ${activeStepIndex === 0 ? 'is-disabled' : ''}`.trim()}
