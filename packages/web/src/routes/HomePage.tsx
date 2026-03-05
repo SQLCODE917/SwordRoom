@@ -15,17 +15,17 @@ export function HomePage() {
   const onDemoSubmit = async () => {
     try {
       await submitCommand({
-      commandId: makeUuid(),
-      gameId: 'game-1',
-      type: 'CreateCharacterDraft',
-      schemaVersion: 1,
-      createdAt: new Date().toISOString(),
-      payload: {
-        characterId: `char-demo-${Date.now()}`,
-        race: 'HUMAN',
-        raisedBy: null,
-      },
-    });
+        commandId: makeUuid(),
+        gameId: 'game-1',
+        type: 'CreateCharacterDraft',
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        payload: {
+          characterId: 'char-human-1',
+          race: 'HUMAN',
+          raisedBy: null,
+        },
+      });
     } catch {
       // submitError state is already set by useSubmitCommand
     }

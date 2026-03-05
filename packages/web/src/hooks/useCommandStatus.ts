@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BackendCommandStatus } from '../api/ApiClient';
+import type { BackendCommandStatus, CommandStatusResponse } from '../api/ApiClient';
 import { createApiClient } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 
@@ -69,7 +69,7 @@ export function useCommandStatus(commandId: string | null): CommandStatusViewMod
         setStatus({
           state: mappedState,
           commandId,
-          message: describeState(mappedState),
+          message: buildStateMessage(mappedState, response),
           errorCode: response.errorCode,
           errorMessage: response.errorMessage,
         });
@@ -136,4 +136,24 @@ function describeState(state: UiCommandState): string {
     return 'Command failed.';
   }
   return 'No command submitted yet.';
+}
+
+function buildStateMessage(state: UiCommandState, response: CommandStatusResponse): string {
+  if (state !== 'Failed') {
+    return describeState(state);
+  }
+
+  return describeFailure(response);
+}
+
+export function describeFailure(response: Pick<CommandStatusResponse, 'errorCode' | 'errorMessage'>): string {
+  const code = response.errorCode ?? 'UNKNOWN_ERROR';
+  const rawMessage = response.errorMessage ?? 'No backend error message provided.';
+  const lowerRaw = rawMessage.toLowerCase();
+
+  if (lowerRaw.includes('conditionalcheckfailed') || lowerRaw.includes('attribute_not_exists')) {
+    return `Command failed (${code}): duplicate write conflict detected. For CreateCharacterDraft this usually means the characterId is already taken for this game. Raw backend message: ${rawMessage}`;
+  }
+
+  return `Command failed (${code}): ${rawMessage}`;
 }
