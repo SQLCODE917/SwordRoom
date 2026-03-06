@@ -25,7 +25,7 @@ import {
   submitSetCharacterSubAbilities,
   submitSpendStartingExp,
 } from '../flows/characterWizardCommands';
-import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
+import { describeFailure, type CommandStatusViewModel } from '../hooks/useCommandStatus';
 
 interface CharacterSnapshot {
   status: string;
@@ -83,6 +83,7 @@ export function CharacterWizardPage() {
   const [state, setState] = useState<WizardState>(() => buildInitialState());
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const stepPanelRefs = useRef<Array<HTMLElement | null>>([]);
+  const commandStatusRef = useRef<HTMLDivElement | null>(null);
   const [isExecutingCommand, setIsExecutingCommand] = useState(false);
   const [stepError, setStepError] = useState<string>(' ');
   const [snapshot, setSnapshot] = useState<CharacterSnapshot | null>(null);
@@ -144,34 +145,19 @@ export function CharacterWizardPage() {
             value={state.race}
             options={['HUMAN', 'DWARF', 'GRASSRUNNER', 'ELF', 'HALF_ELF']}
             onChange={(value) => setState((prev) => ({ ...prev, race: value as Race }))}
-            disabled={activeStepIndex !== 0 || isExecutingCommand}
+            disabled={isExecutingCommand}
           />
           <FieldSelect
             label="Raised by"
             value={state.raisedBy}
             options={['HUMANS', 'ELVES']}
             onChange={(value) => setState((prev) => ({ ...prev, raisedBy: value as HalfElfRaisedBy }))}
-            disabled={activeStepIndex !== 0 || state.race !== 'HALF_ELF' || isExecutingCommand}
+            disabled={state.race !== 'HALF_ELF' || isExecutingCommand}
             hint="Only used when race is HALF_ELF."
           />
-          <button
-            className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
-            type="button"
-            disabled={isExecutingCommand || activeStepIndex !== 0}
-            onClick={() =>
-              void executeAndAdvance(async () =>
-                submitCreateCharacterDraft({
-                  api,
-                  gameId: state.gameId,
-                  characterId: state.characterId,
-                  race: state.race,
-                  raisedBy: state.raisedBy,
-                })
-              )
-            }
-          >
-            Create Character Draft
-          </button>
+          <div className="c-note c-note--info">
+            <span className="t-small">Saved on final submit.</span>
+          </div>
         </WizardStep>
       ),
     },
@@ -181,7 +167,7 @@ export function CharacterWizardPage() {
       panel: (
         <WizardStep title="2) Dice A-H" enabled={activeStepIndex === 1}>
           <div className="l-split">
-            <fieldset className="l-col l-grow" disabled={activeStepIndex !== 1 || isExecutingCommand}>
+            <fieldset className="l-col l-grow" disabled={isExecutingCommand}>
               <div className="l-split">
                 <div className="l-col l-grow">
                   <FieldNumber
@@ -239,27 +225,10 @@ export function CharacterWizardPage() {
               <button
                 className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
                 type="button"
-                disabled={isExecutingCommand || activeStepIndex !== 1}
+                disabled={isExecutingCommand}
                 onClick={() => setState((prev) => ({ ...prev, subAbility: rollSubAbilitiesForRace(prev.race) }))}
               >
                 Roll A-H
-              </button>
-              <button
-                className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
-                type="button"
-                disabled={isExecutingCommand || activeStepIndex !== 1}
-                onClick={() =>
-                  void executeAndAdvance(async () =>
-                    submitSetCharacterSubAbilities({
-                      api,
-                      gameId: state.gameId,
-                      characterId: state.characterId,
-                      subAbility: state.subAbility,
-                    })
-                  )
-                }
-              >
-                Save Sub-Abilities
               </button>
             </fieldset>
             <div className="l-col l-grow">
@@ -283,7 +252,7 @@ export function CharacterWizardPage() {
       title: stepTitles[2]!,
       panel: (
         <WizardStep title="3) Background rolls" enabled={activeStepIndex === 2}>
-          <fieldset className="l-col" disabled={activeStepIndex !== 2 || !backgroundEligible || isExecutingCommand}>
+          <fieldset className="l-col" disabled={!backgroundEligible || isExecutingCommand}>
             <FieldNumber
               label="Background roll total"
               value={state.backgroundRoll2dTotal}
@@ -299,24 +268,6 @@ export function CharacterWizardPage() {
               max={12}
               onChange={(value) => setState((prev) => ({ ...prev, moneyRoll2dTotal: clamp(value, 2, 12) }))}
             />
-            <button
-              className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
-              type="button"
-              disabled={isExecutingCommand || activeStepIndex !== 2 || !backgroundEligible}
-              onClick={() =>
-                void executeAndAdvance(async () =>
-                  submitApplyStartingPackage({
-                    api,
-                    gameId: state.gameId,
-                    characterId: state.characterId,
-                    backgroundRoll2dTotal: state.backgroundRoll2dTotal,
-                    startingMoneyRoll2dTotal: state.moneyRoll2dTotal,
-                  })
-                )
-              }
-            >
-              Apply Starting Package
-            </button>
           </fieldset>
           <div className="c-note c-note--info">
             <span className="t-small">{backgroundEligible ? backgroundLabel : 'Background table not applicable.'}</span>
@@ -330,7 +281,7 @@ export function CharacterWizardPage() {
       isError: state.name.trim() === '',
       panel: (
         <WizardStep title="4) Name/identity" enabled={activeStepIndex === 3}>
-          <fieldset className="l-col" disabled={activeStepIndex !== 3 || isExecutingCommand}>
+          <fieldset className="l-col" disabled={isExecutingCommand}>
             <FieldText
               label="Name"
               value={state.name}
@@ -355,7 +306,7 @@ export function CharacterWizardPage() {
       title: stepTitles[4]!,
       panel: (
         <WizardStep title="5) EXP spend" enabled={activeStepIndex === 4}>
-          <fieldset className="l-col" disabled={activeStepIndex !== 4 || isExecutingCommand}>
+          <fieldset className="l-col" disabled={isExecutingCommand}>
             <FieldText label="Skill" value="Fighter" onChange={() => undefined} disabled />
             <FieldNumber
               label="Target level"
@@ -365,23 +316,6 @@ export function CharacterWizardPage() {
               onChange={() => setState((prev) => ({ ...prev, fighterLevel: 1 }))}
               hint="Minimal fixture path: Fighter level 1."
             />
-            <button
-              className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
-              type="button"
-              disabled={isExecutingCommand || activeStepIndex !== 4}
-              onClick={() =>
-                void executeAndAdvance(async () =>
-                  submitSpendStartingExp({
-                    api,
-                    gameId: state.gameId,
-                    characterId: state.characterId,
-                    purchases: [{ skill: 'Fighter', targetLevel: state.fighterLevel }],
-                  })
-                )
-              }
-            >
-              Spend Starting EXP
-            </button>
           </fieldset>
         </WizardStep>
       ),
@@ -391,7 +325,7 @@ export function CharacterWizardPage() {
       title: stepTitles[5]!,
       panel: (
         <WizardStep title="6) Equipment cart" enabled={activeStepIndex === 5}>
-          <fieldset className="l-col" disabled={activeStepIndex !== 5 || isExecutingCommand}>
+          <fieldset className="l-col" disabled={isExecutingCommand}>
             <FieldCheckbox
               label="mage_staff"
               checked={state.cart.mage_staff}
@@ -406,28 +340,6 @@ export function CharacterWizardPage() {
                 setState((prev) => ({ ...prev, cart: { ...prev.cart, cloth_armor: checked } }))
               }
             />
-            <button
-              className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
-              type="button"
-              disabled={isExecutingCommand || activeStepIndex !== 5}
-              onClick={() =>
-                void executeAndAdvance(async () =>
-                  submitPurchaseStarterEquipment({
-                    api,
-                    gameId: state.gameId,
-                    characterId: state.characterId,
-                    cart: {
-                      weapons: state.cart.mage_staff ? ['mage_staff'] : [],
-                      armor: state.cart.cloth_armor ? ['cloth_armor'] : [],
-                      shields: [],
-                      gear: [],
-                    },
-                  })
-                )
-              }
-            >
-              Purchase Starter Equipment
-            </button>
           </fieldset>
         </WizardStep>
       ),
@@ -437,7 +349,7 @@ export function CharacterWizardPage() {
       title: stepTitles[6]!,
       panel: (
         <WizardStep title="7) Submit" enabled={activeStepIndex === 6}>
-          <fieldset className="l-col" disabled={activeStepIndex !== 6 || isExecutingCommand}>
+          <fieldset className="l-col" disabled={isExecutingCommand}>
             <FieldText
               label="Note to GM"
               value={state.submitNoteToGm}
@@ -447,17 +359,8 @@ export function CharacterWizardPage() {
             <button
               className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
               type="button"
-              disabled={isExecutingCommand || activeStepIndex !== 6}
-              onClick={() =>
-                void executeAndAdvance(async () =>
-                  submitCharacterForApproval({
-                    api,
-                    gameId: state.gameId,
-                    characterId: state.characterId,
-                    noteToGm: state.submitNoteToGm,
-                  })
-                )
-              }
+              disabled={isExecutingCommand}
+              onClick={() => void executeFinalSubmit()}
             >
               Submit Character For Approval
             </button>
@@ -535,9 +438,11 @@ export function CharacterWizardPage() {
             </div>
 
             <div className="l-col l-grow">
-              <Panel title="Command Status" subtitle="Fixed region for no-jump UX.">
-                <CommandStatusPanel status={commandStatus} />
-              </Panel>
+              <div ref={commandStatusRef}>
+                <Panel title="Command Status" subtitle="Fixed region for no-jump UX.">
+                  <CommandStatusPanel status={commandStatus} />
+                </Panel>
+              </div>
 
               <Panel title="Current Character Snapshot" subtitle="Read-only snapshot from GET /games/{gameId}/characters/{characterId}">
                 <SnapshotView snapshot={snapshot} />
@@ -549,40 +454,131 @@ export function CharacterWizardPage() {
     </div>
   );
 
-  async function executeAndAdvance(submit: () => Promise<string>) {
+  async function executeFinalSubmit() {
     setStepError(' ');
+    scrollCommandStatusIntoView();
     setIsExecutingCommand(true);
     try {
-      const commandId = await submit();
-      setCommandStatus({
-        state: 'Queued',
-        commandId,
-        message: 'Command queued.',
-        errorCode: null,
-        errorMessage: null,
-      });
-
-      const terminal = await pollUntilTerminal(commandId);
-      if (terminal.status === 'PROCESSED') {
-        await refreshSnapshot();
-        setActiveStepIndex((prev) => Math.min(steps.length - 1, prev + 1));
-        return;
+      const existingCharacter = await api.getCharacter(state.gameId, state.characterId);
+      if (!existingCharacter) {
+        await submitCommandAndAwait('Create draft', () =>
+          submitCreateCharacterDraft({
+            api,
+            gameId: state.gameId,
+            characterId: state.characterId,
+            race: state.race,
+            raisedBy: state.raisedBy,
+          })
+        );
       }
 
-      const verbatim = `${terminal.errorCode ?? ''} ${terminal.errorMessage ?? ''}`.trim();
-      setStepError(verbatim || 'Command failed without a backend message.');
+      await submitCommandAndAwait('Save sub-abilities', () =>
+        submitSetCharacterSubAbilities({
+          api,
+          gameId: state.gameId,
+          characterId: state.characterId,
+          subAbility: state.subAbility,
+        })
+      );
+
+      if (backgroundEligible || state.race === 'DWARF') {
+        await submitCommandAndAwait('Apply starting package', () =>
+          submitApplyStartingPackage({
+            api,
+            gameId: state.gameId,
+            characterId: state.characterId,
+            backgroundRoll2dTotal: state.backgroundRoll2dTotal,
+            startingMoneyRoll2dTotal: state.moneyRoll2dTotal,
+          })
+        );
+      }
+
+      await submitCommandAndAwait('Spend starting EXP', () =>
+        submitSpendStartingExp({
+          api,
+          gameId: state.gameId,
+          characterId: state.characterId,
+          purchases: [{ skill: 'Fighter', targetLevel: state.fighterLevel }],
+        })
+      );
+
+      await submitCommandAndAwait('Purchase starter equipment', () =>
+        submitPurchaseStarterEquipment({
+          api,
+          gameId: state.gameId,
+          characterId: state.characterId,
+          cart: {
+            weapons: state.cart.mage_staff ? ['mage_staff'] : [],
+            armor: state.cart.cloth_armor ? ['cloth_armor'] : [],
+            shields: [],
+            gear: [],
+          },
+        })
+      );
+
+      await submitCommandAndAwait('Submit for approval', () =>
+        submitCharacterForApproval({
+          api,
+          gameId: state.gameId,
+          characterId: state.characterId,
+          noteToGm: state.submitNoteToGm,
+        })
+      );
+
+      await refreshSnapshot();
     } catch (error) {
-      setStepError(error instanceof Error ? error.message : String(error));
+      const message = error instanceof Error ? error.message : String(error);
+      setStepError(message);
       setCommandStatus((prev) => ({
         ...prev,
         state: 'Failed',
         message: 'Command failed.',
         errorCode: prev.errorCode,
-        errorMessage: error instanceof Error ? error.message : String(error),
+        errorMessage: message,
       }));
     } finally {
       setIsExecutingCommand(false);
     }
+  }
+
+  function scrollCommandStatusIntoView() {
+    const region = commandStatusRef.current;
+    if (!region) {
+      return;
+    }
+
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    region.scrollIntoView({
+      behavior: reducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  }
+
+  async function submitCommandAndAwait(label: string, submit: () => Promise<string>) {
+    const commandId = await submit();
+    setCommandStatus({
+      state: 'Queued',
+      commandId,
+      message: `${label} queued.`,
+      errorCode: null,
+      errorMessage: null,
+    });
+
+    const terminal = await pollUntilTerminal(commandId);
+    if (terminal.status === 'PROCESSED') {
+      return;
+    }
+
+    throw new Error(
+      describeFailure({
+        errorCode: terminal.errorCode,
+        errorMessage: terminal.errorMessage,
+      })
+    );
   }
 
   async function pollUntilTerminal(commandId: string): Promise<CommandStatusResponse> {
@@ -660,7 +656,7 @@ function mapStatus(response: CommandStatusResponse): CommandStatusViewModel {
     return {
       state: 'Failed',
       commandId: response.commandId,
-      message: 'Command failed.',
+      message: describeFailure(response),
       errorCode: response.errorCode,
       errorMessage: response.errorMessage,
     };
@@ -699,7 +695,7 @@ function WizardStep({ title, enabled, children }: { title: string; enabled: bool
   return (
     <div className="l-col">
       <h3 className="c-stepper__title t-h3">{title}</h3>
-      <div aria-disabled={!enabled}>{children}</div>
+      <div className={enabled ? 'is-active' : ''}>{children}</div>
     </div>
   );
 }

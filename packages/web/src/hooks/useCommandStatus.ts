@@ -149,11 +149,5 @@ function buildStateMessage(state: UiCommandState, response: CommandStatusRespons
 export function describeFailure(response: Pick<CommandStatusResponse, 'errorCode' | 'errorMessage'>): string {
   const code = response.errorCode ?? 'UNKNOWN_ERROR';
   const rawMessage = response.errorMessage ?? 'No backend error message provided.';
-  const lowerRaw = rawMessage.toLowerCase();
-
-  if (lowerRaw.includes('conditionalcheckfailed') || lowerRaw.includes('attribute_not_exists')) {
-    return `Command failed (${code}): duplicate write conflict detected. For CreateCharacterDraft this usually means the characterId is already taken for this game. Raw backend message: ${rawMessage}`;
-  }
-
   return `Command failed (${code}): ${rawMessage}`;
 }

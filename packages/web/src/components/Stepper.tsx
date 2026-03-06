@@ -44,7 +44,6 @@ export function Stepper({ steps, activeStepIndex, onStepChange, getPanelRef }: S
         {steps.map((step, index) => {
           const stateClasses = [
             index === activeStepIndex ? 'is-active' : '',
-            index !== activeStepIndex ? 'is-disabled' : '',
             step.isError ? 'is-error' : '',
           ]
             .filter(Boolean)
@@ -53,9 +52,9 @@ export function Stepper({ steps, activeStepIndex, onStepChange, getPanelRef }: S
             <section
               key={step.id}
               className={`c-stepper__panel ${stateClasses}`.trim()}
-              aria-disabled={index !== activeStepIndex}
               aria-label={step.title}
               ref={getPanelRef ? getPanelRef(index) : undefined}
+              onClick={() => onStepChange(index)}
             >
               {step.panel}
             </section>
