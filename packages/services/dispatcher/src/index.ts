@@ -29,29 +29,63 @@ export function createDispatcher(deps: DispatcherDependencies) {
     db: deps.db,
     nowIso,
   };
+  const flowLogEnabled = process.env.FLOW_LOG === '1';
 
   return {
     async dispatch(envelopeInput: unknown): Promise<DispatchResult> {
       const parsed = anyCommandEnvelopeSchema.parse(envelopeInput);
+      logFlow(flowLogEnabled, 'DISPATCH_BEGIN', {
+        commandId: parsed.commandId,
+        type: parsed.type,
+        gameId: parsed.gameId,
+        actorId: parsed.actorId,
+        characterId: extractCharacterId(parsed),
+      });
       const existing = await deps.db.commandLogRepository.get(parsed.commandId);
 
       if (existing?.status === 'PROCESSED') {
+        logFlow(flowLogEnabled, 'DISPATCH_NOOP_ALREADY_PROCESSED', {
+          commandId: parsed.commandId,
+          type: parsed.type,
+          gameId: parsed.gameId,
+        });
         return { commandId: parsed.commandId, outcome: 'NOOP_ALREADY_PROCESSED' };
       }
 
       try {
         await deps.db.commandLogRepository.markProcessing(parsed.commandId, nowIso());
+        logFlow(flowLogEnabled, 'DISPATCH_MARK_PROCESSING', {
+          commandId: parsed.commandId,
+        });
 
         const handler = handlerRegistry[parsed.type];
         const effects = await handler(context, parsed as never);
+        logFlow(flowLogEnabled, 'DISPATCH_HANDLER_EFFECTS', {
+          commandId: parsed.commandId,
+          writes: effects.writes.length,
+          inbox: effects.inbox.length,
+          notifications: effects.notifications.length,
+        });
 
         await applyEffectsTransact(deps.db, parsed, effects, nowIso());
+        logFlow(flowLogEnabled, 'DISPATCH_APPLY_EFFECTS_OK', {
+          commandId: parsed.commandId,
+          type: parsed.type,
+          gameId: parsed.gameId,
+        });
 
         return { commandId: parsed.commandId, outcome: 'PROCESSED' };
       } catch (error) {
         const errorCode = extractErrorCode(error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         await deps.db.commandLogRepository.markFailed(parsed.commandId, nowIso(), errorCode, errorMessage);
+        logFlow(flowLogEnabled, 'DISPATCH_FAILED', {
+          commandId: parsed.commandId,
+          type: parsed.type,
+          gameId: parsed.gameId,
+          errorCode,
+          errorMessage,
+        });
         return { commandId: parsed.commandId, outcome: 'FAILED', errorCode };
       }
     },
@@ -237,4 +271,12 @@ function extractErrorCode(error: unknown): string {
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function logFlow(enabled: boolean, event: string, data: Record<string, unknown>): void {
+  if (!enabled) {
+    return;
+  }
+  // eslint-disable-next-line no-console
+  console.log(JSON.stringify({ ts: new Date().toISOString(), svc: 'dispatcher', event, ...data }));
 }

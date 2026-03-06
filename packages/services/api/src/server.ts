@@ -13,6 +13,7 @@ const service = createApiService({
   queueUrl: deps.queueUrl,
   jwtBypass: process.env.AUTH_MODE === 'dev',
 });
+const flowLogEnabled = process.env.FLOW_LOG === '1';
 
 const server = createServer(async (req, res) => {
   try {
@@ -29,11 +30,13 @@ const server = createServer(async (req, res) => {
         sendJson(res, 400, { error: 'request body must include envelope object' });
         return;
       }
+      logFlow('API_POST_COMMAND_REQUEST', readEnvelopeSummary(payload.envelope));
       const response = await service.postCommands({
         envelope: payload.envelope as any,
         authHeader: req.headers.authorization,
         bypassActorId: payload.bypassActorId,
       });
+      logFlow('API_POST_COMMAND_ACCEPTED', { commandId: response.commandId, status: response.status });
       sendJson(res, 202, response);
       return;
     }
@@ -42,9 +45,15 @@ const server = createServer(async (req, res) => {
       const commandId = decodeURIComponent(url.pathname.slice('/commands/'.length));
       const status = await service.readApis.getCommandStatus(commandId);
       if (!status) {
+        logFlow('API_GET_COMMAND_STATUS_MISS', { commandId });
         sendJson(res, 404, { error: 'command not found' });
         return;
       }
+      logFlow('API_GET_COMMAND_STATUS_HIT', {
+        commandId,
+        status: status.status,
+        errorCode: status.errorCode,
+      });
       sendJson(res, 200, status);
       return;
     }
@@ -55,9 +64,16 @@ const server = createServer(async (req, res) => {
       const characterId = decodeURIComponent(charMatch[2]!);
       const character = await service.readApis.getCharacter(gameId, characterId);
       if (!character) {
+        logFlow('API_GET_CHARACTER_MISS', { gameId, characterId });
         sendJson(res, 404, { error: 'character not found' });
         return;
       }
+      logFlow('API_GET_CHARACTER_HIT', {
+        gameId,
+        characterId,
+        status: (character as { status?: unknown }).status ?? null,
+        version: (character as { version?: unknown }).version ?? null,
+      });
       sendJson(res, 200, character);
       return;
     }
@@ -68,6 +84,7 @@ const server = createServer(async (req, res) => {
         authorizationHeader: req.headers.authorization,
       });
       const inbox = await service.readApis.getMyInbox(actorId);
+      logFlow('API_GET_PLAYER_INBOX', { actorId, count: inbox.length });
       sendJson(res, 200, inbox);
       return;
     }
@@ -76,6 +93,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' && gmMatch) {
       const gameId = decodeURIComponent(gmMatch[1]!);
       const inbox = await service.readApis.getGmInbox(gameId);
+      logFlow('API_GET_GM_INBOX', { gameId, count: inbox.length });
       sendJson(res, 200, inbox);
       return;
     }
@@ -83,6 +101,7 @@ const server = createServer(async (req, res) => {
     sendJson(res, 404, { error: 'not found' });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    logFlow('API_REQUEST_ERROR', { message });
     sendJson(res, 400, { error: message });
   }
 });
@@ -96,6 +115,28 @@ function sendJson(res: import('node:http').ServerResponse, statusCode: number, b
   res.statusCode = statusCode;
   res.setHeader('content-type', 'application/json');
   res.end(JSON.stringify(body));
+}
+
+function logFlow(event: string, data: Record<string, unknown>): void {
+  if (!flowLogEnabled) {
+    return;
+  }
+  // eslint-disable-next-line no-console
+  console.log(JSON.stringify({ ts: new Date().toISOString(), svc: 'api', event, ...data }));
+}
+
+function readEnvelopeSummary(envelope: unknown): Record<string, unknown> {
+  if (!envelope || typeof envelope !== 'object') {
+    return {};
+  }
+  const record = envelope as Record<string, unknown>;
+  const payload = record.payload && typeof record.payload === 'object' ? (record.payload as Record<string, unknown>) : {};
+  return {
+    commandId: typeof record.commandId === 'string' ? record.commandId : null,
+    type: typeof record.type === 'string' ? record.type : null,
+    gameId: typeof record.gameId === 'string' ? record.gameId : null,
+    characterId: typeof payload.characterId === 'string' ? payload.characterId : null,
+  };
 }
 
 async function readJson(req: import('node:http').IncomingMessage): Promise<unknown> {

@@ -39,6 +39,8 @@ export function createApiService(deps: ApiServiceDependencies): {
   postCommands(request: PostCommandRequest): Promise<PostCommandResponse>;
   readApis: ReadApis;
 } {
+  const flowLogEnabled = process.env.FLOW_LOG === '1';
+
   return {
     async postCommands(request: PostCommandRequest): Promise<PostCommandResponse> {
       const actorId = await resolveActorId({
@@ -53,6 +55,12 @@ export function createApiService(deps: ApiServiceDependencies): {
       };
 
       const envelope = anyCommandEnvelopeSchema.parse(envelopeCandidate);
+      logFlow(flowLogEnabled, 'API_VALIDATE_ENVELOPE', {
+        commandId: envelope.commandId,
+        type: envelope.type,
+        gameId: envelope.gameId,
+        actorId: envelope.actorId,
+      });
 
       await deps.db.commandLogRepository.createAccepted({
         commandId: envelope.commandId,
@@ -61,6 +69,11 @@ export function createApiService(deps: ApiServiceDependencies): {
         type: envelope.type,
         createdAt: envelope.createdAt,
       });
+      logFlow(flowLogEnabled, 'API_COMMANDLOG_ACCEPTED', {
+        commandId: envelope.commandId,
+        type: envelope.type,
+        gameId: envelope.gameId,
+      });
 
       await deps.queue.sendMessage(
         buildFifoMessage({
@@ -68,6 +81,12 @@ export function createApiService(deps: ApiServiceDependencies): {
           envelope,
         })
       );
+      logFlow(flowLogEnabled, 'API_ENQUEUED', {
+        commandId: envelope.commandId,
+        type: envelope.type,
+        gameId: envelope.gameId,
+        queueUrl: deps.queueUrl,
+      });
 
       return {
         accepted: true,
@@ -104,6 +123,14 @@ export function createApiService(deps: ApiServiceDependencies): {
       },
     },
   };
+}
+
+function logFlow(enabled: boolean, event: string, data: Record<string, unknown>): void {
+  if (!enabled) {
+    return;
+  }
+  // eslint-disable-next-line no-console
+  console.log(JSON.stringify({ ts: new Date().toISOString(), svc: 'api', event, ...data }));
 }
 
 function buildFifoMessage(input: { queueUrl: string; envelope: AnyCommandEnvelope }) {
