@@ -111,6 +111,13 @@ export const characterDraftSchema = z.object({
     shields: z.array(purchasedItemSchema),
     gear: z.array(purchasedGearSchema),
   }),
+  appearance: z
+    .object({
+      imageKey: z.string().nullable(),
+      imageUrl: z.string().nullable(),
+      updatedAt: z.string().nullable(),
+    })
+    .optional(),
   identity: z.object({
     name: z.string(),
     age: z.number().nullable(),

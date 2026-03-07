@@ -346,6 +346,16 @@
   min-height: 18px;
 }
 
+.c-imgbox.is-error .c-imgbox__frame {
+  border-color: var(--error);
+}
+
+.c-imgbox.is-loading .c-imgbox__actions .c-btn {
+  background: var(--btn-bg-disabled);
+  color: var(--btn-fg-disabled);
+  border-color: var(--line);
+}
+
 .c-sheet {
   width: 100%;
 }

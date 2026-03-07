@@ -102,6 +102,7 @@ export function emptyCharacterDraft(race: string, raisedBy: string | null): Char
     },
     skills: [],
     purchases: { weapons: [], armor: [], shields: [], gear: [] },
+    appearance: { imageKey: null, imageUrl: null, updatedAt: null },
     identity: { name: 'Unnamed', age: null, gender: null },
     gmNote: null,
   };

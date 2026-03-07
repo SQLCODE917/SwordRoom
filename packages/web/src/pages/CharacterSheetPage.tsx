@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { createApiClient, type CharacterItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
@@ -150,6 +150,14 @@ export function CharacterSheetPage() {
   const [character, setCharacter] = useState<CharacterItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState(' ');
+
+  const refreshCharacter = useCallback(async () => {
+    const response = await api.getCharacter(gameId, characterId);
+    setCharacter(response);
+    setError(response ? null : `Character not found: ${characterId}`);
+  }, [api, characterId, gameId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -249,7 +257,13 @@ export function CharacterSheetPage() {
 
             <div className="c-sheet__page1-right l-col l-grow">
               <Panel title="Appearance Block" subtitle="Portrait preview (upload in a later ticket).">
-                <ImageBox imageUrl={view.imageUrl} placeholder="No portrait uploaded." />
+                <ImageBox
+                  imageUrl={view.imageUrl}
+                  placeholder="No portrait uploaded."
+                  isLoading={uploading}
+                  errorMessage={uploadError}
+                  onFileSelected={(file) => void handleImageUpload(file)}
+                />
                 <div className="c-note c-note--info" role="note">
                   <span className="t-small">{view.notes || 'No notes.'}</span>
                 </div>
@@ -318,6 +332,43 @@ export function CharacterSheetPage() {
       </Panel>
     </div>
   );
+
+  async function handleImageUpload(file: File) {
+    setUploadError(' ');
+    setUploading(true);
+    try {
+      const uploadSession = await api.requestAppearanceUploadUrl(gameId, characterId, {
+        contentType: file.type,
+        fileName: file.name,
+        fileSizeBytes: file.size,
+      });
+
+      const putResponse = await fetch(uploadSession.putUrl, {
+        method: 'PUT',
+        headers: {
+          'content-type': file.type,
+        },
+        body: file,
+      });
+      if (!putResponse.ok) {
+        throw new Error(`Upload failed: ${putResponse.status} ${putResponse.statusText}`);
+      }
+
+      const confirm = await api.confirmAppearanceUpload(gameId, characterId, {
+        uploadId: uploadSession.uploadId,
+        s3Key: uploadSession.s3Key,
+      });
+      if (!confirm.ok) {
+        throw new Error('Upload confirmation failed.');
+      }
+
+      await refreshCharacter();
+    } catch (uploadFailure) {
+      setUploadError(uploadFailure instanceof Error ? uploadFailure.message : String(uploadFailure));
+    } finally {
+      setUploading(false);
+    }
+  }
 }
 
 function HeaderField({ label, value }: { label: string; value: string }) {

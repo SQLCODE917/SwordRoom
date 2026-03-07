@@ -1,6 +1,7 @@
 import { createServer } from 'node:http';
 import { URL } from 'node:url';
 import { Buffer } from 'node:buffer';
+import { randomUUID } from 'node:crypto';
 import { createApiAwsClients } from './awsClients.js';
 import { createApiService } from './index.js';
 import { resolveActorId } from './auth.js';
@@ -14,6 +15,20 @@ const service = createApiService({
   jwtBypass: process.env.AUTH_MODE === 'dev',
 });
 const flowLogEnabled = process.env.FLOW_LOG === '1';
+const maxUploadBytes = 5 * 1024 * 1024;
+const allowedContentTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const uploadSessions = new Map<string, UploadSession>();
+
+interface UploadSession {
+  uploadId: string;
+  token: string;
+  gameId: string;
+  characterId: string;
+  s3Key: string;
+  contentType: string;
+  expiresAt: number;
+  bytes: Buffer | null;
+}
 
 const server = createServer(async (req, res) => {
   try {
@@ -23,6 +38,39 @@ const server = createServer(async (req, res) => {
     }
 
     const url = new URL(req.url, `http://localhost:${port}`);
+
+    const uploadPutMatch = url.pathname.match(/^\/uploads\/([^/]+)$/);
+    if (req.method === 'PUT' && uploadPutMatch) {
+      const uploadId = decodeURIComponent(uploadPutMatch[1]!);
+      const token = url.searchParams.get('token') ?? '';
+      const session = uploadSessions.get(uploadId);
+      if (!session || session.token !== token) {
+        sendJson(res, 404, { error: 'upload session not found' });
+        return;
+      }
+      if (Date.now() > session.expiresAt) {
+        sendJson(res, 400, { error: 'upload session expired' });
+        return;
+      }
+
+      const bytes = await readBuffer(req);
+      if (bytes.byteLength === 0 || bytes.byteLength > maxUploadBytes) {
+        sendJson(res, 400, { error: 'invalid upload byte length' });
+        return;
+      }
+
+      session.bytes = bytes;
+      uploadSessions.set(uploadId, session);
+      logFlow('API_APPEARANCE_UPLOAD_BINARY_OK', {
+        uploadId,
+        gameId: session.gameId,
+        characterId: session.characterId,
+        bytes: bytes.byteLength,
+      });
+      res.statusCode = 200;
+      res.end();
+      return;
+    }
 
     if (req.method === 'POST' && url.pathname === '/commands') {
       const payload = (await readJson(req)) as { envelope?: unknown; bypassActorId?: string };
@@ -75,6 +123,113 @@ const server = createServer(async (req, res) => {
         version: (character as { version?: unknown }).version ?? null,
       });
       sendJson(res, 200, character);
+      return;
+    }
+
+    const uploadUrlMatch = url.pathname.match(/^\/games\/([^/]+)\/characters\/([^/]+)\/appearance\/upload-url$/);
+    if (req.method === 'POST' && uploadUrlMatch) {
+      const gameId = decodeURIComponent(uploadUrlMatch[1]!);
+      const characterId = decodeURIComponent(uploadUrlMatch[2]!);
+      const body = (await readJson(req)) as { contentType?: unknown; fileName?: unknown; fileSizeBytes?: unknown };
+      const contentType = typeof body.contentType === 'string' ? body.contentType : '';
+      const fileName = typeof body.fileName === 'string' ? body.fileName : '';
+      const fileSizeBytes = typeof body.fileSizeBytes === 'number' ? body.fileSizeBytes : 0;
+
+      if (!allowedContentTypes.has(contentType)) {
+        sendJson(res, 400, { error: 'unsupported contentType' });
+        return;
+      }
+      if (!fileName) {
+        sendJson(res, 400, { error: 'fileName is required' });
+        return;
+      }
+      if (fileSizeBytes <= 0 || fileSizeBytes > maxUploadBytes) {
+        sendJson(res, 400, { error: 'fileSizeBytes exceeds max size' });
+        return;
+      }
+
+      const uploadId = randomUUID();
+      const token = randomUUID();
+      const extension = contentTypeToExtension(contentType);
+      const s3Key = `games/${gameId}/characters/${characterId}/appearance/${uploadId}.${extension}`;
+      const putUrl = `/api/uploads/${encodeURIComponent(uploadId)}?token=${encodeURIComponent(token)}`;
+      const getUrl = '';
+      uploadSessions.set(uploadId, {
+        uploadId,
+        token,
+        gameId,
+        characterId,
+        s3Key,
+        contentType,
+        expiresAt: Date.now() + 15 * 60 * 1000,
+        bytes: null,
+      });
+
+      logFlow('API_APPEARANCE_UPLOAD_URL_ISSUED', {
+        uploadId,
+        gameId,
+        characterId,
+        s3Key,
+        contentType,
+        fileSizeBytes,
+      });
+      sendJson(res, 200, { uploadId, s3Key, putUrl, getUrl, expiresInSeconds: 900 });
+      return;
+    }
+
+    const confirmMatch = url.pathname.match(/^\/games\/([^/]+)\/characters\/([^/]+)\/appearance\/confirm$/);
+    if (req.method === 'POST' && confirmMatch) {
+      const gameId = decodeURIComponent(confirmMatch[1]!);
+      const characterId = decodeURIComponent(confirmMatch[2]!);
+      const body = (await readJson(req)) as { uploadId?: unknown; s3Key?: unknown };
+      const uploadId = typeof body.uploadId === 'string' ? body.uploadId : '';
+      const s3Key = typeof body.s3Key === 'string' ? body.s3Key : '';
+      if (!uploadId || !s3Key) {
+        sendJson(res, 400, { error: 'uploadId and s3Key are required' });
+        return;
+      }
+
+      const session = uploadSessions.get(uploadId);
+      if (!session || session.gameId !== gameId || session.characterId !== characterId || session.s3Key !== s3Key) {
+        sendJson(res, 400, { error: 'upload session mismatch' });
+        return;
+      }
+      if (!session.bytes || Date.now() > session.expiresAt) {
+        sendJson(res, 400, { error: 'upload session missing binary or expired' });
+        return;
+      }
+
+      const character = await deps.db.characterRepository.getCharacter(gameId, characterId);
+      if (!character) {
+        sendJson(res, 404, { error: 'character not found' });
+        return;
+      }
+
+      const imageUrl = `data:${session.contentType};base64,${session.bytes.toString('base64')}`;
+      const now = new Date().toISOString();
+      const nextDraft = {
+        ...character.draft,
+        appearance: {
+          imageKey: s3Key,
+          imageUrl,
+          updatedAt: now,
+        },
+      } as Record<string, unknown>;
+      await deps.db.characterRepository.updateCharacterWithVersion({
+        gameId,
+        characterId,
+        expectedVersion: character.version,
+        next: {
+          ownerPlayerId: character.ownerPlayerId,
+          draft: nextDraft as any,
+          updatedAt: now,
+          status: character.status,
+        },
+      });
+      uploadSessions.delete(uploadId);
+
+      logFlow('API_APPEARANCE_CONFIRM_OK', { uploadId, gameId, characterId, s3Key });
+      sendJson(res, 200, { ok: true });
       return;
     }
 
@@ -140,12 +295,27 @@ function readEnvelopeSummary(envelope: unknown): Record<string, unknown> {
 }
 
 async function readJson(req: import('node:http').IncomingMessage): Promise<unknown> {
+  const bytes = await readBuffer(req);
+  if (bytes.length === 0) {
+    return {};
+  }
+  return JSON.parse(bytes.toString('utf8'));
+}
+
+async function readBuffer(req: import('node:http').IncomingMessage): Promise<Buffer> {
   const chunks: Uint8Array[] = [];
   for await (const chunk of req) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
   }
-  if (chunks.length === 0) {
-    return {};
+  return Buffer.concat(chunks);
+}
+
+function contentTypeToExtension(contentType: string): string {
+  if (contentType === 'image/png') {
+    return 'png';
   }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  if (contentType === 'image/webp') {
+    return 'webp';
+  }
+  return 'jpg';
 }

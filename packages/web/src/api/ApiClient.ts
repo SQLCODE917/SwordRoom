@@ -76,12 +76,45 @@ export interface CharacterItem {
   [key: string]: unknown;
 }
 
+export interface AppearanceUploadUrlRequest {
+  contentType: string;
+  fileName: string;
+  fileSizeBytes: number;
+}
+
+export interface AppearanceUploadUrlResponse {
+  uploadId: string;
+  s3Key: string;
+  putUrl: string;
+  getUrl: string;
+  expiresInSeconds: number;
+}
+
+export interface AppearanceConfirmRequest {
+  uploadId: string;
+  s3Key: string;
+}
+
+export interface AppearanceConfirmResponse {
+  ok: true;
+}
+
 export interface ApiClient {
   postCommand<T extends CommandType>(input: { envelope: CommandEnvelopeInput<T> }): Promise<PostCommandResponse>;
   getCommandStatus(commandId: string): Promise<CommandStatusResponse | null>;
   getMyInbox(): Promise<PlayerInboxItem[]>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
+  requestAppearanceUploadUrl(
+    gameId: string,
+    characterId: string,
+    input: AppearanceUploadUrlRequest
+  ): Promise<AppearanceUploadUrlResponse>;
+  confirmAppearanceUpload(
+    gameId: string,
+    characterId: string,
+    input: AppearanceConfirmRequest
+  ): Promise<AppearanceConfirmResponse>;
 }
 
 interface ApiClientOptions {
@@ -130,6 +163,36 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       return requestJsonOrNull<CharacterItem>(
         `${baseUrl}/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(characterId)}`,
         auth
+      );
+    },
+
+    async requestAppearanceUploadUrl(
+      gameId: string,
+      characterId: string,
+      input: AppearanceUploadUrlRequest
+    ): Promise<AppearanceUploadUrlResponse> {
+      return requestJson<AppearanceUploadUrlResponse>(
+        `${baseUrl}/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(characterId)}/appearance/upload-url`,
+        {
+          method: 'POST',
+          headers: await auth.withAuthHeaders({ 'content-type': 'application/json' }),
+          body: JSON.stringify(input),
+        }
+      );
+    },
+
+    async confirmAppearanceUpload(
+      gameId: string,
+      characterId: string,
+      input: AppearanceConfirmRequest
+    ): Promise<AppearanceConfirmResponse> {
+      return requestJson<AppearanceConfirmResponse>(
+        `${baseUrl}/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(characterId)}/appearance/confirm`,
+        {
+          method: 'POST',
+          headers: await auth.withAuthHeaders({ 'content-type': 'application/json' }),
+          body: JSON.stringify(input),
+        }
       );
     },
   };
