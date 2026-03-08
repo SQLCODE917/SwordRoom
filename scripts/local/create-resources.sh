@@ -5,6 +5,7 @@ source scripts/local/load-env.sh
 
 aws_ddb() { aws --region "$AWS_REGION" --endpoint-url "$DDB_ENDPOINT" dynamodb "$@"; }
 aws_sqs() { aws --region "$AWS_REGION" --endpoint-url "$SQS_ENDPOINT" sqs "$@"; }
+aws_s3api() { aws --region "$AWS_REGION" --endpoint-url "$S3_ENDPOINT" s3api "$@"; }
 
 ensure_ddb_table() {
   local table_name="$1"
@@ -34,6 +35,15 @@ ensure_sqs_queue_url() {
   aws_sqs get-queue-url --queue-name "$queue_name" --query QueueUrl --output text
 }
 
+ensure_s3_bucket() {
+  local bucket_name="$1"
+  if aws_s3api head-bucket --bucket "$bucket_name" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  aws_s3api create-bucket --bucket "$bucket_name" >/dev/null
+}
+
 echo "== DynamoDB tables =="
 ensure_ddb_table "$GAMESTATE_TABLE"
 ensure_ddb_table "$COMMANDLOG_TABLE"
@@ -56,3 +66,10 @@ aws_sqs set-queue-attributes \
 
 echo "COMMANDS_QUEUE_URL=$QUEUE_URL" > .env.local.queueurl
 echo "Queue URL: $QUEUE_URL"
+
+echo "== S3 buckets =="
+ensure_s3_bucket "$UPLOADS_BUCKET"
+aws_s3api put-bucket-cors \
+  --bucket "$UPLOADS_BUCKET" \
+  --cors-configuration '{"CORSRules":[{"AllowedHeaders":["*"],"AllowedMethods":["GET","HEAD","PUT"],"AllowedOrigins":["*"],"ExposeHeaders":["ETag"],"MaxAgeSeconds":3000}]}' >/dev/null
+echo "Uploads bucket: $UPLOADS_BUCKET"

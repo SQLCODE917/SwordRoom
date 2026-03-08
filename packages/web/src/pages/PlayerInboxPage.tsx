@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { createApiClient, type PlayerInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { Panel } from '../components/Panel';
+import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 const refreshIntervalMs = 3000;
 
@@ -41,6 +42,10 @@ export function PlayerInboxPage() {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const refresh = async () => {
+      logWebFlow('WEB_PLAYER_INBOX_REFRESH_START', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+      });
       try {
         const inbox = await api.getMyInbox();
         if (cancelled) {
@@ -48,12 +53,22 @@ export function PlayerInboxPage() {
         }
         setRows(normalizeRows(inbox));
         setError(null);
+        logWebFlow('WEB_PLAYER_INBOX_REFRESH_OK', {
+          actorId: auth.actorId,
+          authMode: auth.mode,
+          count: inbox.length,
+        });
       } catch (refreshError) {
         if (cancelled) {
           return;
         }
         const message = refreshError instanceof Error ? refreshError.message : String(refreshError);
         setError(message);
+        logWebFlow('WEB_PLAYER_INBOX_REFRESH_FAILED', {
+          actorId: auth.actorId,
+          authMode: auth.mode,
+          ...summarizeError(refreshError),
+        });
       } finally {
         if (!cancelled) {
           setLoading(false);

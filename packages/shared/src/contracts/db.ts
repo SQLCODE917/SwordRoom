@@ -123,6 +123,7 @@ export const characterDraftSchema = z.object({
     age: z.number().nullable(),
     gender: z.string().nullable(),
   }),
+  noteToGm: z.string().nullable().optional(),
   gmNote: z.string().nullable(),
 });
 

@@ -51,12 +51,8 @@ api_contract_dependencies:
         method: POST,
         path: "/games/{gameId}/characters/{characterId}/appearance/upload-url",
       }
-    - {
-        method: POST,
-        path: "/games/{gameId}/characters/{characterId}/appearance/confirm",
-      }
   note:
-    - "Upload is two-step to keep UX stable and make retries safe."
+    - "Upload is two-step: presigned upload bootstrap plus async command confirmation."
 
 routes:
   - id: route-home

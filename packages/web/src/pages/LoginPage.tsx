@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { beginOidcLogin, hasOidcSession } from '../auth/OidcAuthProvider';
 import { Panel } from '../components/Panel';
+import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 export function LoginPage() {
   const auth = useAuthProvider();
@@ -14,11 +15,18 @@ export function LoginPage() {
   const handleLogin = async () => {
     setError(null);
     setIsRedirecting(true);
+    logWebFlow('WEB_LOGIN_START', {
+      authMode: auth.mode,
+    });
     try {
       await beginOidcLogin('/');
     } catch (loginError) {
       setIsRedirecting(false);
       setError(loginError instanceof Error ? loginError.message : String(loginError));
+      logWebFlow('WEB_LOGIN_FAILED', {
+        authMode: auth.mode,
+        ...summarizeError(loginError),
+      });
     }
   };
 

@@ -1,5 +1,6 @@
 import type { HandlerRegistry } from './types.js';
 import { applyStartingPackageHandler } from './character/applyStartingPackage.js';
+import { confirmAppearanceUploadHandler } from './character/confirmAppearanceUpload.js';
 import { createDraftHandler } from './character/createDraft.js';
 import { gmReviewHandler } from './character/gmReview.js';
 import { purchaseStarterEquipmentHandler } from './character/purchaseStarterEquipment.js';
@@ -13,6 +14,7 @@ export const handlerRegistry: HandlerRegistry = {
   ApplyStartingPackage: applyStartingPackageHandler,
   SpendStartingExp: spendStartingExpHandler,
   PurchaseStarterEquipment: purchaseStarterEquipmentHandler,
+  ConfirmCharacterAppearanceUpload: confirmAppearanceUploadHandler,
   SubmitCharacterForApproval: submitForApprovalHandler,
   GMReviewCharacter: gmReviewHandler,
 };

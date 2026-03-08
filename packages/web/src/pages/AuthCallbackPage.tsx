@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { completeOidcLoginFromCallback } from '../auth/OidcAuthProvider';
 import { Panel } from '../components/Panel';
+import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 export function AuthCallbackPage() {
   const auth = useAuthProvider();
@@ -21,11 +22,18 @@ export function AuthCallbackPage() {
         return;
       }
 
+      logWebFlow('WEB_AUTH_CALLBACK_START', {
+        authMode: auth.mode,
+      });
       try {
         const returnToPath = await completeOidcLoginFromCallback(window.location.href);
         if (cancelled) {
           return;
         }
+        logWebFlow('WEB_AUTH_CALLBACK_OK', {
+          authMode: auth.mode,
+          returnToPath,
+        });
         navigate(returnToPath, { replace: true });
       } catch (callbackError) {
         if (cancelled) {
@@ -33,6 +41,10 @@ export function AuthCallbackPage() {
         }
         setError(callbackError instanceof Error ? callbackError.message : String(callbackError));
         setIsCompleting(false);
+        logWebFlow('WEB_AUTH_CALLBACK_FAILED', {
+          authMode: auth.mode,
+          ...summarizeError(callbackError),
+        });
       }
     };
 

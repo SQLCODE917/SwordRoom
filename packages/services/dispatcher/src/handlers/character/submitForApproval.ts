@@ -5,12 +5,24 @@ import { requireCharacter, throwOnEngineErrors, toCharacterDraft, toEngineState 
 export const submitForApprovalHandler: CommandHandler<'SubmitCharacterForApproval'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);
   const state = toEngineState(character);
+  if (envelope.payload.identity) {
+    state.identity = {
+      name: envelope.payload.identity.name,
+      age: envelope.payload.identity.age ?? null,
+      gender: envelope.payload.identity.gender ?? null,
+    };
+  }
 
-  const finalized = finalizeCharacter(state, { requireIdentityName: false });
+  const finalized = finalizeCharacter(state, { requireIdentityName: true });
   throwOnEngineErrors(finalized.errors);
 
   const submitted = submitForApproval(finalized.state);
   throwOnEngineErrors(submitted.errors);
+
+  const nextDraft = {
+    ...toCharacterDraft(character, submitted.state),
+    noteToGm: envelope.payload.noteToGm ?? character.draft.noteToGm ?? null,
+  };
 
   return {
     writes: [
@@ -22,7 +34,7 @@ export const submitForApprovalHandler: CommandHandler<'SubmitCharacterForApprova
           expectedVersion: character.version,
           next: {
             ownerPlayerId: character.ownerPlayerId,
-            draft: toCharacterDraft(character, submitted.state),
+            draft: nextDraft,
             status: 'PENDING',
             updatedAt: ctx.nowIso(),
           },

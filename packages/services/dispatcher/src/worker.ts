@@ -1,3 +1,4 @@
+import { logServiceFlow, summarizeCommandEnvelope, summarizeError } from '@starter/services-shared';
 import { createDispatcher } from './index.js';
 import { createDispatcherAwsClients, deleteCommandMessage, receiveCommandMessages } from './awsClients.js';
 
@@ -27,22 +28,40 @@ async function run(): Promise<void> {
 
       for (const message of messages) {
         const envelope = JSON.parse(message.messageBody);
-        logFlow('DISPATCHER_MESSAGE_RECEIVED', envelopeSummary(envelope));
+        logFlow('DISPATCHER_MESSAGE_RECEIVED', {
+          receiptHandle: message.receiptHandle,
+          ...summarizeCommandEnvelope(envelope),
+        });
         const result = await dispatcher.dispatch(envelope);
         logFlow('DISPATCHER_MESSAGE_RESULT', {
-          ...envelopeSummary(envelope),
+          receiptHandle: message.receiptHandle,
+          ...summarizeCommandEnvelope(envelope),
           outcome: result.outcome,
           errorCode: result.errorCode ?? null,
         });
 
-        if (result.outcome === 'PROCESSED' || result.outcome === 'NOOP_ALREADY_PROCESSED') {
+        if (
+          result.outcome === 'PROCESSED' ||
+          result.outcome === 'NOOP_ALREADY_PROCESSED' ||
+          result.outcome === 'FAILED'
+        ) {
           await deleteCommandMessage(clients.sqs, clients.queueUrl, message.receiptHandle);
-          logFlow('DISPATCHER_MESSAGE_DELETED', envelopeSummary(envelope));
+          logFlow(result.outcome === 'FAILED' ? 'DISPATCHER_MESSAGE_DELETED_AFTER_FAILURE' : 'DISPATCHER_MESSAGE_DELETED', {
+            receiptHandle: message.receiptHandle,
+            ...summarizeCommandEnvelope(envelope),
+            errorCode: result.errorCode ?? null,
+          });
+          continue;
         }
+
+        logFlow('DISPATCHER_MESSAGE_RETAINED_FOR_RETRY', {
+          receiptHandle: message.receiptHandle,
+          ...summarizeCommandEnvelope(envelope),
+          errorCode: result.errorCode ?? null,
+        });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      logFlow('DISPATCHER_LOOP_ERROR', { message });
+      logFlow('DISPATCHER_LOOP_ERROR', summarizeError(error));
       await sleep(1000);
     }
   }
@@ -55,23 +74,10 @@ function sleep(ms: number): Promise<void> {
 }
 
 function logFlow(event: string, data: Record<string, unknown>): void {
-  if (!flowLogEnabled) {
-    return;
-  }
-  // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ ts: new Date().toISOString(), svc: 'dispatcher', event, ...data }));
-}
-
-function envelopeSummary(envelope: unknown): Record<string, unknown> {
-  if (!envelope || typeof envelope !== 'object') {
-    return {};
-  }
-  const record = envelope as Record<string, unknown>;
-  const payload = record.payload && typeof record.payload === 'object' ? (record.payload as Record<string, unknown>) : {};
-  return {
-    commandId: typeof record.commandId === 'string' ? record.commandId : null,
-    type: typeof record.type === 'string' ? record.type : null,
-    gameId: typeof record.gameId === 'string' ? record.gameId : null,
-    characterId: typeof payload.characterId === 'string' ? payload.characterId : null,
-  };
+  logServiceFlow({
+    enabled: flowLogEnabled,
+    service: 'dispatcher',
+    event,
+    data,
+  });
 }

@@ -77,6 +77,14 @@ maybeDescribe('e2e.good.human_rune_master_sequence', () => {
     queue = new InMemoryFifoQueue();
     api = createApiService({
       db,
+      uploads: {
+        async headObject() {
+          return true;
+        },
+        async createSignedDownloadUrl() {
+          return 'https://uploads.test/unused';
+        },
+      },
       queue,
       queueUrl: QUEUE_URL,
       jwtBypass: true,

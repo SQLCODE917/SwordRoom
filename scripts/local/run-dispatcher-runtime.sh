@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 source scripts/local/load-env.sh
 source .env.local.queueurl || true
+
 export COMMANDS_QUEUE_URL="${COMMANDS_QUEUE_URL:-}"
-export PORT="${API_PORT}"
 export FLOW_LOG="${FLOW_LOG:-1}"
 
 mode="${RUN_AUTH_MODE:-${AUTH_MODE:-dev}}"
@@ -18,4 +19,10 @@ if [[ "$AUTH_MODE" == "oidc" ]]; then
   export OIDC_AUDIENCE="${RUN_OIDC_AUDIENCE:-${OIDC_AUDIENCE:-swordworld-web}}"
 fi
 
-pnpm --filter @starter/services-api dev
+exec node \
+  --watch \
+  --watch-path=packages/services/dispatcher/dist \
+  --watch-path=packages/services/shared/dist \
+  --watch-path=packages/shared/dist \
+  --watch-path=packages/engine/dist \
+  packages/services/dispatcher/dist/worker.js

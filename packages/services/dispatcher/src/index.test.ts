@@ -30,6 +30,34 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
         throw new Error('should not be called');
       },
     },
+    gameRepository: {
+      async getGameMetadata() {
+        return {
+          pk: 'GAME#g',
+          sk: 'METADATA',
+          type: 'GameMetadata',
+          gameId: 'g',
+          gmPlayerId: 'actor-1',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          version: 1,
+        } as any;
+      },
+    },
+    playerRepository: {
+      async getPlayerProfile() {
+        return {
+          pk: 'PLAYER#actor-1',
+          sk: 'PROFILE',
+          type: 'PlayerProfile',
+          playerId: 'actor-1',
+          displayName: 'GM',
+          roles: ['PLAYER', 'GM'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        } as any;
+      },
+    },
     inboxRepository: {
       async addGmInboxItem() {
         throw new Error('should not be called');
@@ -90,6 +118,7 @@ describe('services/dispatcher command registry', () => {
       'ApplyStartingPackage',
       'SpendStartingExp',
       'PurchaseStarterEquipment',
+      'ConfirmCharacterAppearanceUpload',
       'SubmitCharacterForApproval',
       'GMReviewCharacter',
     ]);

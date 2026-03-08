@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { createApiClient, type CommandStatusResponse, type GMInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
+import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { Panel } from '../components/Panel';
 import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
 
@@ -109,10 +110,29 @@ export function GMInboxPage() {
 
   async function refreshInbox() {
     setLoading(true);
+    logWebFlow('WEB_GM_INBOX_REFRESH_START', {
+      actorId: auth.actorId,
+      authMode: auth.mode,
+      gameId,
+    });
     try {
       const inbox = await api.getGmInbox(gameId);
       const normalized = inbox.filter((item): item is GMInboxItem => Boolean(item?.characterId && item?.submittedAt));
       setRows(normalized);
+      logWebFlow('WEB_GM_INBOX_REFRESH_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        count: normalized.length,
+      });
+    } catch (error) {
+      logWebFlow('WEB_GM_INBOX_REFRESH_FAILED', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        ...summarizeError(error),
+      });
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -127,6 +147,14 @@ export function GMInboxPage() {
 
     setErrorsByCharacterId((prev) => ({ ...prev, [row.characterId]: ' ' }));
     setActiveCharacterId(row.characterId);
+    logWebFlow('WEB_GM_REVIEW_START', {
+      actorId: auth.actorId,
+      authMode: auth.mode,
+      gameId,
+      characterId: row.characterId,
+      decision,
+      gmNotePresent: note.length > 0,
+    });
 
     try {
       const commandId = createCommandId();
@@ -152,19 +180,53 @@ export function GMInboxPage() {
         errorCode: null,
         errorMessage: null,
       });
+      logWebFlow('WEB_GM_REVIEW_ACCEPTED', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        characterId: row.characterId,
+        decision,
+        commandId,
+      });
 
       const terminal = await pollUntilTerminal(commandId);
       if (terminal.status === 'PROCESSED') {
         await refreshInbox();
+        logWebFlow('WEB_GM_REVIEW_OK', {
+          actorId: auth.actorId,
+          authMode: auth.mode,
+          gameId,
+          characterId: row.characterId,
+          decision,
+          commandId,
+        });
         return;
       }
 
+      logWebFlow('WEB_GM_REVIEW_FAILED', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        characterId: row.characterId,
+        decision,
+        commandId,
+        errorCode: terminal.errorCode,
+        errorMessage: terminal.errorMessage,
+      });
       setErrorsByCharacterId((prev) => ({
         ...prev,
         [row.characterId]: terminal.errorMessage ?? terminal.errorCode ?? 'Review command failed.',
       }));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      logWebFlow('WEB_GM_REVIEW_REQUEST_FAILED', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        characterId: row.characterId,
+        decision,
+        ...summarizeError(error),
+      });
       setErrorsByCharacterId((prev) => ({ ...prev, [row.characterId]: message }));
       setCommandStatus((prev) => ({
         ...prev,
@@ -191,6 +253,14 @@ export function GMInboxPage() {
       }
 
       setCommandStatus(mapStatus(response));
+      logWebFlow('WEB_GM_REVIEW_STATUS_POLLED', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        commandId,
+        status: response.status,
+        errorCode: response.errorCode,
+      });
 
       if (response.status === 'PROCESSED' || response.status === 'FAILED') {
         return response;

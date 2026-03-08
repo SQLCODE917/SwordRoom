@@ -77,6 +77,7 @@ if [[ -f /.dockerenv ]]; then
   DOCKER_HOST_FORWARDED="$(detect_docker_host)"
   DDB_ENDPOINT="$(rewrite_local_url_host "$DDB_ENDPOINT" "$DOCKER_HOST_FORWARDED")"
   SQS_ENDPOINT="$(rewrite_local_url_host "$SQS_ENDPOINT" "$DOCKER_HOST_FORWARDED")"
+  S3_ENDPOINT="$(rewrite_local_url_host "${S3_ENDPOINT:-$SQS_ENDPOINT}" "$DOCKER_HOST_FORWARDED")"
   KEYCLOAK_ISSUER="$(rewrite_local_url_host "$KEYCLOAK_ISSUER" "$DOCKER_HOST_FORWARDED")"
 
   if ! endpoint_reachable "$DDB_ENDPOINT"; then
@@ -93,6 +94,13 @@ if [[ -f /.dockerenv ]]; then
     fi
   fi
 
+  if ! endpoint_reachable "$S3_ENDPOINT"; then
+    localstack_ip="$(compose_service_ip localstack || true)"
+    if [[ -n "${localstack_ip:-}" ]]; then
+      S3_ENDPOINT="$(rewrite_url_to_ip_port "$S3_ENDPOINT" "$localstack_ip" "4566")"
+    fi
+  fi
+
   if ! endpoint_reachable "$KEYCLOAK_ISSUER"; then
     keycloak_ip="$(compose_service_ip keycloak || true)"
     if [[ -n "${keycloak_ip:-}" ]]; then
@@ -100,5 +108,5 @@ if [[ -f /.dockerenv ]]; then
     fi
   fi
 
-  export DDB_ENDPOINT SQS_ENDPOINT KEYCLOAK_ISSUER
+  export DDB_ENDPOINT SQS_ENDPOINT S3_ENDPOINT KEYCLOAK_ISSUER
 fi

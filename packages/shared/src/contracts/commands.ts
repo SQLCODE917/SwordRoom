@@ -6,6 +6,7 @@ export const COMMAND_TYPES = [
   'ApplyStartingPackage',
   'SpendStartingExp',
   'PurchaseStarterEquipment',
+  'ConfirmCharacterAppearanceUpload',
   'SubmitCharacterForApproval',
   'GMReviewCharacter',
 ] as const;
@@ -56,9 +57,21 @@ export const purchaseStarterEquipmentPayloadSchema = z.object({
   cart: z.record(z.string(), z.unknown()),
 });
 
+export const confirmCharacterAppearanceUploadPayloadSchema = z.object({
+  characterId: z.string(),
+  s3Key: z.string(),
+});
+
 export const submitCharacterForApprovalPayloadSchema = z.object({
   characterId: z.string(),
   noteToGm: z.string().optional(),
+  identity: z
+    .object({
+      name: z.string(),
+      age: z.number().nullable().optional(),
+      gender: z.string().nullable().optional(),
+    })
+    .optional(),
 });
 
 export const gmReviewCharacterPayloadSchema = z.object({
@@ -73,6 +86,7 @@ export const commandPayloadSchemaByType = {
   ApplyStartingPackage: applyStartingPackagePayloadSchema,
   SpendStartingExp: spendStartingExpPayloadSchema,
   PurchaseStarterEquipment: purchaseStarterEquipmentPayloadSchema,
+  ConfirmCharacterAppearanceUpload: confirmCharacterAppearanceUploadPayloadSchema,
   SubmitCharacterForApproval: submitCharacterForApprovalPayloadSchema,
   GMReviewCharacter: gmReviewCharacterPayloadSchema,
 } as const;
@@ -106,6 +120,10 @@ export const commandEnvelopeSchemaByType = {
     type: z.literal('PurchaseStarterEquipment'),
     payload: purchaseStarterEquipmentPayloadSchema,
   }),
+  ConfirmCharacterAppearanceUpload: commandEnvelopeBaseSchema.extend({
+    type: z.literal('ConfirmCharacterAppearanceUpload'),
+    payload: confirmCharacterAppearanceUploadPayloadSchema,
+  }),
   SubmitCharacterForApproval: commandEnvelopeBaseSchema.extend({
     type: z.literal('SubmitCharacterForApproval'),
     payload: submitCharacterForApprovalPayloadSchema,
@@ -122,6 +140,7 @@ export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
   commandEnvelopeSchemaByType.ApplyStartingPackage,
   commandEnvelopeSchemaByType.SpendStartingExp,
   commandEnvelopeSchemaByType.PurchaseStarterEquipment,
+  commandEnvelopeSchemaByType.ConfirmCharacterAppearanceUpload,
   commandEnvelopeSchemaByType.SubmitCharacterForApproval,
   commandEnvelopeSchemaByType.GMReviewCharacter,
 ]);
@@ -131,6 +150,7 @@ export type SetCharacterSubAbilitiesPayload = z.infer<typeof setCharacterSubAbil
 export type ApplyStartingPackagePayload = z.infer<typeof applyStartingPackagePayloadSchema>;
 export type SpendStartingExpPayload = z.infer<typeof spendStartingExpPayloadSchema>;
 export type PurchaseStarterEquipmentPayload = z.infer<typeof purchaseStarterEquipmentPayloadSchema>;
+export type ConfirmCharacterAppearanceUploadPayload = z.infer<typeof confirmCharacterAppearanceUploadPayloadSchema>;
 export type SubmitCharacterForApprovalPayload = z.infer<typeof submitCharacterForApprovalPayloadSchema>;
 export type GMReviewCharacterPayload = z.infer<typeof gmReviewCharacterPayloadSchema>;
 
@@ -140,6 +160,7 @@ export type CommandPayloadByType = {
   ApplyStartingPackage: ApplyStartingPackagePayload;
   SpendStartingExp: SpendStartingExpPayload;
   PurchaseStarterEquipment: PurchaseStarterEquipmentPayload;
+  ConfirmCharacterAppearanceUpload: ConfirmCharacterAppearanceUploadPayload;
   SubmitCharacterForApproval: SubmitCharacterForApprovalPayload;
   GMReviewCharacter: GMReviewCharacterPayload;
 };

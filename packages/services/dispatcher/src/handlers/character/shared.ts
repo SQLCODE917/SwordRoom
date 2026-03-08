@@ -51,6 +51,8 @@ export function toCharacterDraft(previous: CharacterItem, state: CharacterCreati
       age: state.identity?.age ?? previous.draft.identity.age,
       gender: state.identity?.gender ?? previous.draft.identity.gender,
     },
+    noteToGm: previous.draft.noteToGm ?? null,
+    gmNote: previous.draft.gmNote ?? null,
   };
 }
 
@@ -104,6 +106,7 @@ export function emptyCharacterDraft(race: string, raisedBy: string | null): Char
     purchases: { weapons: [], armor: [], shields: [], gear: [] },
     appearance: { imageKey: null, imageUrl: null, updatedAt: null },
     identity: { name: 'Unnamed', age: null, gender: null },
+    noteToGm: null,
     gmNote: null,
   };
 }

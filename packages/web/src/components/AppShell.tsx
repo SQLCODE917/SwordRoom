@@ -1,7 +1,11 @@
 import type { PropsWithChildren } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useGameActorContext } from '../hooks/useGameActorContext';
 
 export function AppShell({ children }: PropsWithChildren) {
+  const { context, loading } = useGameActorContext('game-1');
+  const gmInboxDisabled = loading || !context.isGameMaster;
+
   return (
     <div className="c-shell l-shell">
       <header className="c-shell__header l-header">
@@ -19,9 +23,15 @@ export function AppShell({ children }: PropsWithChildren) {
           <NavLink className="c-navlink t-small" to="/me/inbox">
             Player Inbox
           </NavLink>
-          <NavLink className="c-navlink t-small" to="/gm/game-1/inbox">
-            GM Inbox
-          </NavLink>
+          {gmInboxDisabled ? (
+            <span className="c-navlink t-small is-disabled" aria-disabled="true">
+              GM Inbox
+            </span>
+          ) : (
+            <NavLink className="c-navlink t-small" to="/gm/game-1/inbox">
+              GM Inbox
+            </NavLink>
+          )}
           <NavLink className="c-navlink t-small" to="/games/game-1/characters/char-human-1">
             Character Sheet
           </NavLink>

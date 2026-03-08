@@ -15,6 +15,7 @@ aws_components:
     endpoints:
       - { method: POST, path: /commands, auth: required }
       - { method: GET, path: /commands/{commandId}, auth: required }
+      - { method: GET, path: /games/{gameId}/me, auth: required }
       - { method: GET, path: /me/inbox, auth: required }
       - { method: GET, path: /games/{gameId}/characters/{characterId}, auth: required }
       - { method: GET, path: /gm/{gameId}/inbox, auth: gm_required }
@@ -64,6 +65,9 @@ command_contracts:
     - type: PurchaseStarterEquipment
       payload: { characterId: string, cart: object }
       authz: "actorId == ownerPlayerId"
+    - type: ConfirmCharacterAppearanceUpload
+      payload: { characterId: string, s3Key: string }
+      authz: "actorId == ownerPlayerId || actorId == gmPlayerId"
     - type: SubmitCharacterForApproval
       payload: { characterId: string, noteToGm?: string }
       authz: "actorId == ownerPlayerId"

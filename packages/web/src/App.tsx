@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { type ReactNode, useMemo } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
 import { AuthProviderContext } from './auth/AuthProvider';
 import { createDevAuthProvider } from './auth/DevAuthProvider';
@@ -11,6 +11,7 @@ import { GMInboxPage } from './routes/GMInboxPage';
 import { HomePage } from './routes/HomePage';
 import { LoginPage } from './routes/LoginPage';
 import { PlayerInboxPage } from './routes/PlayerInboxPage';
+import { useGameActorContext } from './hooks/useGameActorContext';
 
 export default function App() {
   const authProvider = useMemo(() => {
@@ -27,7 +28,14 @@ export default function App() {
             <Route path="/games/:gameId/character/new" element={<CharacterWizardPage />} />
             <Route path="/me/inbox" element={<PlayerInboxPage />} />
             <Route path="/games/:gameId/characters/:characterId" element={<CharacterSheetPage />} />
-            <Route path="/gm/:gameId/inbox" element={<GMInboxPage />} />
+            <Route
+              path="/gm/:gameId/inbox"
+              element={
+                <RequireGmRoute>
+                  <GMInboxPage />
+                </RequireGmRoute>
+              }
+            />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -36,4 +44,20 @@ export default function App() {
       </BrowserRouter>
     </AuthProviderContext.Provider>
   );
+}
+
+function RequireGmRoute({ children }: { children: ReactNode }) {
+  const params = useParams<{ gameId: string }>();
+  const gameId = params.gameId ?? 'game-1';
+  const { context, loading } = useGameActorContext(gameId);
+
+  if (loading) {
+    return null;
+  }
+
+  if (!context.isGameMaster) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
 }

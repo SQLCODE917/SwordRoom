@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { createApiClient, type CharacterItem } from '../api/ApiClient';
+import { createApiClient, type CharacterItem, type CommandStatusResponse } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { ImageBox } from '../components/ImageBox';
+import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { Panel } from '../components/Panel';
 import { SheetTabs, type SheetTabItem } from '../components/SheetTabs';
 import { StatBox } from '../components/StatBox';
 import { TableLite, type TableLiteColumn } from '../components/TableLite';
+import { describeFailure } from '../hooks/useCommandStatus';
 
 type StatKey = 'dex' | 'agi' | 'int' | 'str' | 'lf' | 'mp';
 
@@ -154,9 +156,15 @@ export function CharacterSheetPage() {
   const [uploadError, setUploadError] = useState(' ');
 
   const refreshCharacter = useCallback(async () => {
+    logWebFlow('WEB_CHARACTER_SHEET_REFRESH_START', { gameId, characterId });
     const response = await api.getCharacter(gameId, characterId);
     setCharacter(response);
     setError(response ? null : `Character not found: ${characterId}`);
+    logWebFlow(response ? 'WEB_CHARACTER_SHEET_REFRESH_OK' : 'WEB_CHARACTER_SHEET_REFRESH_MISS', {
+      gameId,
+      characterId,
+      status: response && typeof response.status === 'string' ? response.status : null,
+    });
   }, [api, characterId, gameId]);
 
   useEffect(() => {
@@ -164,6 +172,7 @@ export function CharacterSheetPage() {
 
     const load = async () => {
       setLoading(true);
+      logWebFlow('WEB_CHARACTER_SHEET_LOAD_START', { gameId, characterId });
       try {
         const response = await api.getCharacter(gameId, characterId);
         if (cancelled) {
@@ -171,12 +180,22 @@ export function CharacterSheetPage() {
         }
         setCharacter(response);
         setError(response ? null : `Character not found: ${characterId}`);
+        logWebFlow(response ? 'WEB_CHARACTER_SHEET_LOAD_OK' : 'WEB_CHARACTER_SHEET_LOAD_MISS', {
+          gameId,
+          characterId,
+          status: response && typeof response.status === 'string' ? response.status : null,
+        });
       } catch (loadError) {
         if (cancelled) {
           return;
         }
         const message = loadError instanceof Error ? loadError.message : String(loadError);
         setError(message);
+        logWebFlow('WEB_CHARACTER_SHEET_LOAD_FAILED', {
+          gameId,
+          characterId,
+          ...summarizeError(loadError),
+        });
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -336,6 +355,13 @@ export function CharacterSheetPage() {
   async function handleImageUpload(file: File) {
     setUploadError(' ');
     setUploading(true);
+    logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_START', {
+      gameId,
+      characterId,
+      fileName: file.name,
+      fileSizeBytes: file.size,
+      contentType: file.type,
+    });
     try {
       const uploadSession = await api.requestAppearanceUploadUrl(gameId, characterId, {
         contentType: file.type,
@@ -353,20 +379,85 @@ export function CharacterSheetPage() {
       if (!putResponse.ok) {
         throw new Error(`Upload failed: ${putResponse.status} ${putResponse.statusText}`);
       }
-
-      const confirm = await api.confirmAppearanceUpload(gameId, characterId, {
+      logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_BINARY_OK', {
+        gameId,
+        characterId,
         uploadId: uploadSession.uploadId,
         s3Key: uploadSession.s3Key,
       });
-      if (!confirm.ok) {
-        throw new Error('Upload confirmation failed.');
+
+      const confirm = await api.postCommand({
+        envelope: {
+          commandId: createCommandId(),
+          gameId,
+          type: 'ConfirmCharacterAppearanceUpload',
+          schemaVersion: 1,
+          createdAt: new Date().toISOString(),
+          payload: {
+            characterId,
+            s3Key: uploadSession.s3Key,
+          },
+        },
+      });
+      logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_CONFIRM_ACCEPTED', {
+        gameId,
+        characterId,
+        commandId: confirm.commandId,
+        uploadId: uploadSession.uploadId,
+        s3Key: uploadSession.s3Key,
+        status: confirm.status,
+      });
+
+      const terminal = await pollCommandUntilTerminal(confirm.commandId);
+      if (terminal.status !== 'PROCESSED') {
+        throw new Error(describeFailure(terminal));
       }
 
       await refreshCharacter();
+      logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_OK', {
+        gameId,
+        characterId,
+        uploadId: uploadSession.uploadId,
+        s3Key: uploadSession.s3Key,
+      });
     } catch (uploadFailure) {
       setUploadError(uploadFailure instanceof Error ? uploadFailure.message : String(uploadFailure));
+      logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_FAILED', {
+        gameId,
+        characterId,
+        ...summarizeError(uploadFailure),
+      });
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function pollCommandUntilTerminal(commandId: string): Promise<CommandStatusResponse> {
+    const intervals = [400, 800, 1200, 1800, 2600];
+    let attempt = 0;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const response = await api.getCommandStatus(commandId);
+      if (!response) {
+        await sleep(intervals[Math.min(attempt, intervals.length - 1)] ?? 2600);
+        attempt += 1;
+        continue;
+      }
+
+      logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_STATUS_POLLED', {
+        gameId,
+        characterId,
+        commandId,
+        status: response.status,
+        errorCode: response.errorCode,
+      });
+      if (response.status === 'PROCESSED' || response.status === 'FAILED') {
+        return response;
+      }
+
+      await sleep(intervals[Math.min(attempt, intervals.length - 1)] ?? 2600);
+      attempt += 1;
     }
   }
 }
@@ -391,6 +482,8 @@ function normalizeCharacter(raw: CharacterItem | null): SheetView {
   const starting = isRecord(draft.starting) ? draft.starting : {};
   const purchases = isRecord(draft.purchases) ? draft.purchases : {};
   const appearance = isRecord(draft.appearance) ? draft.appearance : {};
+  const noteToGm = readString(draft.noteToGm);
+  const gmNote = readString(draft.gmNote);
 
   const subAbility = normalizeSubAbility(draft.subAbility) ?? defaultSubAbility;
   const derivedFromSub = computeAbilityFromSubAbility(subAbility);
@@ -418,10 +511,24 @@ function normalizeCharacter(raw: CharacterItem | null): SheetView {
     expUnspent: readNumber(starting.expUnspent),
     skills: normalizeSkillRows(draft.skills),
     imageUrl: readString(appearance.imageUrl) || null,
-    notes: readString(draft.gmNote) || ' ',
+    notes: [noteToGm ? `To GM: ${noteToGm}` : '', gmNote ? `GM: ${gmNote}` : ''].filter(Boolean).join(' | ') || ' ',
     moneyGamels: readNumber(starting.moneyGamels),
     purchases: normalizePurchases(purchases),
   };
+}
+
+function createCommandId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const nowHex = Date.now().toString(16).padStart(12, '0').slice(-12);
+  return `00000000-0000-4000-8000-${nowHex}`;
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function computeAbilityFromSubAbility(subAbility: SubAbilityView): AbilityView {

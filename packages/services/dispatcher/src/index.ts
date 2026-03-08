@@ -4,7 +4,13 @@ import {
   type AnyCommandEnvelope,
   type CommandType,
 } from '@starter/shared';
-import type { DbAccess } from '@starter/services-shared';
+import {
+  assertGameMasterActor,
+  logServiceFlow,
+  summarizeCommandEnvelope,
+  summarizeError,
+  type DbAccess,
+} from '@starter/services-shared';
 import { handlerRegistry } from './handlers/index.js';
 import type { DispatcherContext, HandlerEffects, InboxEffect, WriteEffect } from './handlers/types.js';
 
@@ -34,21 +40,11 @@ export function createDispatcher(deps: DispatcherDependencies) {
   return {
     async dispatch(envelopeInput: unknown): Promise<DispatchResult> {
       const parsed = anyCommandEnvelopeSchema.parse(envelopeInput);
-      logFlow(flowLogEnabled, 'DISPATCH_BEGIN', {
-        commandId: parsed.commandId,
-        type: parsed.type,
-        gameId: parsed.gameId,
-        actorId: parsed.actorId,
-        characterId: extractCharacterId(parsed),
-      });
+      logFlow(flowLogEnabled, 'DISPATCH_BEGIN', summarizeCommandEnvelope(parsed));
       const existing = await deps.db.commandLogRepository.get(parsed.commandId);
 
       if (existing?.status === 'PROCESSED') {
-        logFlow(flowLogEnabled, 'DISPATCH_NOOP_ALREADY_PROCESSED', {
-          commandId: parsed.commandId,
-          type: parsed.type,
-          gameId: parsed.gameId,
-        });
+        logFlow(flowLogEnabled, 'DISPATCH_NOOP_ALREADY_PROCESSED', summarizeCommandEnvelope(parsed));
         return { commandId: parsed.commandId, outcome: 'NOOP_ALREADY_PROCESSED' };
       }
 
@@ -56,22 +52,29 @@ export function createDispatcher(deps: DispatcherDependencies) {
         await deps.db.commandLogRepository.markProcessing(parsed.commandId, nowIso());
         logFlow(flowLogEnabled, 'DISPATCH_MARK_PROCESSING', {
           commandId: parsed.commandId,
+          type: parsed.type,
+          gameId: parsed.gameId,
         });
+
+        if (parsed.type === 'GMReviewCharacter') {
+          await assertGameMasterActor(deps.db, {
+            gameId: parsed.gameId,
+            actorId: parsed.actorId,
+          });
+          logFlow(flowLogEnabled, 'DISPATCH_GM_AUTHORIZED', summarizeCommandEnvelope(parsed));
+        }
 
         const handler = handlerRegistry[parsed.type];
         const effects = await handler(context, parsed as never);
         logFlow(flowLogEnabled, 'DISPATCH_HANDLER_EFFECTS', {
-          commandId: parsed.commandId,
-          writes: effects.writes.length,
-          inbox: effects.inbox.length,
-          notifications: effects.notifications.length,
+          ...summarizeCommandEnvelope(parsed),
+          ...summarizeHandlerEffects(effects),
         });
 
         await applyEffectsTransact(deps.db, parsed, effects, nowIso());
         logFlow(flowLogEnabled, 'DISPATCH_APPLY_EFFECTS_OK', {
-          commandId: parsed.commandId,
-          type: parsed.type,
-          gameId: parsed.gameId,
+          ...summarizeCommandEnvelope(parsed),
+          ...summarizeHandlerEffects(effects),
         });
 
         return { commandId: parsed.commandId, outcome: 'PROCESSED' };
@@ -80,11 +83,8 @@ export function createDispatcher(deps: DispatcherDependencies) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         await deps.db.commandLogRepository.markFailed(parsed.commandId, nowIso(), errorCode, errorMessage);
         logFlow(flowLogEnabled, 'DISPATCH_FAILED', {
-          commandId: parsed.commandId,
-          type: parsed.type,
-          gameId: parsed.gameId,
-          errorCode,
-          errorMessage,
+          ...summarizeCommandEnvelope(parsed),
+          ...summarizeError(error),
         });
         return { commandId: parsed.commandId, outcome: 'FAILED', errorCode };
       }
@@ -274,9 +274,32 @@ function nowIso(): string {
 }
 
 function logFlow(enabled: boolean, event: string, data: Record<string, unknown>): void {
-  if (!enabled) {
-    return;
-  }
-  // eslint-disable-next-line no-console
-  console.log(JSON.stringify({ ts: new Date().toISOString(), svc: 'dispatcher', event, ...data }));
+  logServiceFlow({
+    enabled,
+    service: 'dispatcher',
+    event,
+    data,
+  });
+}
+
+function summarizeHandlerEffects(effects: HandlerEffects): Record<string, unknown> {
+  const writeKinds = effects.writes.map((write) => write.kind);
+  const inboxKinds = effects.inbox.map((item) => item.kind);
+  const notificationTemplates = effects.notifications.map((item) => item.template);
+  const primaryWrite = effects.writes[0];
+
+  return {
+    writes: effects.writes.length,
+    inbox: effects.inbox.length,
+    notifications: effects.notifications.length,
+    writeKinds,
+    inboxKinds,
+    notificationTemplates,
+    nextStatus:
+      primaryWrite?.kind === 'PUT_CHARACTER_DRAFT'
+        ? (primaryWrite.input.status ?? 'DRAFT')
+        : primaryWrite?.kind === 'UPDATE_CHARACTER_WITH_VERSION'
+          ? primaryWrite.input.next.status
+          : null,
+  };
 }

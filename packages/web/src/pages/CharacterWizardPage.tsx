@@ -26,6 +26,7 @@ import {
   submitSpendStartingExp,
 } from '../flows/characterWizardCommands';
 import { describeFailure, type CommandStatusViewModel } from '../hooks/useCommandStatus';
+import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 interface CharacterSnapshot {
   status: string;
@@ -96,6 +97,10 @@ export function CharacterWizardPage() {
   });
 
   useEffect(() => {
+    logWebFlow('WEB_CHARACTER_WIZARD_MOUNT', {
+      gameId: state.gameId,
+      characterId: state.characterId,
+    });
     void refreshSnapshot();
     // initial load only
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -382,6 +387,11 @@ export function CharacterWizardPage() {
             type="button"
             disabled={isExecutingCommand || !import.meta.env.DEV}
             onClick={() => {
+              logWebFlow('WEB_CHARACTER_WIZARD_AUTOFILL_APPLIED', {
+                gameId: state.gameId,
+                characterId: state.characterId,
+                fixtureId: 'good.human_rune_master_sorcerer_starter',
+              });
               setState((prev) => ({
                 ...prev,
                 race: goodHumanRuneMasterAutofill.race,
@@ -458,6 +468,21 @@ export function CharacterWizardPage() {
     setStepError(' ');
     scrollCommandStatusIntoView();
     setIsExecutingCommand(true);
+    logWebFlow('WEB_CHARACTER_WIZARD_EXECUTE_START', {
+      gameId: state.gameId,
+      characterId: state.characterId,
+      race: state.race,
+      raisedBy: state.raisedBy,
+      backgroundRoll2dTotal: state.backgroundRoll2dTotal,
+      moneyRoll2dTotal: state.moneyRoll2dTotal,
+      fighterLevel: state.fighterLevel,
+      namePresent: state.name.trim().length > 0,
+      noteToGmPresent: state.submitNoteToGm.trim().length > 0,
+      equipment: {
+        mage_staff: state.cart.mage_staff,
+        cloth_armor: state.cart.cloth_armor,
+      },
+    });
     try {
       const existingCharacter = await api.getCharacter(state.gameId, state.characterId);
       if (!existingCharacter) {
@@ -522,12 +547,26 @@ export function CharacterWizardPage() {
           gameId: state.gameId,
           characterId: state.characterId,
           noteToGm: state.submitNoteToGm,
+          identity: {
+            name: state.name.trim(),
+            age: parseOptionalNumber(state.age),
+            gender: state.gender.trim() ? state.gender.trim() : null,
+          },
         })
       );
 
       await refreshSnapshot();
+      logWebFlow('WEB_CHARACTER_WIZARD_EXECUTE_OK', {
+        gameId: state.gameId,
+        characterId: state.characterId,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      logWebFlow('WEB_CHARACTER_WIZARD_EXECUTE_FAILED', {
+        gameId: state.gameId,
+        characterId: state.characterId,
+        ...summarizeError(error),
+      });
       setStepError(message);
       setCommandStatus((prev) => ({
         ...prev,
@@ -559,6 +598,11 @@ export function CharacterWizardPage() {
   }
 
   async function submitCommandAndAwait(label: string, submit: () => Promise<string>) {
+    logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_START', {
+      gameId: state.gameId,
+      characterId: state.characterId,
+      label,
+    });
     const commandId = await submit();
     setCommandStatus({
       state: 'Queued',
@@ -567,12 +611,32 @@ export function CharacterWizardPage() {
       errorCode: null,
       errorMessage: null,
     });
+    logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_ACCEPTED', {
+      gameId: state.gameId,
+      characterId: state.characterId,
+      label,
+      commandId,
+    });
 
     const terminal = await pollUntilTerminal(commandId);
     if (terminal.status === 'PROCESSED') {
+      logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_OK', {
+        gameId: state.gameId,
+        characterId: state.characterId,
+        label,
+        commandId,
+      });
       return;
     }
 
+    logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_FAILED', {
+      gameId: state.gameId,
+      characterId: state.characterId,
+      label,
+      commandId,
+      errorCode: terminal.errorCode,
+      errorMessage: terminal.errorMessage,
+    });
     throw new Error(
       describeFailure({
         errorCode: terminal.errorCode,
@@ -596,6 +660,13 @@ export function CharacterWizardPage() {
 
       const mapped = mapStatus(response);
       setCommandStatus(mapped);
+      logWebFlow('WEB_CHARACTER_WIZARD_STATUS_POLLED', {
+        gameId: state.gameId,
+        characterId: state.characterId,
+        commandId,
+        status: response.status,
+        errorCode: response.errorCode,
+      });
 
       if (response.status === 'PROCESSED' || response.status === 'FAILED') {
         return response;
@@ -607,19 +678,42 @@ export function CharacterWizardPage() {
   }
 
   async function refreshSnapshot() {
-    const item = await api.getCharacter(state.gameId, state.characterId);
-    if (!item) {
-      setSnapshot(null);
-      return;
-    }
-
-    const draft = (item as any).draft;
-    setSnapshot({
-      status: String((item as any).status ?? 'UNKNOWN'),
-      subAbility: draft?.subAbility ?? null,
-      ability: draft?.ability ?? null,
-      skills: Array.isArray(draft?.skills) ? draft.skills : [],
+    logWebFlow('WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_START', {
+      gameId: state.gameId,
+      characterId: state.characterId,
     });
+    try {
+      const item = await api.getCharacter(state.gameId, state.characterId);
+      if (!item) {
+        setSnapshot(null);
+        logWebFlow('WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_MISS', {
+          gameId: state.gameId,
+          characterId: state.characterId,
+        });
+        return;
+      }
+
+      const draft = (item as any).draft;
+      setSnapshot({
+        status: String((item as any).status ?? 'UNKNOWN'),
+        subAbility: draft?.subAbility ?? null,
+        ability: draft?.ability ?? null,
+        skills: Array.isArray(draft?.skills) ? draft.skills : [],
+      });
+      logWebFlow('WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_OK', {
+        gameId: state.gameId,
+        characterId: state.characterId,
+        status: String((item as any).status ?? 'UNKNOWN'),
+        version: typeof (item as any).version === 'number' ? (item as any).version : null,
+      });
+    } catch (error) {
+      logWebFlow('WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_FAILED', {
+        gameId: state.gameId,
+        characterId: state.characterId,
+        ...summarizeError(error),
+      });
+      throw error;
+    }
   }
 }
 
@@ -824,6 +918,15 @@ function setSubAbility(
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function parseOptionalNumber(value: string): number | null {
+  if (!value.trim()) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function sleep(ms: number): Promise<void> {

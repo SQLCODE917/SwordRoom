@@ -19,12 +19,16 @@ import {
   gameStateKeys,
   gmInboxItemSchema,
   playerInboxItemSchema,
+  gameMetadataItemSchema,
+  playerProfileItemSchema,
   type CharacterDraft,
   type CharacterItem,
   type CharacterStatus,
   type CommandLogItem,
   type CommandStatus,
+  type GameMetadataItem,
   type GMInboxItem,
+  type PlayerProfileItem,
   type PlayerInboxItem,
 } from '@starter/shared';
 
@@ -44,6 +48,12 @@ export interface DbAccess {
     getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
     putCharacterDraft(input: PutCharacterDraftInput): Promise<CharacterItem>;
     updateCharacterWithVersion(input: UpdateCharacterWithVersionInput): Promise<CharacterItem>;
+  };
+  gameRepository: {
+    getGameMetadata(gameId: string): Promise<GameMetadataItem | null>;
+  };
+  playerRepository: {
+    getPlayerProfile(playerId: string): Promise<PlayerProfileItem | null>;
   };
   inboxRepository: {
     addGmInboxItem(input: AddGmInboxItemInput): Promise<GMInboxItem>;
@@ -237,6 +247,40 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
           throw new Error('character not found after successful update');
         }
         return refreshed;
+      },
+    },
+    gameRepository: {
+      async getGameMetadata(gameId) {
+        const key = gameStateKeys.gameMetadata(gameId);
+        const result = await client.send(
+          new GetCommand({
+            TableName: tables.gameStateTableName,
+            Key: key,
+          })
+        );
+
+        if (!result.Item) {
+          return null;
+        }
+
+        return gameMetadataItemSchema.parse(result.Item);
+      },
+    },
+    playerRepository: {
+      async getPlayerProfile(playerId) {
+        const key = gameStateKeys.playerProfile(playerId);
+        const result = await client.send(
+          new GetCommand({
+            TableName: tables.gameStateTableName,
+            Key: key,
+          })
+        );
+
+        if (!result.Item) {
+          return null;
+        }
+
+        return playerProfileItemSchema.parse(result.Item);
       },
     },
     inboxRepository: {

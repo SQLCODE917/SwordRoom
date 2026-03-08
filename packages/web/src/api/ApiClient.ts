@@ -1,4 +1,5 @@
 import type { AuthProvider } from '../auth/AuthProvider';
+import { logWebFlow, summarizeCommandEnvelope, summarizeError } from '../logging/flowLog';
 
 export type CommandType =
   | 'CreateCharacterDraft'
@@ -6,6 +7,7 @@ export type CommandType =
   | 'ApplyStartingPackage'
   | 'SpendStartingExp'
   | 'PurchaseStarterEquipment'
+  | 'ConfirmCharacterAppearanceUpload'
   | 'SubmitCharacterForApproval'
   | 'GMReviewCharacter';
 
@@ -27,7 +29,16 @@ interface CommandPayloadByType {
     purchases: Array<{ skill: string; targetLevel: number }>;
   };
   PurchaseStarterEquipment: { characterId: string; cart: Record<string, unknown> };
-  SubmitCharacterForApproval: { characterId: string; noteToGm?: string };
+  ConfirmCharacterAppearanceUpload: { characterId: string; s3Key: string };
+  SubmitCharacterForApproval: {
+    characterId: string;
+    noteToGm?: string;
+    identity?: {
+      name: string;
+      age?: number | null;
+      gender?: string | null;
+    };
+  };
   GMReviewCharacter: { characterId: string; decision: 'APPROVE' | 'REJECT'; gmNote?: string };
 }
 
@@ -43,7 +54,7 @@ export interface CommandEnvelopeInput<T extends CommandType = CommandType> {
 export interface PostCommandResponse {
   accepted: true;
   commandId: string;
-  status: 'ACCEPTED';
+  status: BackendCommandStatus;
 }
 
 export type BackendCommandStatus = 'ACCEPTED' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
@@ -76,6 +87,14 @@ export interface CharacterItem {
   [key: string]: unknown;
 }
 
+export interface GameActorContextResponse {
+  actorId: string;
+  displayName: string | null;
+  roles: string[];
+  gmPlayerId: string | null;
+  isGameMaster: boolean;
+}
+
 export interface AppearanceUploadUrlRequest {
   contentType: string;
   fileName: string;
@@ -90,19 +109,11 @@ export interface AppearanceUploadUrlResponse {
   expiresInSeconds: number;
 }
 
-export interface AppearanceConfirmRequest {
-  uploadId: string;
-  s3Key: string;
-}
-
-export interface AppearanceConfirmResponse {
-  ok: true;
-}
-
 export interface ApiClient {
   postCommand<T extends CommandType>(input: { envelope: CommandEnvelopeInput<T> }): Promise<PostCommandResponse>;
   getCommandStatus(commandId: string): Promise<CommandStatusResponse | null>;
   getMyInbox(): Promise<PlayerInboxItem[]>;
+  getGameActorContext(gameId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
   requestAppearanceUploadUrl(
@@ -110,11 +121,6 @@ export interface ApiClient {
     characterId: string,
     input: AppearanceUploadUrlRequest
   ): Promise<AppearanceUploadUrlResponse>;
-  confirmAppearanceUpload(
-    gameId: string,
-    characterId: string,
-    input: AppearanceConfirmRequest
-  ): Promise<AppearanceConfirmResponse>;
 }
 
 interface ApiClientOptions {
@@ -136,34 +142,117 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       const body = auth.withActor({
         envelope: input.envelope,
       });
-      return requestJson<PostCommandResponse>(`${baseUrl}/commands`, {
+      logWebFlow('WEB_API_POST_COMMAND_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        ...summarizeCommandEnvelope(input.envelope),
+      });
+      const response = await requestJson<PostCommandResponse>(`${baseUrl}/commands`, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
       });
+      logWebFlow('WEB_API_POST_COMMAND_ACCEPTED', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        ...summarizeCommandEnvelope(input.envelope),
+        status: response.status,
+      });
+      return response;
     },
 
     async getCommandStatus(commandId: string): Promise<CommandStatusResponse | null> {
-      return requestJsonOrNull<CommandStatusResponse>(`${baseUrl}/commands/${encodeURIComponent(commandId)}`, auth);
+      logWebFlow('WEB_API_GET_COMMAND_STATUS_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        commandId,
+      });
+      const response = await requestJsonOrNull<CommandStatusResponse>(`${baseUrl}/commands/${encodeURIComponent(commandId)}`, auth);
+      logWebFlow(response ? 'WEB_API_GET_COMMAND_STATUS_HIT' : 'WEB_API_GET_COMMAND_STATUS_MISS', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        commandId,
+        status: response?.status ?? null,
+        errorCode: response?.errorCode ?? null,
+      });
+      return response;
     },
 
     async getMyInbox(): Promise<PlayerInboxItem[]> {
-      return requestJson<PlayerInboxItem[]>(`${baseUrl}/me/inbox`, {
+      logWebFlow('WEB_API_GET_PLAYER_INBOX_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+      });
+      const response = await requestJson<PlayerInboxItem[]>(`${baseUrl}/me/inbox`, {
         headers: await auth.withAuthHeaders(),
       });
+      logWebFlow('WEB_API_GET_PLAYER_INBOX_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        count: response.length,
+      });
+      return response;
+    },
+
+    async getGameActorContext(gameId: string): Promise<GameActorContextResponse> {
+      logWebFlow('WEB_API_GET_GAME_ACTOR_CONTEXT_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+      });
+      const response = await requestJson<GameActorContextResponse>(
+        `${baseUrl}/games/${encodeURIComponent(gameId)}/me`,
+        {
+          headers: await auth.withAuthHeaders(),
+        }
+      );
+      logWebFlow('WEB_API_GET_GAME_ACTOR_CONTEXT_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        isGameMaster: response.isGameMaster,
+        roles: response.roles,
+      });
+      return response;
     },
 
     async getGmInbox(gameId: string): Promise<GMInboxItem[]> {
-      return requestJson<GMInboxItem[]>(`${baseUrl}/gm/${encodeURIComponent(gameId)}/inbox`, {
+      logWebFlow('WEB_API_GET_GM_INBOX_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+      });
+      const response = await requestJson<GMInboxItem[]>(`${baseUrl}/gm/${encodeURIComponent(gameId)}/inbox`, {
         headers: await auth.withAuthHeaders(),
       });
+      logWebFlow('WEB_API_GET_GM_INBOX_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        count: response.length,
+      });
+      return response;
     },
 
     async getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null> {
-      return requestJsonOrNull<CharacterItem>(
+      logWebFlow('WEB_API_GET_CHARACTER_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        characterId,
+      });
+      const response = await requestJsonOrNull<CharacterItem>(
         `${baseUrl}/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(characterId)}`,
         auth
       );
+      logWebFlow(response ? 'WEB_API_GET_CHARACTER_HIT' : 'WEB_API_GET_CHARACTER_MISS', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        characterId,
+        status: response && typeof response.status === 'string' ? response.status : null,
+      });
+      return response;
     },
 
     async requestAppearanceUploadUrl(
@@ -171,7 +260,16 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       characterId: string,
       input: AppearanceUploadUrlRequest
     ): Promise<AppearanceUploadUrlResponse> {
-      return requestJson<AppearanceUploadUrlResponse>(
+      logWebFlow('WEB_API_APPEARANCE_UPLOAD_URL_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        characterId,
+        contentType: input.contentType,
+        fileName: input.fileName,
+        fileSizeBytes: input.fileSizeBytes,
+      });
+      const response = await requestJson<AppearanceUploadUrlResponse>(
         `${baseUrl}/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(characterId)}/appearance/upload-url`,
         {
           method: 'POST',
@@ -179,21 +277,15 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
           body: JSON.stringify(input),
         }
       );
-    },
-
-    async confirmAppearanceUpload(
-      gameId: string,
-      characterId: string,
-      input: AppearanceConfirmRequest
-    ): Promise<AppearanceConfirmResponse> {
-      return requestJson<AppearanceConfirmResponse>(
-        `${baseUrl}/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(characterId)}/appearance/confirm`,
-        {
-          method: 'POST',
-          headers: await auth.withAuthHeaders({ 'content-type': 'application/json' }),
-          body: JSON.stringify(input),
-        }
-      );
+      logWebFlow('WEB_API_APPEARANCE_UPLOAD_URL_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        characterId,
+        uploadId: response.uploadId,
+        s3Key: response.s3Key,
+      });
+      return response;
     },
   };
 }
@@ -203,22 +295,41 @@ function normalizeBaseUrl(baseUrl: string): string {
 }
 
 async function requestJsonOrNull<T>(url: string, auth: AuthProvider): Promise<T | null> {
-  const response = await fetch(url, { headers: await auth.withAuthHeaders() });
-  if (response.status === 404) {
-    return null;
+  try {
+    const response = await fetch(url, { headers: await auth.withAuthHeaders() });
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+    return (await response.json()) as T;
+  } catch (error) {
+    logWebFlow('WEB_API_REQUEST_ERROR', {
+      actorId: auth.actorId,
+      authMode: auth.mode,
+      url,
+      ...summarizeError(error),
+    });
+    throw error;
   }
-  if (!response.ok) {
-    throw await toApiError(response);
-  }
-  return (await response.json()) as T;
 }
 
 async function requestJson<T>(url: string, init: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    throw await toApiError(response);
+  try {
+    const response = await fetch(url, init);
+    if (!response.ok) {
+      throw await toApiError(response);
+    }
+    return (await response.json()) as T;
+  } catch (error) {
+    logWebFlow('WEB_API_REQUEST_ERROR', {
+      url,
+      method: init.method ?? 'GET',
+      ...summarizeError(error),
+    });
+    throw error;
   }
-  return (await response.json()) as T;
 }
 
 async function toApiError(response: Response): Promise<Error> {

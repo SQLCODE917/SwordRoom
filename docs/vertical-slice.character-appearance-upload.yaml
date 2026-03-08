@@ -48,30 +48,26 @@ api_endpoints:
     rules:
       - "Validate fileSizeBytes max (e.g., 5MB)"
       - "Validate contentType in allow-list"
-      - "Do not write DynamoDB yet (until confirm)."
+      - "Do not write DynamoDB yet (state changes happen in the confirm command)."
 
-  - id: appearance-confirm
-    method: POST
-    path: "/games/{gameId}/characters/{characterId}/appearance/confirm"
-    authz:
-      - "actorId == ownerPlayerId OR actorId == gmPlayerId (optional)"
-    request:
-      body:
-        uploadId: "uuid"
-        s3Key: "string"
-    response:
-      body:
-        ok: true
-    rules:
-      - "Write appearance.imageKey = s3Key"
-      - "Optionally store contentType, size, and updatedAt"
-      - "Optionally emit PlayerInboxItem kind=ACTION_REQUIRED or info item"
+command_contract:
+  type: "ConfirmCharacterAppearanceUpload"
+  authz:
+    - "actorId == ownerPlayerId OR actorId == gmPlayerId (optional)"
+  payload:
+    characterId: "string"
+    s3Key: "string"
+  rules:
+    - "Validate uploaded object exists before accepting the command"
+    - "Write appearance.imageKey = s3Key via dispatcher"
+    - "Generate presigned GET URL on read from imageKey"
 
 frontend_flow:
   - step: "User chooses image file"
   - step: "FE calls upload-url endpoint"
   - step: "FE PUTs file to putUrl (direct to S3)"
-  - step: "FE calls confirm endpoint"
+  - step: "FE posts ConfirmCharacterAppearanceUpload to /commands"
+  - step: "FE polls command status until terminal"
   - step: "FE refetches character and updates ImageBox preview using imageUrl (presigned GET)"
   ux_rules:
     - "ImageBox reserves space for preview always"
@@ -80,6 +76,6 @@ frontend_flow:
 tests:
   backend:
     - "Upload URL returns valid presigned PUT"
-    - "Confirm writes DynamoDB fields"
+    - "ConfirmCharacterAppearanceUpload writes DynamoDB fields through dispatcher"
   e2e:
     - "Playwright uploads an image and sees it rendered on sheet"

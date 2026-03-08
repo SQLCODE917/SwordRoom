@@ -124,12 +124,20 @@ export async function submitPurchaseStarterEquipment(
 }
 
 export async function submitCharacterForApproval(
-  input: WizardCommandContext & { noteToGm: string }
+  input: WizardCommandContext & {
+    noteToGm: string;
+    identity: {
+      name: string;
+      age: number | null;
+      gender: string | null;
+    };
+  }
 ): Promise<string> {
   const response = await input.api.postCommand({
     envelope: buildEnvelope(input.gameId, 'SubmitCharacterForApproval', {
       characterId: input.characterId,
       noteToGm: input.noteToGm,
+      identity: input.identity,
     }),
   });
   return response.commandId;

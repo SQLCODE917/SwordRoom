@@ -3,6 +3,7 @@ import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { useCommandStatus } from '../hooks/useCommandStatus';
 import { useSubmitCommand } from '../hooks/useSubmitCommand';
+import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 export function HomePage() {
   const { submitCommand, lastCommandId, isSubmitting, submitError } = useSubmitCommand();
@@ -13,9 +14,15 @@ export function HomePage() {
   );
 
   const onDemoSubmit = async () => {
+    const commandId = makeUuid();
+    logWebFlow('WEB_HOME_DEMO_SUBMIT_START', {
+      commandId,
+      gameId: 'game-1',
+      characterId: 'char-human-1',
+    });
     try {
       await submitCommand({
-        commandId: makeUuid(),
+        commandId,
         gameId: 'game-1',
         type: 'CreateCharacterDraft',
         schemaVersion: 1,
@@ -26,7 +33,18 @@ export function HomePage() {
           raisedBy: null,
         },
       });
-    } catch {
+      logWebFlow('WEB_HOME_DEMO_SUBMIT_ACCEPTED', {
+        commandId,
+        gameId: 'game-1',
+        characterId: 'char-human-1',
+      });
+    } catch (error) {
+      logWebFlow('WEB_HOME_DEMO_SUBMIT_FAILED', {
+        commandId,
+        gameId: 'game-1',
+        characterId: 'char-human-1',
+        ...summarizeError(error),
+      });
       // submitError state is already set by useSubmitCommand
     }
   };

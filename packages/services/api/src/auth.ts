@@ -10,15 +10,12 @@ export interface ResolveActorIdInput {
 }
 
 export async function resolveActorId(input: ResolveActorIdInput): Promise<string> {
-  if (input.bypassAllowed) {
-    if (!input.bypassActorId) {
-      throw new Error('JWT bypass enabled but bypassActorId not provided');
-    }
-    return input.bypassActorId;
-  }
-
   const env = input.env ?? process.env;
   const mode = (env.AUTH_MODE ?? 'dev') as AuthMode;
+
+  if (input.bypassAllowed) {
+    return input.bypassActorId ?? env.DEV_ACTOR_ID ?? 'player-aaa';
+  }
 
   if (mode === 'dev') {
     return input.bypassActorId ?? env.DEV_ACTOR_ID ?? 'player-aaa';
