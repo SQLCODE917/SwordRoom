@@ -50,6 +50,9 @@ command_contracts:
       payload: object
       createdAt: string
   types:
+    - type: SaveCharacterDraft
+      payload: { characterId: string, expectedVersion?: int|null, race: string, raisedBy?: string|null, subAbility: object, backgroundRoll2dTotal?: int, startingMoneyRoll2dTotal?: int, identity: object, purchases: object[], cart: object, noteToGm?: string }
+      authz: "actorId == ownerPlayerId"
     - type: CreateCharacterDraft
       payload: { characterId: string, race: string, raisedBy: string|null }
       authz: "actorId == ownerPlayerId"
@@ -69,7 +72,7 @@ command_contracts:
       payload: { characterId: string, s3Key: string }
       authz: "actorId == ownerPlayerId || actorId == gmPlayerId"
     - type: SubmitCharacterForApproval
-      payload: { characterId: string, noteToGm?: string }
+      payload: { characterId: string, expectedVersion: int }
       authz: "actorId == ownerPlayerId"
     - type: GMReviewCharacter
       payload: { characterId: string, decision: "APPROVE|REJECT", gmNote?: string }
@@ -108,10 +111,12 @@ work_units:
   - id: async-04-character-handlers
     goal: "Wire handlers for the character creation commands to engine functions + DynamoDB writes."
     done_when:
-      - "Create draft, set sub-abilities, compute abilities, apply package, spend exp, purchase equipment all persist"
+      - "SaveCharacterDraft persists a full draft snapshot and recomputes derived values"
+      - "Legacy low-level commands still persist correctly when called directly"
   - id: async-05-gm-approval-workflow
     goal: "Submit -> GM inbox item created; GMReview -> status updated; player inbox item created."
     done_when:
+      - "SubmitCharacterForApproval transitions a saved draft revision to pending review"
       - "GM inbox query shows pending character after submit"
       - "Approve moves status to APPROVED and notifies player via inbox + email"
       - "Reject moves status to REJECTED with gmNote"
@@ -124,11 +129,7 @@ work_units:
 integration_tests:
   - name: e2e_character_approval
     steps:
-      - "Player logs in, sends CreateCharacterDraft"
-      - "Player sends SetCharacterSubAbilities (fixed values)"
-      - "Player sends ApplyStartingPackage (background roll fixed)"
-      - "Player sends SpendStartingExp (valid purchases)"
-      - "Player sends PurchaseStarterEquipment (valid cart)"
+      - "Player logs in, sends SaveCharacterDraft with a complete valid draft snapshot"
       - "Player sends SubmitCharacterForApproval"
       - "GM sends GMReviewCharacter APPROVE"
     asserts:

@@ -2,6 +2,7 @@ import type { AuthProvider } from '../auth/AuthProvider';
 import { logWebFlow, summarizeCommandEnvelope, summarizeError } from '../logging/flowLog';
 
 export type CommandType =
+  | 'SaveCharacterDraft'
   | 'CreateCharacterDraft'
   | 'SetCharacterSubAbilities'
   | 'ApplyStartingPackage'
@@ -12,6 +13,23 @@ export type CommandType =
   | 'GMReviewCharacter';
 
 interface CommandPayloadByType {
+  SaveCharacterDraft: {
+    characterId: string;
+    expectedVersion?: number | null;
+    race: string;
+    raisedBy?: string | null;
+    subAbility: { A: number; B: number; C: number; D: number; E: number; F: number; G: number; H: number };
+    backgroundRoll2dTotal?: number;
+    startingMoneyRoll2dTotal?: number;
+    identity: {
+      name: string;
+      age?: number | null;
+      gender?: string | null;
+    };
+    purchases: Array<{ skill: string; targetLevel: number }>;
+    cart: Record<string, unknown>;
+    noteToGm?: string;
+  };
   CreateCharacterDraft: { characterId: string; race: string; raisedBy?: string | null };
   SetCharacterSubAbilities: {
     characterId: string;
@@ -32,12 +50,7 @@ interface CommandPayloadByType {
   ConfirmCharacterAppearanceUpload: { characterId: string; s3Key: string };
   SubmitCharacterForApproval: {
     characterId: string;
-    noteToGm?: string;
-    identity?: {
-      name: string;
-      age?: number | null;
-      gender?: string | null;
-    };
+    expectedVersion: number;
   };
   GMReviewCharacter: { characterId: string; decision: 'APPROVE' | 'REJECT'; gmNote?: string };
 }

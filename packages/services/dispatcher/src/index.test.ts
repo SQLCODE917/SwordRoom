@@ -113,6 +113,7 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
 describe('services/dispatcher command registry', () => {
   it('registers only command types defined by async-layer contract', () => {
     expect(listRegisteredCommandTypes()).toEqual([
+      'SaveCharacterDraft',
       'CreateCharacterDraft',
       'SetCharacterSubAbilities',
       'ApplyStartingPackage',

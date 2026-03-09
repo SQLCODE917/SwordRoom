@@ -62,6 +62,47 @@ export async function submitCreateCharacterDraft(
   return response.commandId;
 }
 
+export async function submitSaveCharacterDraft(
+  input: WizardCommandContext & {
+    expectedVersion?: number | null;
+    race: Race;
+    raisedBy: 'HUMANS' | 'ELVES';
+    subAbility: SubAbilityScores;
+    backgroundRoll2dTotal?: number;
+    startingMoneyRoll2dTotal?: number;
+    identity: {
+      name: string;
+      age: number | null;
+      gender: string | null;
+    };
+    purchases: Array<{ skill: string; targetLevel: number }>;
+    cart: {
+      weapons: string[];
+      armor: string[];
+      shields: string[];
+      gear: string[];
+    };
+    noteToGm?: string;
+  }
+): Promise<string> {
+  const response = await input.api.postCommand({
+    envelope: buildEnvelope(input.gameId, 'SaveCharacterDraft', {
+      characterId: input.characterId,
+      expectedVersion: input.expectedVersion ?? null,
+      race: input.race,
+      raisedBy: input.race === 'HALF_ELF' ? input.raisedBy : null,
+      subAbility: input.subAbility,
+      backgroundRoll2dTotal: input.backgroundRoll2dTotal,
+      startingMoneyRoll2dTotal: input.startingMoneyRoll2dTotal,
+      identity: input.identity,
+      purchases: input.purchases,
+      cart: input.cart,
+      noteToGm: input.noteToGm,
+    }),
+  });
+  return response.commandId;
+}
+
 export async function submitSetCharacterSubAbilities(
   input: WizardCommandContext & { subAbility: SubAbilityScores }
 ): Promise<string> {
@@ -125,19 +166,13 @@ export async function submitPurchaseStarterEquipment(
 
 export async function submitCharacterForApproval(
   input: WizardCommandContext & {
-    noteToGm: string;
-    identity: {
-      name: string;
-      age: number | null;
-      gender: string | null;
-    };
+    expectedVersion: number;
   }
 ): Promise<string> {
   const response = await input.api.postCommand({
     envelope: buildEnvelope(input.gameId, 'SubmitCharacterForApproval', {
       characterId: input.characterId,
-      noteToGm: input.noteToGm,
-      identity: input.identity,
+      expectedVersion: input.expectedVersion,
     }),
   });
   return response.commandId;

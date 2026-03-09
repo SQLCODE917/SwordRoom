@@ -4,14 +4,32 @@ import { requireCharacter, throwOnEngineErrors, toCharacterDraft, toEngineState 
 
 export const submitForApprovalHandler: CommandHandler<'SubmitCharacterForApproval'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);
-  const state = toEngineState(character);
-  if (envelope.payload.identity) {
-    state.identity = {
-      name: envelope.payload.identity.name,
-      age: envelope.payload.identity.age ?? null,
-      gender: envelope.payload.identity.gender ?? null,
+  if (character.ownerPlayerId !== envelope.actorId) {
+    const error = new Error(`character "${character.characterId}" is not owned by actor "${envelope.actorId}"`);
+    (error as Error & { code?: string }).code = 'CHARACTER_OWNER_REQUIRED';
+    throw error;
+  }
+  if (character.status === 'APPROVED') {
+    const error = new Error(`character "${character.characterId}" is already approved`);
+    (error as Error & { code?: string }).code = 'CHARACTER_ALREADY_APPROVED';
+    throw error;
+  }
+  if (character.status === 'PENDING' && character.submittedDraftVersion === envelope.payload.expectedVersion) {
+    return {
+      writes: [],
+      inbox: [],
+      notifications: [],
     };
   }
+  if (character.version !== envelope.payload.expectedVersion) {
+    const error = new Error(
+      `stale character version for "${character.characterId}": expected ${envelope.payload.expectedVersion}, actual ${character.version}`
+    );
+    (error as Error & { code?: string }).code = 'STALE_CHARACTER_VERSION';
+    throw error;
+  }
+
+  const state = toEngineState(character);
 
   const finalized = finalizeCharacter(state, { requireIdentityName: true });
   throwOnEngineErrors(finalized.errors);
@@ -21,7 +39,7 @@ export const submitForApprovalHandler: CommandHandler<'SubmitCharacterForApprova
 
   const nextDraft = {
     ...toCharacterDraft(character, submitted.state),
-    noteToGm: envelope.payload.noteToGm ?? character.draft.noteToGm ?? null,
+    noteToGm: character.draft.noteToGm ?? null,
   };
 
   return {
@@ -37,6 +55,8 @@ export const submitForApprovalHandler: CommandHandler<'SubmitCharacterForApprova
             draft: nextDraft,
             status: 'PENDING',
             updatedAt: ctx.nowIso(),
+            submittedAt: envelope.createdAt,
+            submittedDraftVersion: character.version,
           },
         },
       },

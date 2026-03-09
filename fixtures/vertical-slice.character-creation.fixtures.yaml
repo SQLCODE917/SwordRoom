@@ -586,28 +586,19 @@ command_sequences_for_integration:
   # These sequences are meant for dispatcher e2e tests:
   # send commands in order -> assert CommandLog + GameState items.
   - id: e2e.good.human_rune_master_sequence
-    description: "End-to-end: create draft -> set subs -> apply package -> spend exp -> purchase gear -> submit -> GM approve"
+    description: "End-to-end: save full draft snapshot -> submit saved draft -> GM approve"
     commands:
-      - type: "CreateCharacterDraft"
-        payload: { characterId: "char-human-1", race: "HUMAN" }
-      - type: "SetCharacterSubAbilities"
+      - type: "SaveCharacterDraft"
         payload:
           characterId: "char-human-1"
+          expectedVersion: null
+          race: "HUMAN"
+          raisedBy: null
           subAbility: { A: 9, B: 8, C: 6, D: 7, E: 7, F: 12, G: 8, H: 6 }
-      - type: "ApplyStartingPackage"
-        payload:
-          {
-            characterId: "char-human-1",
-            backgroundRoll2dTotal: 3,
-            startingMoneyRoll2dTotal: 9,
-          }
-      - type: "SpendStartingExp"
-        payload:
-          characterId: "char-human-1"
+          backgroundRoll2dTotal: 3
+          startingMoneyRoll2dTotal: 9
+          identity: { name: "Ducard Sample II", age: 24, gender: "M" }
           purchases: [{ skill: "Fighter", targetLevel: 1 }]
-      - type: "PurchaseStarterEquipment"
-        payload:
-          characterId: "char-human-1"
           cart:
             {
               weapons: ["mage_staff"],
@@ -615,8 +606,9 @@ command_sequences_for_integration:
               shields: [],
               gear: [],
             }
+          noteToGm: "Ready for review"
       - type: "SubmitCharacterForApproval"
-        payload: { characterId: "char-human-1", noteToGm: "Ready for review" }
+        payload: { characterId: "char-human-1", expectedVersion: 1 }
       - type: "GMReviewCharacter"
         payload:
           {

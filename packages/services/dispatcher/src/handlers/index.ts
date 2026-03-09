@@ -4,11 +4,13 @@ import { confirmAppearanceUploadHandler } from './character/confirmAppearanceUpl
 import { createDraftHandler } from './character/createDraft.js';
 import { gmReviewHandler } from './character/gmReview.js';
 import { purchaseStarterEquipmentHandler } from './character/purchaseStarterEquipment.js';
+import { saveDraftHandler } from './character/saveWizardProgress.js';
 import { setSubAbilitiesHandler } from './character/setSubAbilities.js';
 import { spendStartingExpHandler } from './character/spendStartingExp.js';
 import { submitForApprovalHandler } from './character/submitForApproval.js';
 
 export const handlerRegistry: HandlerRegistry = {
+  SaveCharacterDraft: saveDraftHandler,
   CreateCharacterDraft: createDraftHandler,
   SetCharacterSubAbilities: setSubAbilitiesHandler,
   ApplyStartingPackage: applyStartingPackageHandler,

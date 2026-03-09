@@ -19,6 +19,9 @@ This index maps each implemented runtime function in the current codebase to its
 
 ## Character Creation Commands
 
+- `SaveCharacterDraft`
+  - Expected happy-path logs: `WEB_CHARACTER_WIZARD_SAVE_START`, `WEB_CHARACTER_WIZARD_SAVE_PAYLOAD_BUILT`, `WEB_CHARACTER_WIZARD_SAVE_ACCEPTED`, `API_POST_COMMAND_REQUEST`, `API_COMMANDLOG_ACCEPTED`, `API_ENQUEUED`, `DISPATCH_BEGIN`, `DISPATCH_HANDLER_EFFECTS`, `DISPATCH_APPLY_EFFECTS_OK`, `DISPATCHER_MESSAGE_DELETED`, `WEB_CHARACTER_WIZARD_SAVE_OK`
+  - Guide: [debugging.character-creation.md](/workspaces/hello-world-monorepo/docs/debugging.character-creation.md)
 - `CreateCharacterDraft`
   - Expected happy-path logs: `API_POST_COMMAND_REQUEST`, `API_COMMANDLOG_ACCEPTED`, `API_ENQUEUED`, `DISPATCH_BEGIN`, `DISPATCH_HANDLER_EFFECTS`, `DISPATCH_APPLY_EFFECTS_OK`, `DISPATCHER_MESSAGE_DELETED`
   - Guide: [debugging.character-creation.md](/workspaces/hello-world-monorepo/docs/debugging.character-creation.md)
@@ -35,7 +38,7 @@ This index maps each implemented runtime function in the current codebase to its
   - Expected happy-path logs: `API_POST_COMMAND_REQUEST`, `API_COMMANDLOG_ACCEPTED`, `API_ENQUEUED`, `DISPATCH_BEGIN`, `DISPATCH_HANDLER_EFFECTS`, `DISPATCH_APPLY_EFFECTS_OK`, `DISPATCHER_MESSAGE_DELETED`
   - Guide: [debugging.character-creation.md](/workspaces/hello-world-monorepo/docs/debugging.character-creation.md)
 - `SubmitCharacterForApproval`
-  - Expected happy-path logs: `WEB_CHARACTER_WIZARD_STEP_SUBMIT_START`, `WEB_CHARACTER_WIZARD_STEP_SUBMIT_ACCEPTED`, `API_POST_COMMAND_REQUEST`, `API_COMMANDLOG_ACCEPTED`, `API_ENQUEUED`, `DISPATCH_BEGIN`, `DISPATCH_HANDLER_EFFECTS`, `DISPATCH_APPLY_EFFECTS_OK`, `DISPATCHER_MESSAGE_DELETED`, `WEB_CHARACTER_WIZARD_STEP_SUBMIT_OK`
+  - Expected happy-path logs: `WEB_CHARACTER_WIZARD_EXECUTE_START`, `WEB_CHARACTER_WIZARD_STEP_SUBMIT_START`, `WEB_CHARACTER_WIZARD_STEP_SUBMIT_ACCEPTED`, `API_POST_COMMAND_REQUEST`, `API_COMMANDLOG_ACCEPTED`, `API_ENQUEUED`, `DISPATCH_BEGIN`, `DISPATCH_HANDLER_EFFECTS`, `DISPATCH_APPLY_EFFECTS_OK`, `DISPATCHER_MESSAGE_DELETED`, `WEB_CHARACTER_WIZARD_STEP_SUBMIT_OK`, `WEB_CHARACTER_WIZARD_EXECUTE_OK`
   - Guide: [debugging.character-creation.md](/workspaces/hello-world-monorepo/docs/debugging.character-creation.md)
 - Command status polling
   - Expected happy-path logs: `WEB_API_GET_COMMAND_STATUS_REQUEST`, `API_GET_COMMAND_STATUS_HIT`, `WEB_API_GET_COMMAND_STATUS_HIT`, `WEB_CHARACTER_WIZARD_STATUS_POLLED`

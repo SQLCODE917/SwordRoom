@@ -101,6 +101,7 @@ maybeDescribe('e2e.good.human_rune_master_sequence', () => {
 
   beforeEach(async () => {
     await recreateTables();
+    await seedGameAndProfiles();
   });
 
   it('runs command sequence and reaches APPROVED with expected inbox effects', async () => {
@@ -207,6 +208,53 @@ async function recreateTables(): Promise<void> {
     { client: lowLevelClient, maxWaitTime: 10, minDelay: 1, maxDelay: 1 },
     { TableName: COMMAND_LOG_TABLE }
   );
+}
+
+async function seedGameAndProfiles(): Promise<void> {
+  await db.transactWrite([
+    {
+      Put: {
+        TableName: GAME_STATE_TABLE,
+        Item: {
+          ...db.keyBuilders.gameState.gameMetadata('game-1'),
+          type: 'GameMetadata',
+          gameId: 'game-1',
+          gmPlayerId: 'gm-player-1',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          version: 1,
+        },
+      },
+    },
+    {
+      Put: {
+        TableName: GAME_STATE_TABLE,
+        Item: {
+          ...db.keyBuilders.gameState.playerProfile('player-aaa'),
+          type: 'PlayerProfile',
+          playerId: 'player-aaa',
+          displayName: 'Local Player',
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        },
+      },
+    },
+    {
+      Put: {
+        TableName: GAME_STATE_TABLE,
+        Item: {
+          ...db.keyBuilders.gameState.playerProfile('gm-player-1'),
+          type: 'PlayerProfile',
+          playerId: 'gm-player-1',
+          displayName: 'Local GM',
+          roles: ['PLAYER', 'GM'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        },
+      },
+    },
+  ]);
 }
 
 async function deleteTableIfExists(tableName: string): Promise<void> {

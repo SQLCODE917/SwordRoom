@@ -52,6 +52,22 @@ export function summarizeError(error: unknown): Record<string, unknown> {
 }
 
 function summarizePayload(type: string | null, payload: Record<string, unknown>): Record<string, unknown> {
+  if (type === 'SaveCharacterDraft') {
+    const identity = toRecord(payload.identity);
+    return {
+      race: typeof payload.race === 'string' ? payload.race : null,
+      raisedBy: typeof payload.raisedBy === 'string' || payload.raisedBy === null ? payload.raisedBy : null,
+      expectedVersion: readNumber(payload.expectedVersion),
+      subAbility: isSubAbility(payload.subAbility) ? payload.subAbility : null,
+      backgroundRoll2dTotal: readNumber(payload.backgroundRoll2dTotal),
+      startingMoneyRoll2dTotal: readNumber(payload.startingMoneyRoll2dTotal),
+      purchaseCount: Array.isArray(payload.purchases) ? payload.purchases.length : 0,
+      cartPresent: Boolean(payload.cart && typeof payload.cart === 'object'),
+      noteToGmPresent: typeof payload.noteToGm === 'string' ? payload.noteToGm.trim().length > 0 : false,
+      identityNamePresent: typeof identity.name === 'string' ? identity.name.trim().length > 0 : false,
+    };
+  }
+
   if (type === 'CreateCharacterDraft') {
     return {
       race: typeof payload.race === 'string' ? payload.race : null,
@@ -108,10 +124,8 @@ function summarizePayload(type: string | null, payload: Record<string, unknown>)
   }
 
   if (type === 'SubmitCharacterForApproval') {
-    const identity = toRecord(payload.identity);
     return {
-      noteToGmPresent: typeof payload.noteToGm === 'string' ? payload.noteToGm.trim().length > 0 : false,
-      identityNamePresent: typeof identity.name === 'string' ? identity.name.trim().length > 0 : false,
+      expectedVersion: readNumber(payload.expectedVersion),
     };
   }
 

@@ -13,9 +13,113 @@ Always capture these first:
 For wizard orchestration also capture:
 
 - `label` from `WEB_CHARACTER_WIZARD_STEP_SUBMIT_*`
+- `stepKey` from `WEB_CHARACTER_WIZARD_SAVE_*`
 - `status` from command polling
 
-## End-To-End Wizard Submit
+## Panel Save
+
+### Sequence
+
+```mermaid
+sequenceDiagram
+  participant U as User
+  participant FE as CharacterWizardPage
+  participant API as API
+  participant SQS as SQS FIFO
+  participant W as Dispatcher
+  participant DDB as DynamoDB
+
+  U->>FE: Click Save on active panel
+  FE->>API: POST SaveCharacterDraft
+  API->>DDB: createAccepted(commandId)
+  API->>SQS: enqueue(commandId)
+  loop poll
+    FE->>API: GET /commands/{commandId}
+  end
+  W->>SQS: receive
+  W->>DDB: markProcessing
+  W->>DDB: save draft or no-op if unchanged
+  W->>DDB: markProcessed
+  FE->>API: GET character snapshot
+```
+
+### Normal Web Logs
+
+- `WEB_CHARACTER_WIZARD_SAVE_START`
+- `WEB_CHARACTER_WIZARD_SAVE_PAYLOAD_BUILT`
+- `WEB_CHARACTER_WIZARD_SAVE_ACCEPTED`
+- `WEB_CHARACTER_WIZARD_STATUS_POLLED`
+- `WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_OK`
+- `WEB_CHARACTER_WIZARD_SAVE_OK`
+
+### Normal API / Dispatcher Logs
+
+- `API_POST_COMMAND_REQUEST`
+- `API_ACTOR_RESOLVED`
+- `API_VALIDATE_ENVELOPE`
+- `API_COMMANDLOG_ACCEPTED`
+- `API_ENQUEUED`
+- `DISPATCH_BEGIN`
+- `DISPATCH_MARK_PROCESSING`
+- `DISPATCH_HANDLER_EFFECTS`
+- `DISPATCH_APPLY_EFFECTS_OK`
+- `DISPATCHER_MESSAGE_DELETED`
+
+### Save Error Logs
+
+- Web
+  - `WEB_CHARACTER_WIZARD_SAVE_FAILED`
+  - `WEB_API_REQUEST_ERROR`
+- API
+  - `API_POST_COMMAND_REJECTED`
+  - `API_COMMANDLOG_ACCEPT_FAILED`
+  - `API_ENQUEUE_FAILED`
+  - `API_REQUEST_ERROR`
+- Dispatcher
+  - `DISPATCH_FAILED`
+  - `DISPATCHER_MESSAGE_DELETED_AFTER_FAILURE`
+
+### Idempotency Expectation
+
+- Re-saving the same wizard snapshot should leave the character draft unchanged.
+- A successful no-op save still emits the normal command acceptance and processing logs, but the handler effects should show zero writes.
+
+## Command: SaveCharacterDraft
+
+### Determinants
+
+- `expectedVersion`
+- `race`
+- `raisedBy`
+- `subAbility`
+- `backgroundRoll2dTotal`
+- `startingMoneyRoll2dTotal`
+- `identity`
+- `purchases`
+- `cart`
+- `noteToGmPresent`
+
+### Expected Success Shape
+
+- character row exists with `status=DRAFT` or `status=REJECTED`
+- draft snapshot is fully replaced from the saved payload
+- derived `ability`, `skills`, and starting package fields are recomputed server-side
+- `version` increments only when the effective draft changes
+
+### Common Failure Codes
+
+- `STALE_CHARACTER_VERSION`
+- `CHARACTER_OWNER_REQUIRED`
+- `CHARACTER_NOT_EDITABLE`
+- engine validation failures such as `EXP_INSUFFICIENT`
+
+### Triage
+
+- Compare `expectedVersion` in `API_POST_COMMAND_REQUEST` with the current character `version`.
+- Use `DISPATCH_HANDLER_EFFECTS` to confirm whether the save produced writes or a no-op.
+- If save fails on a pending or approved character, expect `CHARACTER_NOT_EDITABLE`.
+
+## Submit Saved Draft For Review
 
 ### Sequence
 
@@ -29,30 +133,39 @@ sequenceDiagram
   participant DDB as DynamoDB
 
   U->>FE: Submit Character For Approval
-  FE->>API: GET character snapshot
-  alt character missing
-    FE->>API: POST CreateCharacterDraft
-  end
-  FE->>API: POST SetCharacterSubAbilities
-  FE->>API: POST ApplyStartingPackage
-  FE->>API: POST SpendStartingExp
-  FE->>API: POST PurchaseStarterEquipment
-  FE->>API: POST SubmitCharacterForApproval
-  loop for each command
-    API->>DDB: createAccepted
-    API->>SQS: enqueue
+  opt draft is dirty or not yet saved
+    FE->>API: POST SaveCharacterDraft
+    API->>DDB: createAccepted(commandId)
+    API->>SQS: enqueue(commandId)
+    loop poll save
+      FE->>API: GET /commands/{commandId}
+    end
     W->>SQS: receive
     W->>DDB: markProcessing
-    W->>DDB: apply effects + markProcessed or markFailed
-    FE->>API: poll command status
+    W->>DDB: persist draft snapshot
+    W->>DDB: markProcessed
+    FE->>API: GET character snapshot
   end
+  FE->>API: POST SubmitCharacterForApproval
+  API->>DDB: createAccepted
+  API->>SQS: enqueue
+  loop poll
+    FE->>API: GET /commands/{commandId}
+  end
+  W->>SQS: receive
+  W->>DDB: markProcessing
+  W->>DDB: validate saved draft revision and mark pending
+  W->>DDB: add GM inbox item + player inbox item + markProcessed
   FE->>API: GET character snapshot
 ```
 
 ### Normal Web Logs
 
 - `WEB_CHARACTER_WIZARD_EXECUTE_START`
-- `WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_START`
+- optional when submit auto-saves first:
+  - `WEB_CHARACTER_WIZARD_SAVE_START`
+  - `WEB_CHARACTER_WIZARD_SAVE_ACCEPTED`
+  - `WEB_CHARACTER_WIZARD_SAVE_OK`
 - `WEB_CHARACTER_WIZARD_STEP_SUBMIT_START`
 - `WEB_CHARACTER_WIZARD_STEP_SUBMIT_ACCEPTED`
 - `WEB_CHARACTER_WIZARD_STATUS_POLLED`
@@ -208,19 +321,22 @@ sequenceDiagram
 
 ### Determinants
 
-- `noteToGmPresent`
+- `expectedVersion`
 
 ### Expected Success Shape
 
 - character `status=PENDING`
-- updated `draft.identity`
-- stored `draft.noteToGm`
+- `submittedDraftVersion == expectedVersion`
+- `submittedAt` written
 - one `GMInboxItem`
 - one player inbox item of kind `CHAR_SUBMITTED`
 
-### Common Failure Code
+### Common Failure Codes
 
 - `CHARACTER_NOT_COMPLETE`
+- `STALE_CHARACTER_VERSION`
+- `CHARACTER_ALREADY_APPROVED`
+- `CHARACTER_OWNER_REQUIRED`
 
 ### Triage
 

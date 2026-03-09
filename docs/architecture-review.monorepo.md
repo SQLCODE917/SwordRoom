@@ -10,7 +10,7 @@ The repo currently implements a command-driven character creation vertical slice
 
 - `packages/web`
   - Browser UI for login, character wizard, character sheet, player inbox, GM inbox, and demo command submission.
-  - The wizard currently orchestrates a full end-to-end submit sequence from the browser, with identity persisted at final submit.
+  - The wizard now supports per-panel draft saves plus submit-for-review of an already saved draft revision.
 - `packages/services/api`
   - Thin HTTP layer for command acceptance, read endpoints, game actor context, and appearance upload URL issuance.
   - Writes accepted commands to the command log and enqueues them to SQS FIFO.
@@ -73,6 +73,7 @@ Important identifiers for debugging:
   - Dev bypass auth.
   - OIDC login redirect and callback completion.
 - Character creation commands:
+  - `SaveCharacterDraft`
   - `CreateCharacterDraft`
   - `SetCharacterSubAbilities`
   - `ApplyStartingPackage`
@@ -133,9 +134,10 @@ Important identifiers for debugging:
    - The review handler queries the inbox and selects the first row for that `characterId`.
    - If the same character were resubmitted multiple times, the wrong pending row could be removed.
 
-3. The character wizard runs the whole command chain on final submit.
-   - The UI is visually step-based, but the backend state only changes during the final orchestration.
-   - That makes partial-save debugging less direct than the screen flow suggests.
+3. Legacy low-level character mutation commands remain exposed alongside the new snapshot-save path.
+   - The current wizard uses `SaveCharacterDraft` plus `SubmitCharacterForApproval`.
+   - `CreateCharacterDraft`, `SetCharacterSubAbilities`, `ApplyStartingPackage`, `SpendStartingExp`, and `PurchaseStarterEquipment` still exist as direct command handlers.
+   - That is useful for fixtures and low-level testing, but it leaves two public write styles in the slice.
 
 4. Signed image URLs are generated on read and are intentionally short-lived.
    - This is the right storage model for the slice.
@@ -143,7 +145,7 @@ Important identifiers for debugging:
 
 ## Next Steps To Complete The Character Creation Vertical Slice
 
-1. Persist identity earlier in the wizard if partial-save behavior is desired instead of waiting for final submit.
+1. Decide whether the low-level draft mutation commands should remain public or become internal/test-only now that the main wizard uses snapshot save.
 2. Expose `noteToGm` more directly in the GM review UI instead of only storing it on the character.
 3. Add a read model or endpoint for GM review detail so a GM can inspect the submitted character without reconstructing context manually.
 4. Make submission-instance resolution explicit in the GM inbox workflow instead of deleting the first matching pending row by `characterId`.

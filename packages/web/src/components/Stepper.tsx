@@ -4,6 +4,7 @@ export interface StepperItem {
   id: string;
   title: string;
   panel: ReactNode;
+  action?: ReactNode;
   isError?: boolean;
 }
 
@@ -57,6 +58,7 @@ export function Stepper({ steps, activeStepIndex, onStepChange, getPanelRef }: S
               onClick={() => onStepChange(index)}
             >
               {step.panel}
+              {step.action ? <div className="l-row">{step.action}</div> : null}
             </section>
           );
         })}

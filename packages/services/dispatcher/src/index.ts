@@ -152,6 +152,8 @@ function toTransactWriteItem(
             ownerPlayerId: effect.input.ownerPlayerId,
             status: effect.input.status ?? 'DRAFT',
             draft: effect.input.draft,
+            submittedAt: effect.input.submittedAt ?? null,
+            submittedDraftVersion: effect.input.submittedDraftVersion ?? null,
             createdAt: effect.input.createdAt,
             updatedAt: effect.input.updatedAt,
             version: 1,
@@ -168,7 +170,7 @@ function toTransactWriteItem(
           Key: key,
           ConditionExpression: '#version = :expectedVersion',
           UpdateExpression:
-            'SET ownerPlayerId = :ownerPlayerId, #status = :status, draft = :draft, updatedAt = :updatedAt, #version = :nextVersion',
+            'SET ownerPlayerId = :ownerPlayerId, #status = :status, draft = :draft, updatedAt = :updatedAt, submittedAt = :submittedAt, submittedDraftVersion = :submittedDraftVersion, #version = :nextVersion',
           ExpressionAttributeNames: {
             '#version': 'version',
             '#status': 'status',
@@ -178,6 +180,8 @@ function toTransactWriteItem(
             ':status': effect.input.next.status,
             ':draft': effect.input.next.draft,
             ':updatedAt': effect.input.next.updatedAt,
+            ':submittedAt': effect.input.next.submittedAt ?? null,
+            ':submittedDraftVersion': effect.input.next.submittedDraftVersion ?? null,
             ':expectedVersion': effect.input.expectedVersion,
             ':nextVersion': effect.input.expectedVersion + 1,
           },

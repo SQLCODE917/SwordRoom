@@ -12,6 +12,28 @@ log() {
   printf '[shutdown] %s\n' "$*"
 }
 
+kill_orphan_web_vite() {
+  local root_dir
+  root_dir="$(pwd)"
+  local pid
+  while IFS= read -r pid; do
+    if [[ -z "$pid" ]]; then
+      continue
+    fi
+    if [[ -d "/proc/$pid" ]]; then
+      local cwd
+      cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
+      if [[ "$cwd" == "$root_dir/packages/web" ]]; then
+        kill -TERM "$pid" >/dev/null 2>&1 || true
+        sleep 1
+        if kill -0 "$pid" >/dev/null 2>&1; then
+          kill -KILL "$pid" >/dev/null 2>&1 || true
+        fi
+      fi
+    fi
+  done < <(pgrep -f "$root_dir/packages/web/node_modules/.bin/.*/vite/bin/vite.js" || true)
+}
+
 kill_pid_file_entries() {
   local pid_file="$1"
   local signal="${2:-TERM}"
@@ -62,6 +84,7 @@ fi
 kill_pid_file_entries "$CHILD_PID_FILE" TERM
 sleep 1
 kill_pid_file_entries "$CHILD_PID_FILE" KILL
+kill_orphan_web_vite
 
 log "Stopping Docker services"
 docker compose -f docker-compose.local.yml down >/dev/null 2>&1 || true

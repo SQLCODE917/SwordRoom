@@ -35,6 +35,7 @@ export function summarizeCommandEnvelope(envelope: {
     race: typeof payload.race === 'string' ? payload.race : null,
     raisedBy: typeof payload.raisedBy === 'string' || payload.raisedBy === null ? payload.raisedBy : null,
     decision: typeof payload.decision === 'string' ? payload.decision : null,
+    expectedVersion: typeof payload.expectedVersion === 'number' ? payload.expectedVersion : null,
     noteToGmPresent: typeof payload.noteToGm === 'string' ? payload.noteToGm.trim().length > 0 : false,
     gmNotePresent: typeof payload.gmNote === 'string' ? payload.gmNote.trim().length > 0 : false,
     s3Key: typeof payload.s3Key === 'string' ? payload.s3Key : null,

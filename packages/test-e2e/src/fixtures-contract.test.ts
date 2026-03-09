@@ -7,7 +7,8 @@ describe('e2e fixture contract checks', () => {
 
     expect(text).toContain('command_sequences_for_integration:');
     expect(text).toContain('id: e2e.good.human_rune_master_sequence');
-    expect(text).toContain('type: "CreateCharacterDraft"');
+    expect(text).toContain('type: "SaveCharacterDraft"');
+    expect(text).toContain('type: "SubmitCharacterForApproval"');
     expect(text).toContain('type: "GMReviewCharacter"');
   });
 

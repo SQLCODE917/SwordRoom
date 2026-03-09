@@ -88,6 +88,8 @@ export interface PutCharacterDraftInput {
   createdAt: string;
   updatedAt: string;
   status?: CharacterStatus;
+  submittedAt?: string | null;
+  submittedDraftVersion?: number | null;
 }
 
 export interface UpdateCharacterWithVersionInput {
@@ -99,6 +101,8 @@ export interface UpdateCharacterWithVersionInput {
     draft: CharacterDraft;
     updatedAt: string;
     status: CharacterStatus;
+    submittedAt?: string | null;
+    submittedDraftVersion?: number | null;
   };
 }
 
@@ -199,6 +203,8 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
           ownerPlayerId: input.ownerPlayerId,
           status: input.status ?? 'DRAFT',
           draft: input.draft,
+          submittedAt: input.submittedAt ?? null,
+          submittedDraftVersion: input.submittedDraftVersion ?? null,
           createdAt: input.createdAt,
           updatedAt: input.updatedAt,
           version: 1,
@@ -225,7 +231,7 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
             Key: key,
             ConditionExpression: '#version = :expectedVersion',
             UpdateExpression:
-              'SET ownerPlayerId = :ownerPlayerId, #status = :status, draft = :draft, updatedAt = :updatedAt, #version = :nextVersion',
+              'SET ownerPlayerId = :ownerPlayerId, #status = :status, draft = :draft, updatedAt = :updatedAt, submittedAt = :submittedAt, submittedDraftVersion = :submittedDraftVersion, #version = :nextVersion',
             ExpressionAttributeNames: {
               '#version': 'version',
               '#status': 'status',
@@ -235,6 +241,8 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
               ':status': input.next.status,
               ':draft': input.next.draft,
               ':updatedAt': input.next.updatedAt,
+              ':submittedAt': input.next.submittedAt ?? null,
+              ':submittedDraftVersion': input.next.submittedDraftVersion ?? null,
               ':expectedVersion': input.expectedVersion,
               ':nextVersion': nextVersion,
             },

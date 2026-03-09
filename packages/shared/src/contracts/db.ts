@@ -152,6 +152,8 @@ export const characterItemSchema = pkSkSchema.extend({
   ownerPlayerId: z.string(),
   status: characterStatusSchema,
   draft: characterDraftSchema,
+  submittedAt: z.string().nullable().optional(),
+  submittedDraftVersion: z.number().int().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
   version: z.number().int(),

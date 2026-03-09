@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const COMMAND_TYPES = [
+  'SaveCharacterDraft',
   'CreateCharacterDraft',
   'SetCharacterSubAbilities',
   'ApplyStartingPackage',
@@ -13,6 +14,39 @@ export const COMMAND_TYPES = [
 
 export const commandTypeSchema = z.enum(COMMAND_TYPES);
 export type CommandType = z.infer<typeof commandTypeSchema>;
+
+export const saveCharacterDraftPayloadSchema = z.object({
+  characterId: z.string(),
+  expectedVersion: z.number().int().nullable().optional(),
+  race: z.string(),
+  raisedBy: z.string().nullable().optional(),
+  subAbility: z.object({
+    A: z.number().int(),
+    B: z.number().int(),
+    C: z.number().int(),
+    D: z.number().int(),
+    E: z.number().int(),
+    F: z.number().int(),
+    G: z.number().int(),
+    H: z.number().int(),
+  }),
+  backgroundRoll2dTotal: z.number().int().optional(),
+  startingMoneyRoll2dTotal: z.number().int().optional(),
+  identity: z
+    .object({
+      name: z.string(),
+      age: z.number().nullable().optional(),
+      gender: z.string().nullable().optional(),
+    }),
+  purchases: z.array(
+    z.object({
+      skill: z.string(),
+      targetLevel: z.number().int(),
+    })
+  ),
+  cart: z.record(z.string(), z.unknown()),
+  noteToGm: z.string().optional(),
+});
 
 export const createCharacterDraftPayloadSchema = z.object({
   characterId: z.string(),
@@ -64,14 +98,7 @@ export const confirmCharacterAppearanceUploadPayloadSchema = z.object({
 
 export const submitCharacterForApprovalPayloadSchema = z.object({
   characterId: z.string(),
-  noteToGm: z.string().optional(),
-  identity: z
-    .object({
-      name: z.string(),
-      age: z.number().nullable().optional(),
-      gender: z.string().nullable().optional(),
-    })
-    .optional(),
+  expectedVersion: z.number().int(),
 });
 
 export const gmReviewCharacterPayloadSchema = z.object({
@@ -81,6 +108,7 @@ export const gmReviewCharacterPayloadSchema = z.object({
 });
 
 export const commandPayloadSchemaByType = {
+  SaveCharacterDraft: saveCharacterDraftPayloadSchema,
   CreateCharacterDraft: createCharacterDraftPayloadSchema,
   SetCharacterSubAbilities: setCharacterSubAbilitiesPayloadSchema,
   ApplyStartingPackage: applyStartingPackagePayloadSchema,
@@ -100,6 +128,10 @@ const commandEnvelopeBaseSchema = z.object({
 });
 
 export const commandEnvelopeSchemaByType = {
+  SaveCharacterDraft: commandEnvelopeBaseSchema.extend({
+    type: z.literal('SaveCharacterDraft'),
+    payload: saveCharacterDraftPayloadSchema,
+  }),
   CreateCharacterDraft: commandEnvelopeBaseSchema.extend({
     type: z.literal('CreateCharacterDraft'),
     payload: createCharacterDraftPayloadSchema,
@@ -135,6 +167,7 @@ export const commandEnvelopeSchemaByType = {
 } as const;
 
 export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
+  commandEnvelopeSchemaByType.SaveCharacterDraft,
   commandEnvelopeSchemaByType.CreateCharacterDraft,
   commandEnvelopeSchemaByType.SetCharacterSubAbilities,
   commandEnvelopeSchemaByType.ApplyStartingPackage,
@@ -146,6 +179,7 @@ export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
 ]);
 
 export type CreateCharacterDraftPayload = z.infer<typeof createCharacterDraftPayloadSchema>;
+export type SaveCharacterDraftPayload = z.infer<typeof saveCharacterDraftPayloadSchema>;
 export type SetCharacterSubAbilitiesPayload = z.infer<typeof setCharacterSubAbilitiesPayloadSchema>;
 export type ApplyStartingPackagePayload = z.infer<typeof applyStartingPackagePayloadSchema>;
 export type SpendStartingExpPayload = z.infer<typeof spendStartingExpPayloadSchema>;
@@ -155,6 +189,7 @@ export type SubmitCharacterForApprovalPayload = z.infer<typeof submitCharacterFo
 export type GMReviewCharacterPayload = z.infer<typeof gmReviewCharacterPayloadSchema>;
 
 export type CommandPayloadByType = {
+  SaveCharacterDraft: SaveCharacterDraftPayload;
   CreateCharacterDraft: CreateCharacterDraftPayload;
   SetCharacterSubAbilities: SetCharacterSubAbilitiesPayload;
   ApplyStartingPackage: ApplyStartingPackagePayload;
