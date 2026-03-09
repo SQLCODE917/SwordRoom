@@ -432,6 +432,76 @@ describe('Phase 1 - purchaseEquipment', () => {
 
     expect(result.errors.map((error) => error.code)).toEqual(['INSUFFICIENT_STARTING_MONEY']);
   });
+
+  it('allows carrying a two-handed weapon and a shield in the same inventory cart', () => {
+    const state = createDraftState({
+      characterId: 'char-two-hand-shield',
+      race: 'HUMAN',
+      ability: { str: 16 },
+      skills: [{ skill: 'Fighter', level: 1 }],
+      startingPackage: {
+        source: 'BACKGROUND_TABLE_1_5',
+        startingSkills: [{ skill: 'Fighter', level: 1 }],
+        startingExpTotal: 0,
+        expUnspent: 0,
+        startingMoneyGamels: 9999,
+        restrictions: [],
+      },
+    });
+
+    const result = purchaseEquipment(
+      state,
+      {
+        cart: {
+          weapons: ['greatsword'],
+          armor: [],
+          shields: ['small_shield'],
+          gear: [],
+        },
+      },
+      {
+        greatsword: { category: 'weapon', usage: '2H', req_str: 16, cost_g: 700 },
+        small_shield: { category: 'shield', req_str: 1, cost_g: 60 },
+      }
+    );
+
+    expect(result.errors).toEqual([]);
+  });
+
+  it('rejects variable-price equipment during character creation', () => {
+    const state = createDraftState({
+      characterId: 'char-variable-price',
+      race: 'HUMAN',
+      ability: { str: 10 },
+      startingPackage: {
+        source: 'BACKGROUND_TABLE_1_5',
+        startingSkills: [],
+        startingExpTotal: 0,
+        expUnspent: 0,
+        startingMoneyGamels: 9999,
+        restrictions: [],
+      },
+    });
+
+    const result = purchaseEquipment(
+      state,
+      {
+        cart: {
+          weapons: [],
+          armor: [],
+          shields: [],
+          gear: ['musical_instrument'],
+        },
+      },
+      {
+        musical_instrument: { category: 'gear', price_spec: '100+' },
+      }
+    );
+
+    expect(result.errors.map((error) => error.message)).toContain(
+      'variable-price equipment cannot be auto-purchased during character creation'
+    );
+  });
 });
 
 describe('Phase 1 - finalizeCharacter + submitForApproval', () => {

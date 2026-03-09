@@ -24,10 +24,9 @@ import {
   computeSkillPurchasePreview,
   computeStartingPackagePreview,
   describeSkillLevelCosts,
+  getEquipmentOptionsForStrength,
   roll2dTotal,
   skillOptions,
-  starterEquipmentOptions,
-  toSingleSelectCart,
 } from '../data/characterCreationPurchasing';
 import {
   goodHumanRuneMasterAutofill,
@@ -61,9 +60,10 @@ interface WizardState {
   age: string;
   purchases: Array<{ skill: string; targetLevel: number }>;
   equipment: {
-    weapon: string;
-    armor: string;
-    shield: string;
+    weaponQuantities: Record<string, number>;
+    armorQuantities: Record<string, number>;
+    shieldQuantities: Record<string, number>;
+    gearQuantities: Record<string, number>;
   };
   submitNoteToGm: string;
 }
@@ -76,6 +76,9 @@ interface FieldOption {
   label: string;
   disabled?: boolean;
 }
+
+type InventoryCategory = 'weapon' | 'armor' | 'shield' | 'gear';
+type InventoryQuantitiesKey = 'weaponQuantities' | 'armorQuantities' | 'shieldQuantities' | 'gearQuantities';
 
 const stepTitles = ['Race', 'Dice A-H', 'Background rolls', 'Name/identity', 'EXP spend', 'Equipment cart', 'Submit'];
 
@@ -101,7 +104,6 @@ const merchantScholarOptions: FieldOption[] = [
   { value: 'MERCHANT', label: 'Merchant 3' },
   { value: 'SAGE', label: 'Sage 1' },
 ];
-const emptyEquipmentOption: FieldOption = { value: '', label: 'None' };
 
 function buildInitialState(): WizardState {
   return {
@@ -120,9 +122,10 @@ function buildInitialState(): WizardState {
     age: '',
     purchases: [],
     equipment: {
-      weapon: '',
-      armor: '',
-      shield: '',
+      weaponQuantities: {},
+      armorQuantities: {},
+      shieldQuantities: {},
+      gearQuantities: {},
     },
     submitNoteToGm: 'Ready for review',
   };
@@ -211,7 +214,8 @@ export function CharacterWizardPage() {
   const derived = useMemo(() => computeDerivedAbilities(state.subAbility), [state.subAbility]);
   const backgroundEligible = resolveBackgroundEligibility(state.race, state.raisedBy);
   const isDwarfPath = state.race === 'DWARF';
-  const equipmentCart = useMemo(() => toSingleSelectCart(state.equipment), [state.equipment]);
+  const equipmentOptions = useMemo(() => getEquipmentOptionsForStrength(derived.STR), [derived.STR]);
+  const equipmentCart = useMemo(() => buildEquipmentCart(state.equipment), [state.equipment]);
   const startingPreview = useMemo(
     () =>
       computeStartingPackagePreview({
@@ -550,24 +554,42 @@ export function CharacterWizardPage() {
       panel: (
         <WizardStep title="6) Equipment cart" enabled={activeStepIndex === 5}>
           <fieldset className="l-col" disabled={isExecutingCommand}>
-            <FieldSelect
-              label="Weapon"
-              value={state.equipment.weapon}
-              options={[emptyEquipmentOption, ...toEquipmentOptions('weapon', availableMoney, state.equipment, derived.STR)]}
-              onChange={(value) => setEquipmentSelection('weapon', value)}
-            />
-            <FieldSelect
-              label="Armor"
-              value={state.equipment.armor}
-              options={[emptyEquipmentOption, ...toEquipmentOptions('armor', availableMoney, state.equipment, derived.STR)]}
-              onChange={(value) => setEquipmentSelection('armor', value)}
-            />
-            <FieldSelect
-              label="Shield"
-              value={state.equipment.shield}
-              options={[emptyEquipmentOption, ...toEquipmentOptions('shield', availableMoney, state.equipment, derived.STR)]}
-              onChange={(value) => setEquipmentSelection('shield', value)}
-            />
+            {renderInventorySections({
+              category: 'weapon',
+              title: 'Weapons',
+              options: equipmentOptions,
+              quantities: state.equipment.weaponQuantities,
+              availableMoney,
+              selection: state.equipment,
+              onQuantityChange: setInventoryQuantity,
+            })}
+            {renderInventorySections({
+              category: 'armor',
+              title: 'Armor',
+              options: equipmentOptions,
+              quantities: state.equipment.armorQuantities,
+              availableMoney,
+              selection: state.equipment,
+              onQuantityChange: setInventoryQuantity,
+            })}
+            {renderInventorySections({
+              category: 'shield',
+              title: 'Shields',
+              options: equipmentOptions,
+              quantities: state.equipment.shieldQuantities,
+              availableMoney,
+              selection: state.equipment,
+              onQuantityChange: setInventoryQuantity,
+            })}
+            {renderInventorySections({
+              category: 'gear',
+              title: 'Other Equipment',
+              options: equipmentOptions,
+              quantities: state.equipment.gearQuantities,
+              availableMoney,
+              selection: state.equipment,
+              onQuantityChange: setInventoryQuantity,
+            })}
           </fieldset>
           <InfoList
             lines={[
@@ -652,9 +674,10 @@ export function CharacterWizardPage() {
                 gender: goodHumanRuneMasterAutofill.identity.gender,
                 purchases: goodHumanRuneMasterAutofill.purchases,
                 equipment: {
-                  weapon: goodHumanRuneMasterAutofill.cart.weapons[0] ?? '',
-                  armor: goodHumanRuneMasterAutofill.cart.armor[0] ?? '',
-                  shield: goodHumanRuneMasterAutofill.cart.shields[0] ?? '',
+                  weaponQuantities: toInventoryQuantitiesFromIds(goodHumanRuneMasterAutofill.cart.weapons),
+                  armorQuantities: toInventoryQuantitiesFromIds(goodHumanRuneMasterAutofill.cart.armor),
+                  shieldQuantities: toInventoryQuantitiesFromIds(goodHumanRuneMasterAutofill.cart.shields),
+                  gearQuantities: toInventoryQuantitiesFromIds(goodHumanRuneMasterAutofill.cart.gear),
                 },
                 submitNoteToGm: goodHumanRuneMasterAutofill.submitNoteToGm,
               }));
@@ -723,7 +746,7 @@ export function CharacterWizardPage() {
       merchantScholarChoice: '',
       generalSkillName: '',
       purchases: [],
-      equipment: { weapon: '', armor: '', shield: '' },
+      equipment: { weaponQuantities: {}, armorQuantities: {}, shieldQuantities: {}, gearQuantities: {} },
     }));
   }
 
@@ -734,7 +757,7 @@ export function CharacterWizardPage() {
       merchantScholarChoice: '',
       generalSkillName: '',
       purchases: [],
-      equipment: { weapon: '', armor: '', shield: '' },
+      equipment: { weaponQuantities: {}, armorQuantities: {}, shieldQuantities: {}, gearQuantities: {} },
     }));
   }
 
@@ -750,14 +773,23 @@ export function CharacterWizardPage() {
     }));
   }
 
-  function setEquipmentSelection(slot: keyof WizardState['equipment'], value: string) {
-    setState((prev) => ({
-      ...prev,
-      equipment: {
-        ...prev.equipment,
-        [slot]: value,
-      },
-    }));
+  function setInventoryQuantity(category: InventoryCategory, itemId: string, quantity: number) {
+    setState((prev) => {
+      const key = getInventoryQuantitiesKey(category);
+      const nextQuantities = { ...prev.equipment[key] };
+      if (quantity <= 0) {
+        delete nextQuantities[itemId];
+      } else {
+        nextQuantities[itemId] = quantity;
+      }
+      return {
+        ...prev,
+        equipment: {
+          ...prev.equipment,
+          [key]: nextQuantities,
+        },
+      };
+    });
   }
 
   function isSkillTargetAffordable(skill: string, targetLevel: number, baseLevel: number): boolean {
@@ -1330,9 +1362,10 @@ function FieldNumber(props: {
   min?: number;
   max?: number;
   hint?: string;
+  disabled?: boolean;
 }) {
   return (
-    <div className="c-field">
+    <div className={`c-field ${props.disabled ? 'is-disabled' : ''}`.trim()}>
       <label className="c-field__label">{props.label}</label>
       <input
         className="c-field__control"
@@ -1340,6 +1373,7 @@ function FieldNumber(props: {
         value={props.value}
         min={props.min}
         max={props.max}
+        disabled={props.disabled}
         onChange={(event) => props.onChange(Number(event.target.value || 0))}
       />
       <div className="c-field__hint">{props.hint ?? ' '}</div>
@@ -1453,6 +1487,7 @@ function hydrateWizardStateFromCharacter(item: CharacterItem, fallback: WizardSt
   const weaponItems = Array.isArray(purchases.weapons) ? purchases.weapons : [];
   const armorItems = Array.isArray(purchases.armor) ? purchases.armor : [];
   const shieldItems = Array.isArray(purchases.shields) ? purchases.shields : [];
+  const gearItems = Array.isArray(purchases.gear) ? purchases.gear : [];
   const backgroundRoll = typeof background.roll2d === 'number' ? background.roll2d : fallback.backgroundRoll2dTotal;
   const backgroundKind = typeof background.kind === 'string' ? background.kind : null;
 
@@ -1476,9 +1511,10 @@ function hydrateWizardStateFromCharacter(item: CharacterItem, fallback: WizardSt
     age: typeof identity.age === 'number' ? String(identity.age) : fallback.age,
     purchases: deriveSkillPurchases(startingSkills, skills),
     equipment: {
-      weapon: readFirstPurchasedItemId(weaponItems),
-      armor: readFirstPurchasedItemId(armorItems),
-      shield: readFirstPurchasedItemId(shieldItems),
+      weaponQuantities: readPurchasedQuantities(weaponItems),
+      armorQuantities: readPurchasedQuantities(armorItems),
+      shieldQuantities: readPurchasedQuantities(shieldItems),
+      gearQuantities: readPurchasedQuantities(gearItems),
     },
     submitNoteToGm: typeof draft.noteToGm === 'string' ? draft.noteToGm : fallback.submitNoteToGm,
   };
@@ -1551,11 +1587,20 @@ function inferGeneralSkillName(
   return generalSkill === 'GeneralSkill_CHOSEN_BY_GM' ? '' : generalSkill;
 }
 
-function readFirstPurchasedItemId(items: unknown[]): string {
-  const first = items[0];
-  return first && typeof first === 'object' && typeof (first as Record<string, unknown>).itemId === 'string'
-    ? ((first as Record<string, unknown>).itemId as string)
-    : '';
+function readPurchasedQuantities(items: unknown[]): Record<string, number> {
+  const quantities: Record<string, number> = {};
+  for (const item of items) {
+    if (!item || typeof item !== 'object') {
+      continue;
+    }
+    const record = item as Record<string, unknown>;
+    if (typeof record.itemId !== 'string') {
+      continue;
+    }
+    const qty = typeof record.qty === 'number' ? record.qty : 1;
+    quantities[record.itemId] = (quantities[record.itemId] ?? 0) + qty;
+  }
+  return quantities;
 }
 
 function normalizePurchasesForBaseSkills(
@@ -1570,8 +1615,14 @@ function formatSkillList(skills: Array<{ skill: string; level: number }>): strin
 }
 
 function formatCartSummary(cart: { weapons: string[]; armor: string[]; shields: string[]; gear: string[] }): string {
-  const items = [...cart.weapons, ...cart.armor, ...cart.shields, ...cart.gear];
-  return items.length > 0 ? items.join(', ') : 'empty';
+  const counts = new Map<string, number>();
+  for (const itemId of [...cart.weapons, ...cart.armor, ...cart.shields, ...cart.gear]) {
+    counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
+  }
+  if (counts.size === 0) {
+    return 'empty';
+  }
+  return [...counts.entries()].map(([itemId, qty]) => (qty > 1 ? `${itemId} x${qty}` : itemId)).join(', ');
 }
 
 function formatSkillCostSchedule(
@@ -1598,32 +1649,14 @@ function formatSkillLevelOptionLabel(level: number, costExp: number | null, note
   return note ? `Lv${level} (${costExp} EXP, ${note})` : `Lv${level} (${costExp} EXP)`;
 }
 
-function toEquipmentOptions(
-  category: 'weapon' | 'armor' | 'shield',
-  availableMoney: number,
-  selection: WizardState['equipment'],
-  characterStrength: number
-): FieldOption[] {
-  return starterEquipmentOptions
-    .filter((option) => option.category === category)
-    .map((option) => ({
-      value: option.itemId,
-      label: `${option.label} (${option.costGamels}G, STR ${formatStrengthRequirement(option, characterStrength)})`,
-      disabled:
-        !isEquipmentOptionAffordable(category, option.itemId, availableMoney, selection) ||
-        !isWeaponStrengthAllowed(option, characterStrength),
-    }));
-}
-
 function formatStrengthRequirement(
-  option: (typeof starterEquipmentOptions)[number],
-  characterStrength: number
+  option: { reqStr: number; reqStrMin?: number; reqStrMax?: number }
 ): string {
-  if (option.category !== 'weapon' || option.reqStrMin === undefined) {
+  if (option.reqStrMin === undefined) {
     return String(option.reqStr);
   }
 
-  return formatStrengthRange(option.reqStrMin, option.reqStrMax, characterStrength);
+  return formatStrengthRange(option.reqStrMin, option.reqStrMax, option.reqStr);
 }
 
 function formatStrengthRange(min: number, max: number | undefined, characterStrength: number): string {
@@ -1649,35 +1682,237 @@ function formatStrengthRange(min: number, max: number | undefined, characterStre
 }
 
 function isWeaponStrengthAllowed(
-  option: (typeof starterEquipmentOptions)[number],
-  characterStrength: number
+  option: { category: string; canMeetRequiredStrength?: boolean; reqStr: number; reqStrMin?: number }
 ): boolean {
-  if (option.category !== 'weapon') {
+  if (option.category === 'gear') {
     return true;
   }
-  if (option.reqStrMin === undefined) {
-    return option.reqStr <= characterStrength;
+  return option.canMeetRequiredStrength ?? true;
+}
+
+function getInventoryQuantitiesKey(category: InventoryCategory): InventoryQuantitiesKey {
+  if (category === 'weapon') {
+    return 'weaponQuantities';
   }
-  return characterStrength >= option.reqStrMin;
+  if (category === 'armor') {
+    return 'armorQuantities';
+  }
+  if (category === 'shield') {
+    return 'shieldQuantities';
+  }
+  return 'gearQuantities';
 }
 
-function isEquipmentOptionAffordable(
-  category: 'weapon' | 'armor' | 'shield',
+function getEquipmentQuantities(
+  selection: WizardState['equipment'],
+  category: InventoryCategory
+): Record<string, number> {
+  return selection[getInventoryQuantitiesKey(category)];
+}
+
+function isEquipmentQuantityAffordable(
+  category: InventoryCategory,
   itemId: string,
+  quantity: number,
   availableMoney: number,
-  selection: WizardState['equipment']
+  selection: WizardState['equipment'],
+  options: ReturnType<typeof getEquipmentOptionsForStrength>
 ): boolean {
-  const nextSelection = {
+  const nextSelection: WizardState['equipment'] = {
     ...selection,
-    [category]: itemId,
+    [getInventoryQuantitiesKey(category)]: {
+      ...getEquipmentQuantities(selection, category),
+      [itemId]: quantity,
+    },
   };
-  const totalCost = [nextSelection.weapon, nextSelection.armor, nextSelection.shield].reduce(
-    (sum, selectedId) => sum + getEquipmentCost(selectedId),
-    0
-  );
-  return totalCost <= availableMoney;
+  return calculateEquipmentTotalCost(nextSelection, options) <= availableMoney;
 }
 
-function getEquipmentCost(itemId: string): number {
-  return starterEquipmentOptions.find((option) => option.itemId === itemId)?.costGamels ?? 0;
+function getEquipmentCost(itemId: string, options: ReturnType<typeof getEquipmentOptionsForStrength>): number {
+  return options.find((option) => option.itemId === itemId)?.costGamels ?? 0;
+}
+
+function calculateEquipmentTotalCost(
+  selection: WizardState['equipment'],
+  options: ReturnType<typeof getEquipmentOptionsForStrength>
+): number {
+  return (['weapon', 'armor', 'shield', 'gear'] as InventoryCategory[]).reduce((sum, category) => {
+    const quantities = getEquipmentQuantities(selection, category);
+    return (
+      sum +
+      Object.entries(quantities).reduce(
+        (categorySum, [itemId, qty]) => categorySum + getEquipmentCost(itemId, options) * qty,
+        0
+      )
+    );
+  }, 0);
+}
+
+function buildEquipmentCart(selection: WizardState['equipment']): {
+  weapons: string[];
+  armor: string[];
+  shields: string[];
+  gear: string[];
+} {
+  const toItems = (quantities: Record<string, number>) =>
+    Object.entries(quantities).flatMap(([itemId, qty]) => Array.from({ length: qty }, () => itemId));
+
+  return {
+    weapons: toItems(selection.weaponQuantities),
+    armor: toItems(selection.armorQuantities),
+    shields: toItems(selection.shieldQuantities),
+    gear: toItems(selection.gearQuantities),
+  };
+}
+
+function renderInventorySections(input: {
+  category: InventoryCategory;
+  title: string;
+  options: ReturnType<typeof getEquipmentOptionsForStrength>;
+  quantities: Record<string, number>;
+  availableMoney: number;
+  selection: WizardState['equipment'];
+  onQuantityChange: (category: InventoryCategory, itemId: string, quantity: number) => void;
+}): ReactNode {
+  const categoryOptions = input.options.filter((option) => option.category === input.category);
+  const groups = new Map<string, typeof categoryOptions>();
+  for (const option of categoryOptions) {
+    const existing = groups.get(option.group) ?? [];
+    existing.push(option);
+    groups.set(option.group, existing);
+  }
+
+  return (
+    <div className="l-col">
+      <h4 className="t-small">{input.title}</h4>
+      {[...groups.entries()].map(([group, options]) => (
+        <div key={`${input.category}-${group}`} className="l-col">
+          <h5 className="t-small">{formatGroupLabel(group)}</h5>
+          {options.map((option) => {
+            const quantity = input.quantities[option.itemId] ?? 0;
+            const isStrengthBlocked = !isWeaponStrengthAllowed(option);
+            const max = resolveMaxAffordableQuantity(
+              input.category,
+              option.itemId,
+              quantity,
+              input.availableMoney,
+              input.selection,
+              input.options,
+              option.variablePrice || isStrengthBlocked
+            );
+            const disableInput = option.variablePrice || (isStrengthBlocked && quantity === 0);
+
+            return (
+              <InventoryQuantityField
+                key={option.itemId}
+                label={formatInventoryItemLabel(option, quantity)}
+                max={max}
+                value={quantity}
+                disabled={disableInput}
+                onChange={(value) =>
+                  input.onQuantityChange(input.category, option.itemId, Math.max(0, Math.min(max, value)))
+                }
+                hint={formatInventoryItemHint(option, isStrengthBlocked)}
+              />
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function formatGroupLabel(group: string): string {
+  return group.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function formatInventoryItemLabel(
+  option: ReturnType<typeof getEquipmentOptionsForStrength>[number],
+  quantity: number
+): string {
+  const lineTotal = option.costGamels * quantity;
+  if (option.category === 'gear') {
+    return `${option.label} (${option.priceLabel}) [${lineTotal} G]`;
+  }
+  return `${option.label} (${option.priceLabel}, STR ${formatStrengthRequirement(option)})${option.usage ? `, ${option.usage}` : ''} [${lineTotal} G]`;
+}
+
+function formatInventoryItemHint(
+  option: ReturnType<typeof getEquipmentOptionsForStrength>[number],
+  isStrengthBlocked: boolean
+): string {
+  if (option.variablePrice) {
+    return 'Open-ended market price; minimum shown from the rulebook.';
+  }
+  if (isStrengthBlocked) {
+    return `Requires STR ${formatStrengthRequirement(option)}.`;
+  }
+  if (option.category === 'gear' && option.usedFor) {
+    return `Used for: ${formatGroupLabel(option.usedFor)}.`;
+  }
+  return ' ';
+}
+
+function toInventoryQuantitiesFromIds(itemIds: string[]): Record<string, number> {
+  const quantities: Record<string, number> = {};
+  for (const itemId of itemIds) {
+    quantities[itemId] = (quantities[itemId] ?? 0) + 1;
+  }
+  return quantities;
+}
+
+function resolveMaxAffordableQuantity(
+  category: InventoryCategory,
+  itemId: string,
+  currentQuantity: number,
+  availableMoney: number,
+  selection: WizardState['equipment'],
+  options: ReturnType<typeof getEquipmentOptionsForStrength>,
+  blocked: boolean
+): number {
+  if (blocked) {
+    return currentQuantity;
+  }
+
+  let max = currentQuantity;
+  while (
+    max < 99 &&
+    isEquipmentQuantityAffordable(category, itemId, max + 1, availableMoney, selection, options)
+  ) {
+    max += 1;
+  }
+  return max;
+}
+
+function InventoryQuantityField(props: {
+  label: string;
+  value: number;
+  max: number;
+  onChange: (value: number) => void;
+  disabled?: boolean;
+  hint?: string;
+}) {
+  const options = Array.from({ length: props.max + 1 }, (_, index) => index);
+
+  return (
+    <div className={`c-inventory-row ${props.disabled ? 'is-disabled' : ''}`.trim()}>
+      <div className="c-inventory-row__main">
+        <label className="c-inventory-row__label">{props.label}</label>
+        <select
+          className="c-field__control c-inventory-row__control"
+          value={String(props.value)}
+          disabled={props.disabled}
+          onChange={(event) => props.onChange(Number(event.target.value))}
+          aria-label={`${props.label} quantity`}
+        >
+          {options.map((quantity) => (
+            <option key={`${props.label}-${quantity}`} value={String(quantity)}>
+              {quantity}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="c-inventory-row__hint">{props.hint ?? ' '}</div>
+    </div>
+  );
 }

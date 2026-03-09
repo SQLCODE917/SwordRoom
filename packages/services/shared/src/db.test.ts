@@ -324,8 +324,8 @@ function makeDraft(): CharacterDraft {
       { skill: 'Fighter', level: 1 },
     ],
     purchases: {
-      weapons: [{ itemId: 'mage_staff', reqStr: 0, costGamels: 200 }],
-      armor: [{ itemId: 'cloth_armor', reqStr: 0, costGamels: 30 }],
+      weapons: [{ itemId: 'mage_staff', reqStr: 10, costGamels: 200 }],
+      armor: [{ itemId: 'cloth_armor', reqStr: 3, costGamels: 40 }],
       shields: [],
       gear: [],
     },

@@ -15,6 +15,7 @@
     "paths": {
       "@starter/engine": ["packages/engine/src"],
       "@starter/shared": ["packages/shared/src"],
+      "@starter/shared/*": ["packages/shared/src/*"],
       "@starter/services-api": ["packages/services/api/src"],
       "@starter/services-shared": ["packages/services/shared/src"],
       "@starter/services-dispatcher": ["packages/services/dispatcher/src"]

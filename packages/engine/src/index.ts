@@ -1,3 +1,4 @@
+import { resolveEffectiveRequiredStrength, resolvePrice } from '@starter/shared/rules/equipmentRoster';
 import type {
   AbilityScores,
   CharacterCreationState,
@@ -313,7 +314,13 @@ export function purchaseEquipment(
   const errors: EngineError[] = [];
 
   const allItemIds = [...input.cart.weapons, ...input.cart.armor, ...input.cart.shields, ...input.cart.gear];
-  const totalCost = allItemIds.reduce((sum, itemId) => sum + Number(catalog[itemId]?.cost_g ?? 0), 0);
+  const totalCost = allItemIds.reduce((sum, itemId) => {
+    const item = catalog[itemId];
+    if (!item) {
+      return sum;
+    }
+    return sum + resolveCatalogItemCost(item, charStr);
+  }, 0);
   const moneyAvailable = state.startingPackage?.startingMoneyGamels ?? 0;
 
   for (const itemId of allItemIds) {
@@ -322,7 +329,7 @@ export function purchaseEquipment(
       continue;
     }
 
-    const reqStr = item.req_str ?? 0;
+    const reqStr = resolveCatalogRequiredStrength(item, charStr);
     if (reqStr > charStr) {
       errors.push({
         code: 'EQUIPMENT_REQ_STR_TOO_HIGH',
@@ -330,6 +337,15 @@ export function purchaseEquipment(
         details: { itemId, reqStr, charStr },
       });
     }
+  }
+
+  const variablePriceItem = allItemIds.find((itemId) => isVariablePriceItem(catalog[itemId], charStr));
+  if (variablePriceItem) {
+    errors.push({
+      code: 'EQUIPMENT_RESTRICTED_BY_SKILL',
+      message: 'variable-price equipment cannot be auto-purchased during character creation',
+      details: { reason: 'VARIABLE_PRICE_ITEM_NOT_SUPPORTED_IN_CREATION', itemId: variablePriceItem },
+    });
   }
 
   if (totalCost > moneyAvailable) {
@@ -345,6 +361,7 @@ export function purchaseEquipment(
   const hasThief = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'thief');
   const hasRanger = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'ranger');
   const thiefArmorLimit = Math.ceil(charStr / 2);
+
   if (hasSorcerer) {
     if (input.cart.shields.length > 0) {
       errors.push({
@@ -401,32 +418,32 @@ export function purchaseEquipment(
   }
 
   if (hasRanger) {
-    const heavyArmor = input.cart.armor.find((itemId) => Number(catalog[itemId]?.req_str ?? 0) > thiefArmorLimit);
+    const heavyArmor = input.cart.armor.find((itemId) => resolveCatalogRequiredStrength(catalog[itemId], charStr) > thiefArmorLimit);
     if (heavyArmor) {
       errors.push({
         code: 'EQUIPMENT_RESTRICTED_BY_SKILL',
         message: 'ranger armor must be at most half STR',
-        details: { reason: 'RANGER_ARMOR_REQ_STR_TOO_HIGH', itemId: heavyArmor, reqStr: catalog[heavyArmor]?.req_str ?? 0, charStr },
+        details: { reason: 'RANGER_ARMOR_REQ_STR_TOO_HIGH', itemId: heavyArmor, reqStr: resolveCatalogRequiredStrength(catalog[heavyArmor], charStr), charStr },
       });
     }
   }
 
   if (hasThief) {
-    const heavyWeapon = input.cart.weapons.find((itemId) => Number(catalog[itemId]?.req_str ?? 0) > thiefArmorLimit);
+    const heavyWeapon = input.cart.weapons.find((itemId) => resolveCatalogRequiredStrength(catalog[itemId], charStr) > thiefArmorLimit);
     if (heavyWeapon) {
       errors.push({
         code: 'EQUIPMENT_RESTRICTED_BY_SKILL',
         message: 'thief weapon must be at most half STR',
-        details: { reason: 'THIEF_WEAPON_REQ_STR_TOO_HIGH', itemId: heavyWeapon, reqStr: catalog[heavyWeapon]?.req_str ?? 0, charStr },
+        details: { reason: 'THIEF_WEAPON_REQ_STR_TOO_HIGH', itemId: heavyWeapon, reqStr: resolveCatalogRequiredStrength(catalog[heavyWeapon], charStr), charStr },
       });
     }
 
-    const heavyArmor = input.cart.armor.find((itemId) => Number(catalog[itemId]?.req_str ?? 0) > thiefArmorLimit);
+    const heavyArmor = input.cart.armor.find((itemId) => resolveCatalogRequiredStrength(catalog[itemId], charStr) > thiefArmorLimit);
     if (heavyArmor) {
       errors.push({
         code: 'EQUIPMENT_RESTRICTED_BY_SKILL',
         message: 'thief armor must be at most half STR',
-        details: { reason: 'THIEF_ARMOR_REQ_STR_TOO_HIGH', itemId: heavyArmor, reqStr: catalog[heavyArmor]?.req_str ?? 0, charStr },
+        details: { reason: 'THIEF_ARMOR_REQ_STR_TOO_HIGH', itemId: heavyArmor, reqStr: resolveCatalogRequiredStrength(catalog[heavyArmor], charStr), charStr },
       });
     }
   }
@@ -605,6 +622,38 @@ function toDisplaySkillName(normalizedSkill: string): string {
 function hasAnyTag(item: ItemCatalogEntry | undefined, tags: string[]): boolean {
   const itemTags = item?.tags ?? [];
   return itemTags.some((tag) => tags.includes(String(tag)));
+}
+
+function resolveCatalogRequiredStrength(item: ItemCatalogEntry | undefined, characterStrength: number): number {
+  if (!item) {
+    return 0;
+  }
+  if (typeof item.req_str === 'number' && item.req_str_min === undefined) {
+    return item.req_str;
+  }
+  return resolveEffectiveRequiredStrength(
+    item.req_str_min !== undefined
+      ? item.req_str_max === null || item.req_str_max === undefined
+        ? `${item.req_str_min}~`
+        : `${item.req_str_min}~${item.req_str_max}`
+      : item.req_str ?? 0,
+    characterStrength
+  );
+}
+
+function resolveCatalogItemCost(item: ItemCatalogEntry, characterStrength: number): number {
+  if (typeof item.cost_g === 'number' && item.price_spec === undefined) {
+    return item.cost_g;
+  }
+  const effectiveRequiredStrength = resolveCatalogRequiredStrength(item, characterStrength);
+  return resolvePrice(item.price_spec ?? item.cost_g ?? 0, effectiveRequiredStrength).costGamels;
+}
+
+function isVariablePriceItem(item: ItemCatalogEntry | undefined, characterStrength: number): boolean {
+  if (!item) {
+    return false;
+  }
+  return resolvePrice(item.price_spec ?? item.cost_g ?? 0, resolveCatalogRequiredStrength(item, characterStrength)).variablePrice;
 }
 
 function zeroAbility(): AbilityScores {

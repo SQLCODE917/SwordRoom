@@ -86,8 +86,8 @@ describe('computeEquipmentPreview', () => {
 
     expect(equipment.errors).toContain('sorcerer cannot use shield');
     expect(equipment.errors).toContain('sorcerer requires mage_staff');
-    expect(equipment.totalCost).toBe(90);
-    expect(equipment.moneyRemaining).toBe(1710);
+    expect(equipment.totalCost).toBe(100);
+    expect(equipment.moneyRemaining).toBe(1700);
   });
 });
 

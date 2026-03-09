@@ -106,6 +106,11 @@ export interface ItemCatalogEntry {
   category: string;
   cost_g?: number;
   req_str?: number;
+  req_str_min?: number;
+  req_str_max?: number | null;
+  price_spec?: string | number;
+  usage?: string;
+  used_for?: string;
   tags?: string[];
 }
 

@@ -1,16 +1,12 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'node:path';
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@starter/shared': resolve(__dirname, '../shared/src/index.ts'),
+      '@starter/shared/rules/equipmentRoster': fileURLToPath(
+        new URL('../shared/src/rules/equipmentRoster.ts', import.meta.url)
+      ),
     },
-  },
-  test: {
-    globals: true,
-    environment: 'node',
-    include: ['src/**/*.test.ts'],
-    exclude: ['node_modules/', 'dist/'],
   },
 });

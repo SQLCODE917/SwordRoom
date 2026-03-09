@@ -10,6 +10,13 @@ import {
   type StartingPackageTables,
   type SubAbility,
 } from '@starter/engine';
+import {
+  equipmentRoster,
+  equipmentRosterById,
+  resolveEquipmentRosterItem,
+  type EquipmentRosterCategory,
+  type EquipmentRosterItem,
+} from '../../../shared/src/rules/equipmentRoster';
 import type { HalfElfRaisedBy, Race } from './characterCreationReference';
 
 export interface BackgroundOption {
@@ -26,11 +33,18 @@ export interface SkillOption {
 export interface EquipmentOption {
   itemId: string;
   label: string;
-  category: 'weapon' | 'armor' | 'shield';
+  category: EquipmentRosterCategory;
+  group: string;
+  usage?: string;
   costGamels: number;
+  priceLabel: string;
+  variablePrice: boolean;
+  canMeetRequiredStrength: boolean;
   reqStr: number;
   reqStrMin?: number;
   reqStrMax?: number;
+  tags?: string[];
+  usedFor?: string;
 }
 
 export interface StartingPackagePreview {
@@ -88,14 +102,9 @@ export const skillOptions: SkillOption[] = [
   { skill: 'Sorcerer', label: 'Sorcerer', maxLevel: 2 },
 ];
 
-export const starterEquipmentOptions: EquipmentOption[] = [
-  { itemId: 'mage_staff', label: "Mage's Staff", category: 'weapon', costGamels: 200, reqStr: 0, reqStrMin: 1, reqStrMax: 10 },
-  { itemId: 'broadsword', label: 'Broadsword', category: 'weapon', costGamels: 200, reqStr: 8, reqStrMin: 8, reqStrMax: 16 },
-  { itemId: 'cloth_armor', label: 'Cloth Armor', category: 'armor', costGamels: 30, reqStr: 0 },
-  { itemId: 'soft_leather_armor', label: 'Soft Leather Armor', category: 'armor', costGamels: 80, reqStr: 4 },
-  { itemId: 'ring_mail', label: 'Ring Mail', category: 'armor', costGamels: 160, reqStr: 10 },
-  { itemId: 'small_shield', label: 'Small Shield', category: 'shield', costGamels: 60, reqStr: 6 },
-];
+export const starterEquipmentOptions: EquipmentOption[] = equipmentRoster.map((item) =>
+  toEquipmentOption(item, 10)
+);
 
 const startingPackageTables: StartingPackageTables = {
   backgroundsRows: {
@@ -212,14 +221,22 @@ const startingPackageTables: StartingPackageTables = {
   },
 };
 
-const itemCatalog: Record<string, ItemCatalogEntry> = {
-  mage_staff: { category: 'weapon', cost_g: 200, req_str: 0, tags: ['SORCERER_REQUIRED'] },
-  cloth_armor: { category: 'armor', cost_g: 30, req_str: 0, tags: ['LIGHT'] },
-  soft_leather_armor: { category: 'armor', cost_g: 80, req_str: 4, tags: ['LIGHT'] },
-  ring_mail: { category: 'armor', cost_g: 160, req_str: 10, tags: ['METAL_EXCEPTION_FOR_RANGER_THIEF'] },
-  small_shield: { category: 'shield', cost_g: 60, req_str: 6, tags: [] },
-  broadsword: { category: 'weapon', cost_g: 200, req_str: 8, tags: [] },
-};
+const itemCatalog: Record<string, ItemCatalogEntry> = Object.fromEntries(
+  Object.values(equipmentRosterById).map((item) => [
+    item.itemId,
+    {
+      category: item.category,
+      cost_g: resolveEquipmentRosterItem(item.itemId, 10)?.costGamels ?? 0,
+      req_str: resolveEquipmentRosterItem(item.itemId, 10)?.effectiveReqStr ?? 0,
+      req_str_min: resolveEquipmentRosterItem(item.itemId, 10)?.reqStrMin ?? 0,
+      req_str_max: resolveEquipmentRosterItem(item.itemId, 10)?.reqStrMax ?? null,
+      price_spec: item.priceSpec,
+      usage: item.usage,
+      used_for: item.usedFor,
+      tags: item.tags ?? [],
+    },
+  ])
+);
 
 const creationSkillCosts: Record<string, Record<number, number>> = {
   fighter: { 1: 1500, 2: 1500, 3: 1500 },
@@ -276,6 +293,18 @@ export function computeStartingPackagePreview(input: {
     startingPackageTables
   );
 
+  if (applied.errors.length > 0) {
+    return {
+      state: null,
+      errors: applied.errors.map((error) => error.message),
+      backgroundName: null,
+      startingSkills: [],
+      expTotal: 0,
+      expUnspent: 0,
+      moneyGamels: 0,
+    };
+  }
+
   return {
     state: applied.state,
     errors: applied.errors.map((error) => error.message),
@@ -301,6 +330,14 @@ export function computeSkillPurchasePreview(
   }
 
   const spent = spendStartingExp(startingState, { purchases });
+  if (spent.errors.length > 0) {
+    return {
+      state: null,
+      errors: spent.errors.map((error) => error.message),
+      skills: spent.state.skills,
+      expUnspent: spent.state.startingPackage?.expUnspent ?? 0,
+    };
+  }
   return {
     state: spent.state,
     errors: spent.errors.map((error) => error.message),
@@ -322,17 +359,29 @@ export function computeEquipmentPreview(
     };
   }
 
-  const totalCost = [...cart.weapons, ...cart.armor, ...cart.shields, ...cart.gear].reduce(
-    (sum, itemId) => sum + Number(itemCatalog[itemId]?.cost_g ?? 0),
-    0
-  );
+  const totalCost = [...cart.weapons, ...cart.armor, ...cart.shields, ...cart.gear].reduce((sum, itemId) => {
+    const resolved = resolveEquipmentRosterItem(itemId, state.ability?.str ?? 0);
+    return sum + Number(resolved?.costGamels ?? 0);
+  }, 0);
   const purchased = purchaseEquipment(state, { cart }, itemCatalog);
+  if (purchased.errors.length > 0) {
+    return {
+      state: null,
+      errors: purchased.errors.map((error) => error.message),
+      moneyRemaining: (state.startingPackage?.startingMoneyGamels ?? 0) - totalCost,
+      totalCost,
+    };
+  }
   return {
     state: purchased.state,
     errors: purchased.errors.map((error) => error.message),
     moneyRemaining: (state.startingPackage?.startingMoneyGamels ?? 0) - totalCost,
     totalCost,
   };
+}
+
+export function getEquipmentOptionsForStrength(characterStrength: number): EquipmentOption[] {
+  return equipmentRoster.map((item) => toEquipmentOption(item, characterStrength));
 }
 
 export function describeSkillLevelCosts(
@@ -394,4 +443,24 @@ function rollD6(rng: () => number): number {
 
 function normalizeSkillName(skill: string): string {
   return skill.trim().toLowerCase();
+}
+
+function toEquipmentOption(item: EquipmentRosterItem, characterStrength: number): EquipmentOption {
+  const resolved = resolveEquipmentRosterItem(item.itemId, characterStrength);
+  return {
+    itemId: item.itemId,
+    label: item.label,
+    category: item.category,
+    group: item.group,
+    usage: item.usage,
+    costGamels: resolved?.costGamels ?? 0,
+    priceLabel: resolved?.priceLabel ?? String(item.priceSpec),
+    variablePrice: resolved?.variablePrice ?? false,
+    canMeetRequiredStrength: resolved?.canMeetRequiredStrength ?? true,
+    reqStr: resolved?.effectiveReqStr ?? 0,
+    reqStrMin: resolved?.reqStrMin ?? 0,
+    reqStrMax: resolved?.reqStrMax ?? undefined,
+    tags: item.tags ?? [],
+    usedFor: item.usedFor,
+  };
 }

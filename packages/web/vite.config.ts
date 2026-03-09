@@ -5,10 +5,20 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      '@starter/engine': fileURLToPath(new URL('../engine/src/index.ts', import.meta.url)),
-      '@starter/shared': fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)),
-    },
+    alias: [
+      {
+        find: '@starter/shared/rules/equipmentRoster',
+        replacement: fileURLToPath(new URL('../shared/src/rules/equipmentRoster.ts', import.meta.url)),
+      },
+      {
+        find: '@starter/engine',
+        replacement: fileURLToPath(new URL('../engine/src/index.ts', import.meta.url)),
+      },
+      {
+        find: '@starter/shared',
+        replacement: fileURLToPath(new URL('../shared/src/index.ts', import.meta.url)),
+      },
+    ],
   },
   server: {
     host: true,

@@ -224,6 +224,44 @@
   color: var(--muted);
 }
 
+.c-inventory-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.c-inventory-row__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.c-inventory-row__label {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+
+.c-inventory-row__control {
+  width: 88px;
+  flex: 0 0 auto;
+}
+
+.c-inventory-row__hint {
+  min-height: 18px;
+  font-size: var(--fs-1);
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.c-inventory-row.is-disabled .c-inventory-row__control {
+  background: var(--panel);
+  color: var(--muted);
+}
+
 .c-stepper {
   display: flex;
   flex-direction: column;

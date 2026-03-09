@@ -1,3 +1,4 @@
+import { equipmentRosterById, resolveEquipmentRosterItem } from '@starter/shared';
 import {
   applyStartingPackage,
   computeAbilitiesAndBonuses,
@@ -49,7 +50,7 @@ export function toCharacterDraft(previous: CharacterItem, state: CharacterCreati
       : previous.draft.background,
     skills: state.skills,
     purchases: state.equipmentCart
-      ? toPurchaseDraft(state.equipmentCart, loadItemCatalogRaw())
+      ? toPurchaseDraft(state.equipmentCart, loadItemCatalogRaw(), state.ability?.str ?? 0)
       : previous.draft.purchases,
     identity: {
       ...previous.draft.identity,
@@ -158,19 +159,33 @@ function toStringArray(value: unknown): string[] {
 
 function toPurchaseDraft(
   cart: EquipmentCart,
-  itemCatalog: Record<string, { req_str?: number; cost_g?: number }>
+  itemCatalog: Record<string, { req_str?: number; req_str_min?: number; req_str_max?: number | null; cost_g?: number; price_spec?: string | number }>,
+  characterStrength: number
 ): CharacterDraft['purchases'] {
-  const mapItem = (itemId: string) => ({
-    itemId,
-    reqStr: Number(itemCatalog[itemId]?.req_str ?? 0),
-    costGamels: Number(itemCatalog[itemId]?.cost_g ?? 0),
-  });
+  const mapItem = (itemId: string) => {
+    const resolved = resolveEquipmentRosterItem(itemId, characterStrength);
+    return {
+      itemId,
+      reqStr: Number(resolved?.effectiveReqStr ?? itemCatalog[itemId]?.req_str ?? 0),
+      costGamels: Number(resolved?.costGamels ?? itemCatalog[itemId]?.cost_g ?? 0),
+    };
+  };
+
+  const aggregatedGear = new Map<string, { qty: number; costGamels: number }>();
+  for (const itemId of cart.gear) {
+    const resolved = resolveEquipmentRosterItem(itemId, characterStrength);
+    const existing = aggregatedGear.get(itemId) ?? { qty: 0, costGamels: 0 };
+    aggregatedGear.set(itemId, {
+      qty: existing.qty + 1,
+      costGamels: existing.costGamels + Number(resolved?.costGamels ?? itemCatalog[itemId]?.cost_g ?? 0),
+    });
+  }
 
   return {
     weapons: cart.weapons.map(mapItem),
     armor: cart.armor.map(mapItem),
     shields: cart.shields.map(mapItem),
-    gear: cart.gear.map((itemId) => ({ itemId, qty: 1, costGamels: Number(itemCatalog[itemId]?.cost_g ?? 0) })),
+    gear: [...aggregatedGear.entries()].map(([itemId, value]) => ({ itemId, qty: value.qty, costGamels: value.costGamels })),
   };
 }
 
@@ -183,14 +198,29 @@ export function loadStartingPackageTables(): StartingPackageTables {
   };
 }
 
-function loadItemCatalogRaw(): Record<string, { category: string; req_str?: number; cost_g?: number; tags?: string[] }> {
-  const fixtures = loadVerticalSliceFixtures() as Record<string, unknown>;
-  const engineContract = fixtures.engine_contract as Record<string, any>;
-  const rules = engineContract.minimal_item_catalog_rules_for_slice as Record<string, any>;
-  return (rules.items ?? {}) as Record<string, { category: string; req_str?: number; cost_g?: number; tags?: string[] }>;
+function loadItemCatalogRaw(): Record<string, { category: string; req_str?: number; req_str_min?: number; req_str_max?: number | null; cost_g?: number; price_spec?: string | number; tags?: string[]; usage?: string; used_for?: string }> {
+  return Object.fromEntries(
+    Object.values(equipmentRosterById).map((item) => {
+      const resolved = resolveEquipmentRosterItem(item.itemId, 10);
+      return [
+        item.itemId,
+        {
+          category: item.category,
+          req_str: resolved?.effectiveReqStr ?? 0,
+          req_str_min: resolved?.reqStrMin ?? 0,
+          req_str_max: resolved?.reqStrMax ?? null,
+          cost_g: resolved?.costGamels ?? 0,
+          price_spec: item.priceSpec,
+          tags: item.tags ?? [],
+          usage: item.usage,
+          used_for: item.usedFor,
+        },
+      ];
+    })
+  );
 }
 
-export function loadItemCatalog(): Record<string, { category: string; req_str?: number; cost_g?: number; tags?: string[] }> {
+export function loadItemCatalog(): Record<string, { category: string; req_str?: number; req_str_min?: number; req_str_max?: number | null; cost_g?: number; price_spec?: string | number; tags?: string[]; usage?: string; used_for?: string }> {
   return loadItemCatalogRaw();
 }
 

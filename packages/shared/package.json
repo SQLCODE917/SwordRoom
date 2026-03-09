@@ -30,6 +30,11 @@
       "import": "./dist/fixtures/index.js",
       "default": "./dist/fixtures/index.js",
       "types": "./dist/fixtures/index.d.ts"
+    },
+    "./rules/equipmentRoster": {
+      "import": "./dist/rules/equipmentRoster.js",
+      "default": "./dist/rules/equipmentRoster.js",
+      "types": "./dist/rules/equipmentRoster.d.ts"
     }
   },
   "scripts": {
