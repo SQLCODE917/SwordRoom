@@ -32,6 +32,9 @@ export const saveCharacterDraftPayloadSchema = z.object({
   }),
   backgroundRoll2dTotal: z.number().int().optional(),
   startingMoneyRoll2dTotal: z.number().int().optional(),
+  craftsmanSkill: z.string().optional(),
+  merchantScholarChoice: z.enum(['MERCHANT', 'SAGE']).optional(),
+  generalSkillName: z.string().optional(),
   identity: z
     .object({
       name: z.string(),

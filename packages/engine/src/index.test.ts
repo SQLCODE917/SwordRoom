@@ -129,6 +129,48 @@ describe('Phase 1 - applyStartingPackage', () => {
     expect(result.errors[0]?.code).toBe('MISSING_BACKGROUND_ROLL');
     expect(result.state).toEqual(before);
   });
+
+  it('requires Merchant or Sage choice for background roll 8', () => {
+    const state = computeAbilitiesAndBonuses(
+      createDraftState({
+        characterId: 'char-merchant-choice',
+        race: 'HUMAN',
+        subAbility: { A: 7, B: 7, C: 7, D: 7, E: 7, F: 7, G: 7, H: 7 },
+      })
+    ).state;
+
+    const result = applyStartingPackage(
+      state,
+      {
+        backgroundRoll2dTotal: 8,
+        startingMoneyRoll2dTotal: 7,
+      },
+      tables
+    );
+
+    expect(result.errors[0]?.code).toBe('MISSING_STARTING_PACKAGE_CHOICE');
+  });
+
+  it('requires a GM-selected general skill for ordinary citizen', () => {
+    const state = computeAbilitiesAndBonuses(
+      createDraftState({
+        characterId: 'char-general-choice',
+        race: 'HUMAN',
+        subAbility: { A: 7, B: 7, C: 7, D: 7, E: 7, F: 7, G: 7, H: 7 },
+      })
+    ).state;
+
+    const result = applyStartingPackage(
+      state,
+      {
+        backgroundRoll2dTotal: 7,
+        startingMoneyRoll2dTotal: 7,
+      },
+      tables
+    );
+
+    expect(result.errors[0]?.code).toBe('GENERAL_SKILL_REQUIRES_GM_CHOICE');
+  });
 });
 
 describe('Phase 1 - spendStartingExp', () => {
@@ -213,6 +255,64 @@ describe('Phase 1 - spendStartingExp', () => {
     expect(spend.errors[0]?.code).toBe('SORCERER_SAGE_BUNDLE_REQUIRED');
     expect(spend.state).toEqual(before);
   });
+
+  it('charges the Sorcerer + Sage bundle at 2000 EXP', () => {
+    const state = createDraftState({
+      characterId: 'char-sorc-bundle',
+      race: 'HUMAN',
+      skills: [{ skill: 'Fighter', level: 1 }],
+      startingPackage: {
+        source: 'BACKGROUND_TABLE_1_5',
+        startingSkills: [{ skill: 'Fighter', level: 1 }],
+        startingExpTotal: 3000,
+        expUnspent: 3000,
+        startingMoneyGamels: 0,
+        restrictions: [],
+      },
+    });
+
+    const spend = spendStartingExp(state, {
+      purchases: [
+        { skill: 'Sorcerer', targetLevel: 1 },
+        { skill: 'Sage', targetLevel: 1 },
+      ],
+    });
+
+    expect(spend.errors).toEqual([]);
+    expect(spend.state.startingPackage?.expUnspent).toBe(1000);
+    expect(spend.state.skills).toEqual([
+      { skill: 'Fighter', level: 1 },
+      { skill: 'Sorcerer', level: 1 },
+      { skill: 'Sage', level: 1 },
+    ]);
+  });
+
+  it('charges Sorcerer 1 at 1500 EXP when Sage 1 already exists', () => {
+    const state = createDraftState({
+      characterId: 'char-sorc-after-sage',
+      race: 'HUMAN',
+      skills: [{ skill: 'Sage', level: 1 }],
+      startingPackage: {
+        source: 'BACKGROUND_TABLE_1_5',
+        startingSkills: [{ skill: 'Sage', level: 1 }],
+        startingExpTotal: 2500,
+        expUnspent: 2500,
+        startingMoneyGamels: 0,
+        restrictions: [],
+      },
+    });
+
+    const spend = spendStartingExp(state, {
+      purchases: [{ skill: 'Sorcerer', targetLevel: 1 }],
+    });
+
+    expect(spend.errors).toEqual([]);
+    expect(spend.state.startingPackage?.expUnspent).toBe(1000);
+    expect(spend.state.skills).toEqual([
+      { skill: 'Sage', level: 1 },
+      { skill: 'Sorcerer', level: 1 },
+    ]);
+  });
 });
 
 describe('Phase 1 - purchaseEquipment', () => {
@@ -276,6 +376,14 @@ describe('Phase 1 - purchaseEquipment', () => {
           level: Number(skill.level),
         })),
         ability: ((minimal.ability ?? {}) as Partial<CharacterCreationState['ability']>) ?? {},
+        startingPackage: {
+          source: 'BACKGROUND_TABLE_1_5',
+          startingSkills: [],
+          startingExpTotal: 0,
+          expUnspent: 0,
+          startingMoneyGamels: 9999,
+          restrictions: [],
+        },
       });
 
       const before = structuredClone(state);
@@ -292,6 +400,37 @@ describe('Phase 1 - purchaseEquipment', () => {
       expect(result.errors.map((error) => error.code)).toEqual(expectedCodes);
       expect(result.state).toEqual(before);
     }
+  });
+
+  it('returns INSUFFICIENT_STARTING_MONEY when cart cost exceeds available money', () => {
+    const state = createDraftState({
+      characterId: 'char-low-money',
+      race: 'HUMAN',
+      ability: { str: 10 },
+      startingPackage: {
+        source: 'BACKGROUND_TABLE_1_5',
+        startingSkills: [],
+        startingExpTotal: 0,
+        expUnspent: 0,
+        startingMoneyGamels: 50,
+        restrictions: [],
+      },
+    });
+
+    const result = purchaseEquipment(
+      state,
+      {
+        cart: {
+          weapons: ['broadsword'],
+          armor: [],
+          shields: [],
+          gear: [],
+        },
+      },
+      itemCatalog
+    );
+
+    expect(result.errors.map((error) => error.code)).toEqual(['INSUFFICIENT_STARTING_MONEY']);
   });
 });
 

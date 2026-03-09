@@ -104,6 +104,7 @@ export interface SpendPurchaseInput {
 
 export interface ItemCatalogEntry {
   category: string;
+  cost_g?: number;
   req_str?: number;
   tags?: string[];
 }

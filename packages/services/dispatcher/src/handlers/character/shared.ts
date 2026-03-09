@@ -37,10 +37,16 @@ export function toCharacterDraft(previous: CharacterItem, state: CharacterCreati
           expTotal: state.startingPackage.startingExpTotal,
           expUnspent: state.startingPackage.expUnspent,
           moneyGamels: state.startingPackage.startingMoneyGamels,
-          moneyRoll2d: state.startingPackage.backgroundRoll2dTotal ?? null,
+          moneyRoll2d: previous.draft.starting.moneyRoll2d,
           startingSkills: state.startingPackage.startingSkills,
         }
       : previous.draft.starting,
+    background: state.startingPackage
+      ? {
+          kind: toBackgroundKind(state.startingPackage),
+          roll2d: state.startingPackage.backgroundRoll2dTotal ?? null,
+        }
+      : previous.draft.background,
     skills: state.skills,
     purchases: state.equipmentCart
       ? toPurchaseDraft(state.equipmentCart, loadItemCatalogRaw())
@@ -184,13 +190,8 @@ function loadItemCatalogRaw(): Record<string, { category: string; req_str?: numb
   return (rules.items ?? {}) as Record<string, { category: string; req_str?: number; cost_g?: number; tags?: string[] }>;
 }
 
-export function loadItemCatalog(): Record<string, { category: string; req_str?: number; tags?: string[] }> {
-  const raw = loadItemCatalogRaw();
-  const out: Record<string, { category: string; req_str?: number; tags?: string[] }> = {};
-  for (const [key, value] of Object.entries(raw)) {
-    out[key] = { category: value.category, req_str: value.req_str, tags: value.tags };
-  }
-  return out;
+export function loadItemCatalog(): Record<string, { category: string; req_str?: number; cost_g?: number; tags?: string[] }> {
+  return loadItemCatalogRaw();
 }
 
 export function computeAndValidate(state: CharacterCreationState): CharacterCreationState {
@@ -205,6 +206,9 @@ export function applyStartingAndValidate(
     backgroundRoll2dTotal?: number;
     startingMoneyRoll2dTotal?: number;
     useOrdinaryCitizenShortcut?: boolean;
+    craftsmanSkill?: string;
+    merchantScholarChoice?: 'MERCHANT' | 'SAGE';
+    generalSkillName?: string;
   }
 ): CharacterCreationState {
   const result = applyStartingPackage(state, input, loadStartingPackageTables());
@@ -225,4 +229,19 @@ export function purchaseAndValidate(state: CharacterCreationState, cart: Equipme
   const result = purchaseEquipment(state, { cart }, loadItemCatalog());
   throwOnEngineErrors(result.errors);
   return result.state;
+}
+
+function toBackgroundKind(
+  startingPackage: CharacterCreationState['startingPackage']
+): CharacterDraft['background']['kind'] {
+  if (!startingPackage?.backgroundName) {
+    return null;
+  }
+
+  const normalized = startingPackage.backgroundName.trim().toUpperCase();
+  if (normalized === 'MERCHANT / SCHOLAR' || normalized === 'MERCHANT/SCHOLAR') {
+    return startingPackage.startingSkills.some((skill) => skill.skill === 'Merchant') ? 'MERCHANT' : 'SCHOLAR';
+  }
+
+  return normalized.replace(/\s+/g, '_') as CharacterDraft['background']['kind'];
 }

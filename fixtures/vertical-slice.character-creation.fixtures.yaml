@@ -226,12 +226,14 @@ engine_contract:
     - "MISSING_RAISED_BY_FOR_HALF_ELF"
     - "MISSING_SUBABILITY"
     - "MISSING_BACKGROUND_ROLL"
+    - "MISSING_STARTING_PACKAGE_CHOICE"
     - "GENERAL_SKILL_REQUIRES_GM_CHOICE"
     - "EXP_INSUFFICIENT"
     - "GENERAL_SKILL_NOT_ALLOWED_WITH_STARTING_EXP"
     - "SORCERER_SAGE_BUNDLE_REQUIRED"
     - "EQUIPMENT_RESTRICTED_BY_SKILL"
     - "EQUIPMENT_REQ_STR_TOO_HIGH"
+    - "INSUFFICIENT_STARTING_MONEY"
     - "MISSING_REQUIRED_EQUIPMENT"
     - "CHARACTER_NOT_COMPLETE"
   minimal_item_catalog_rules_for_slice:
@@ -343,8 +345,8 @@ fixtures:
         starting_exp_total: 2000
         starting_money_gamels: 1800
       exp_after_spend:
-        spentExpExpected: 500
-        unspentExpExpected: 1500
+        spentExpExpected: 1500
+        unspentExpExpected: 500
         skillsExpected:
           - { skill: "Sorcerer", level: 1 }
           - { skill: "Sage", level: 1 }

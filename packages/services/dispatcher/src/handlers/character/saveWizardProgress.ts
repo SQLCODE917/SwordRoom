@@ -57,6 +57,9 @@ export const saveDraftHandler: CommandHandler<'SaveCharacterDraft'> = async (ctx
     engineState = applyStartingAndValidate(engineState, {
       backgroundRoll2dTotal: envelope.payload.backgroundRoll2dTotal,
       startingMoneyRoll2dTotal: envelope.payload.startingMoneyRoll2dTotal,
+      craftsmanSkill: envelope.payload.craftsmanSkill,
+      merchantScholarChoice: envelope.payload.merchantScholarChoice,
+      generalSkillName: envelope.payload.generalSkillName,
     });
   }
 
@@ -73,6 +76,22 @@ export const saveDraftHandler: CommandHandler<'SaveCharacterDraft'> = async (ctx
 
   const nextDraft: CharacterDraft = {
     ...toCharacterDraft(previous, engineState),
+    background:
+      engineState.startingPackage?.source === 'BACKGROUND_TABLE_1_5'
+        ? {
+            kind: toSavedBackgroundKind(engineState.startingPackage.backgroundName, engineState.startingPackage.startingSkills),
+            roll2d: envelope.payload.backgroundRoll2dTotal ?? previous.draft.background.roll2d,
+          }
+        : previous.draft.background,
+    starting: engineState.startingPackage
+      ? {
+          expTotal: engineState.startingPackage.startingExpTotal,
+          expUnspent: engineState.startingPackage.expUnspent,
+          moneyGamels: engineState.startingPackage.startingMoneyGamels,
+          moneyRoll2d: envelope.payload.startingMoneyRoll2dTotal ?? previous.draft.starting.moneyRoll2d,
+          startingSkills: engineState.startingPackage.startingSkills,
+        }
+      : previous.draft.starting,
     identity: envelope.payload.identity
       ? {
           name: envelope.payload.identity.name,
@@ -184,4 +203,20 @@ function toStringArray(value: unknown): string[] {
     return [];
   }
   return value.map((item) => String(item));
+}
+
+function toSavedBackgroundKind(
+  backgroundName: string | undefined,
+  startingSkills: Array<{ skill: string; level: number }>
+): CharacterDraft['background']['kind'] {
+  if (!backgroundName) {
+    return null;
+  }
+
+  const normalized = backgroundName.trim().toUpperCase();
+  if (normalized === 'MERCHANT / SCHOLAR' || normalized === 'MERCHANT/SCHOLAR') {
+    return startingSkills.some((skill) => skill.skill === 'Merchant') ? 'MERCHANT' : 'SCHOLAR';
+  }
+
+  return normalized.replace(/\s+/g, '_') as CharacterDraft['background']['kind'];
 }

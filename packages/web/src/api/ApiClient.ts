@@ -21,6 +21,9 @@ interface CommandPayloadByType {
     subAbility: { A: number; B: number; C: number; D: number; E: number; F: number; G: number; H: number };
     backgroundRoll2dTotal?: number;
     startingMoneyRoll2dTotal?: number;
+    craftsmanSkill?: string;
+    merchantScholarChoice?: 'MERCHANT' | 'SAGE';
+    generalSkillName?: string;
     identity: {
       name: string;
       age?: number | null;

@@ -70,6 +70,9 @@ export async function submitSaveCharacterDraft(
     subAbility: SubAbilityScores;
     backgroundRoll2dTotal?: number;
     startingMoneyRoll2dTotal?: number;
+    craftsmanSkill?: string;
+    merchantScholarChoice?: 'MERCHANT' | 'SAGE';
+    generalSkillName?: string;
     identity: {
       name: string;
       age: number | null;
@@ -94,6 +97,9 @@ export async function submitSaveCharacterDraft(
       subAbility: input.subAbility,
       backgroundRoll2dTotal: input.backgroundRoll2dTotal,
       startingMoneyRoll2dTotal: input.startingMoneyRoll2dTotal,
+      craftsmanSkill: input.craftsmanSkill,
+      merchantScholarChoice: input.merchantScholarChoice,
+      generalSkillName: input.generalSkillName,
       identity: input.identity,
       purchases: input.purchases,
       cart: input.cart,

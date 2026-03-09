@@ -1,0 +1,794 @@
+source:
+  title: "Sword World RPG - Complete Edition"
+  file_reference: "/mnt/data/Sword World RPG - Complete Edition.pdf"
+  scope: "Character creation rules and tables requested by user"
+  notes:
+    - "This file captures only the requested rules/tables from Chapter 1."
+    - "Dice notation: 1D = one six-sided die, 2D = two six-sided dice summed, 1/2D = half of one die rounded up."
+    - "Unless otherwise stated, fractions are rounded up in this game."
+
+rules:
+  background_selection:
+    applies_to:
+      - human
+      - half_elf_raised_by_humans
+    procedure:
+      - "Roll 2D on Table 1-5: Backgrounds."
+      - "Use the row indicated by the roll to determine starting skills, starting experience points, and starting money formula."
+    special_cases:
+      ordinary_citizen:
+        trigger_roll: 7
+        rule:
+          - "Consult the game master to determine one appropriate general skill."
+          - "Acquire that general skill at level 3."
+          - "Both player and GM should clearly know what that chosen general skill can do."
+      merchant_scholar:
+        trigger_roll: 8
+        rule:
+          - "Choose either Merchant 3 or Sage 1 as the starting skill result."
+          - "If Merchant is acquired, the character must come from the merchant background."
+          - "If Sage is acquired, the character may come from either the merchant or scholar background."
+      optional_background_handling:
+        rule:
+          - "The backgrounds table does not always have to be used."
+          - "Players may create a character as if they were always an ordinary citizen."
+          - "Special backgrounds such as noble or rune master require game master permission."
+  starting_skills_experience_money:
+    humans_and_half_elves_raised_by_humans:
+      rule:
+        - "Use Table 1-5: Backgrounds."
+    non_humans_and_half_elves_raised_by_elves:
+      rule:
+        - "Use Table 1-6: Starting Experience by Race."
+    spending_starting_experience:
+      rule:
+        - "Starting experience points may be used to acquire new adventurer skills or increase adventurer skills already acquired."
+        - "General skills cannot be acquired or increased using starting experience points."
+        - "Experience points are spent per attained level."
+        - "You may acquire multiple adventurer skills if you have enough experience points."
+        - "Starting experience points do not have to be fully spent."
+      special_sorcerer_rule:
+        - "If a character has neither Sorcerer nor Sage, they may acquire Sorcerer 1 and Sage 1 together for 2000 experience points."
+        - "If a character already has Sage 1, they may acquire Sorcerer 1 for 1500 experience points."
+        - "A character who has neither Sorcerer nor Sage may not acquire only Sorcerer 1 for 1500 points."
+  age_selection:
+    general:
+      - "Age and gender have no numeric or mechanical effect on character ability."
+      - "Do not choose an age implying the character is an undeveloped child or a physically declining elder."
+      - "Newly created characters are assumed to be relatively inexperienced."
+    human:
+      suggested_range:
+        min: 15
+        max_approx: 30
+      notes:
+        - "Human lifespan is about 100 years, but average lifespan in Alecrast is about 50 years due to underdeveloped medical care."
+    race_guidelines:
+      dwarf:
+        recognized_adult_at_around: 30
+      grassrunner:
+        recognized_adult_at_around: 40
+      elf:
+        recognized_adult_at_around: 100
+      half_elf_raised_by_humans:
+        recognized_adult_at_around: 15
+      half_elf_raised_by_elves:
+        recognized_adult_at_around: "later than human adulthood; use elf-society guidance"
+      notes:
+        - "For races other than humans, physical maturity around age 20 is possible, but social adulthood generally occurs later."
+        - "Half-elves are known to have shorter lifespans than elves and may be pushed out of elf society around age 30."
+  purchasing_weapons_and_armor:
+    general_rule:
+      - "Choose weapons and armor whose required strength equals the character's strength whenever possible."
+      - "Do not purchase a weapon whose required strength range does not include the character's strength."
+      - "Required strength is considered separately for weapon, shield, and armor; do not sum them together."
+      - "Under basic rules, a character can be armed with either one-handed weapon + shield + armor or two-handed weapon + armor."
+      - "One-handed weapon + armor or two-handed weapon without armor are also possible."
+      - "Carrying spare weapons is allowed within common sense."
+      - "Holding two weapons at once or holding two shields is useless under the basic rules."
+    one_handed_vs_two_handed:
+      - "2H weapons deal more damage than 1H weapons of the same required strength."
+      - "A 2H weapon prevents shield use."
+      - "Usage notation: 1H = one-handed, 2H = two-handed, 1~2H = usable in one or both hands."
+    projectile_rules:
+      - "Weapons marked made for throwing or shooting are strictly projectile weapons and cannot be used in melee."
+      - "Weapons marked throwable are normally melee weapons that can also be thrown."
+    price_calculation:
+      - "Weapon and armor prices are calculated by applying required strength to the listed formula."
+      - "Example: broadsword at required strength 14 costs 14 x 20 + 40 = 320 gamels."
+  weapon_and_armor_restrictions:
+    general_strength_restriction:
+      - "Characters may not use weapons or armor with required strength greater than their own strength."
+    skill_based_purchase_guidelines:
+      fighter:
+        - "No special restrictions."
+        - "Choose weapons and armor whose required strength equals the character's strength."
+        - "Required strength below the character's strength yields incomplete attack/defense compared with an ideally sized weapon/armor."
+      thief:
+        - "To fully use thief skill, weapons and armor must require at most half the character's strength, rounded up."
+        - "Metal armor other than ring mail may not be used, regardless of strength."
+        - "Choose non-metal armor or ring mail."
+      ranger:
+        - "To fully use ranger skill, armor must require at most half the character's strength, rounded up."
+        - "Metal armor other than ring mail may not be used, regardless of strength."
+        - "Choose non-metal armor or ring mail."
+        - "Weapons have no purchase restriction, but ranger combat ability applies to projectile weapons, not melee weapons."
+        - "Projectile-friendly weapon tags in Table 1-8 are throwable, made for throwing, and shooting."
+      sorcerer:
+        - "Armor must be cloth armor or soft leather armor."
+        - "Choose the highest required strength version within the character's strength range."
+        - "Do not buy a shield."
+        - "Must buy a mage's staff."
+        - "If character strength <= 10, mage's staff required strength should equal character strength."
+        - "If character strength >= 10, mage's staff required strength should be 10."
+      shaman:
+        - "Armor is limited to cloth armor, soft leather armor, or hard leather armor."
+        - "Choose the highest required strength version within the character's strength range."
+        - "Do not buy a shield."
+        - "Because no shield is used, choosing a 2H weapon is recommended where possible."
+      sage_bard_priest:
+        - "No special weapon or armor restrictions."
+        - "If these are the only acquired skills, choose weapons and armor whose required strength equals the character's strength."
+    multiple_skills:
+      - "If the character has both unrestricted and restricted skills, equipment must conform to the restricted skill if the player wants full use of both skills."
+  equipment:
+    rule:
+      - "After purchasing weapons, armor, and shields, use remaining money to buy other equipment from Table 1-11."
+      - "Sword World RPG does not use explicit encumbrance/weight limits for this equipment."
+      - "Use common sense instead; characters cannot carry absurd quantities such as 1000 torches or 1 kilometer of rope."
+
+tables:
+  table_1_5_backgrounds:
+    roll_method: "2D"
+    rows:
+      - roll: 2
+        background: savage
+        starting_skills:
+          - { skill: fighter, level: 1 }
+          - { skill: ranger, level: 1 }
+        starting_experience_points: 2000
+        money_formula: "2D * 100"
+      - roll: 3
+        background: rune_master
+        starting_skills:
+          - { skill: sorcerer, level: 1 }
+          - { skill: sage, level: 1 }
+        starting_experience_points: 2000
+        money_formula: "2D * 200"
+      - roll: 4
+        background: villain
+        starting_skills:
+          - { skill: thief, level: 1 }
+        starting_experience_points: 2500
+        money_formula: "2D * 200"
+      - roll: 5
+        background: traveler
+        starting_skills:
+          - { skill: bard, level: 1 }
+        starting_experience_points: 3000
+        money_formula: "2D * 200"
+      - roll: 6
+        background: hunter
+        starting_skills:
+          - { skill: ranger, level: 1 }
+        starting_experience_points: 3000
+        money_formula: "2D * 200"
+      - roll: 7
+        background: ordinary_citizen
+        starting_skills:
+          - {
+              skill: general_skill,
+              level: 3,
+              note: "Choose with GM consultation",
+            }
+        starting_experience_points: 3000
+        money_formula: "2D * 200"
+      - roll: 8
+        background: merchant_scholar
+        starting_skills:
+          - {
+              choice_of:
+                [{ skill: merchant, level: 3 }, { skill: sage, level: 1 }],
+            }
+        starting_experience_points: 3000
+        money_formula: "2D * 200"
+      - roll: 9
+        background: mercenary
+        starting_skills:
+          - { skill: fighter, level: 1 }
+        starting_experience_points: 2500
+        money_formula: "2D * 200"
+      - roll: 10
+        background: priest
+        starting_skills:
+          - { skill: priest, level: 1 }
+        starting_experience_points: 2500
+        money_formula: "2D * 200"
+      - roll: 11
+        background: curse_specialist
+        starting_skills:
+          - { skill: shaman, level: 1 }
+        starting_experience_points: 2000
+        money_formula: "2D * 200"
+      - roll: 12
+        background: noble
+        starting_skills:
+          - { skill: fighter, level: 1 }
+          - { skill: sage, level: 1 }
+        starting_experience_points: 2000
+        money_formula: "2D * 500"
+
+  table_1_6_starting_experience_by_race:
+    rows:
+      - race: human
+        restrictions_special_abilities:
+          - "Refer to Table 1-5: Backgrounds"
+        pre_adventure_experience_points: "same as Table 1-5 result"
+        money: "same as Table 1-5 result"
+      - race: dwarf
+        restrictions_special_abilities:
+          - "Has 5 levels in a craftsman skill"
+          - "Can see in the dark"
+          - "Unable to acquire the shaman skill"
+          - "Unable to acquire the sorcerer skill"
+        pre_adventure_experience_points: 3000
+        money: "2D * 300"
+      - race: grassrunner
+        restrictions_special_abilities:
+          - "Has 1 level in the ranger skill"
+          - "Has 1 level in the thief skill"
+          - "Can communicate with plants and insects"
+          - "Cannot acquire any rune master skills"
+        pre_adventure_experience_points: 3000
+        money: "2D * 200"
+      - race: elf
+        restrictions_special_abilities:
+          - "Has 1 level in the shaman skill"
+          - "Cannot acquire the priest skill"
+        pre_adventure_experience_points: 2000
+        money: "2D * 200"
+      - race: half_elf
+        restrictions_special_abilities:
+          - "When raised by elves, characteristics are the same as elves"
+          - "When raised by humans, characteristics are the same as humans"
+        pre_adventure_experience_points: "same as upbringing model"
+        money: "same as upbringing model"
+
+  table_1_7_experience_points_by_skill_at_character_creation:
+    interpretation_notes:
+      - "Rows list the experience point cost to attain the listed skill level."
+      - "Blank cells mean no special entry is listed in the table for that skill/level combination."
+    costs:
+      sorcerer_and_sage_at_the_same_time:
+        1: 2000
+      sorcerer:
+        1: 2000
+        2: 2000
+      sorcerer_with_sage:
+        1: 1500
+      shaman:
+        1: 1500
+      fighter:
+        1: 1500
+        2: 1500
+        3: 1500
+      thief:
+        1: 1000
+        2: 1000
+      priest:
+        1: 1000
+      ranger:
+        1: 500
+      sage:
+        1: 1000
+      bard:
+        1: 500
+
+  table_1_8_weapons_1:
+    categories:
+      swords:
+        - {
+            name: dagger,
+            tags: [throwable],
+            usage: "1H",
+            required_strength: "1~5",
+            price_calculation: "x10+20",
+          }
+        - {
+            name: main_gauche,
+            usage: "1H",
+            required_strength: "1~5",
+            price_calculation: "x20+20",
+          }
+        - {
+            name: swordbreaker,
+            usage: "1H",
+            required_strength: "1~5",
+            price_calculation: "x20+40",
+          }
+        - {
+            name: katar,
+            usage: "1H",
+            required_strength: "3~5",
+            price_calculation: "x10+30",
+          }
+        - {
+            name: shortsword,
+            usage: "1H",
+            required_strength: "3~8",
+            price_calculation: "x10+30",
+          }
+        - {
+            name: cutlass,
+            usage: "1H",
+            required_strength: "6~12",
+            price_calculation: "x20+40",
+          }
+        - {
+            name: rapier,
+            usage: "1H",
+            required_strength: "6~14",
+            price_calculation: "x10+90",
+          }
+        - {
+            name: saber,
+            usage: "1H",
+            required_strength: "7~14",
+            price_calculation: "x20+50",
+          }
+        - {
+            name: scimitar,
+            usage: "1H",
+            required_strength: "8~14",
+            price_calculation: "x20+50",
+          }
+        - {
+            name: broadsword,
+            usage: "1H",
+            required_strength: "8~16",
+            price_calculation: "x20+40",
+          }
+        - {
+            name: falchion,
+            usage: "1H",
+            required_strength: "12~16",
+            price_calculation: "x20+60",
+          }
+        - {
+            name: bastard_sword,
+            usage: "1~2H",
+            required_strength: "13~17",
+            price_calculation: "x30+50",
+          }
+        - {
+            name: estoc,
+            usage: "2H",
+            required_strength: "11~16",
+            price_calculation: "x30+40",
+          }
+        - {
+            name: shamshir,
+            usage: "2H",
+            required_strength: "14~",
+            price_calculation: "x40+70",
+          }
+        - {
+            name: flamberge,
+            usage: "2H",
+            required_strength: "15~21",
+            price_calculation: "x40+80",
+          }
+        - {
+            name: greatsword,
+            usage: "2H",
+            required_strength: "16~",
+            price_calculation: "x40+60",
+          }
+      axes:
+        - {
+            name: hand_ax,
+            tags: [throwable],
+            usage: "1H",
+            required_strength: "4~11",
+            price_calculation: "x10+20",
+          }
+        - {
+            name: battle_ax,
+            usage: "1~2H",
+            required_strength: "10~20",
+            price_calculation: "x20+40",
+          }
+        - {
+            name: great_ax,
+            usage: "2H",
+            required_strength: "18~",
+            price_calculation: "x20+50",
+          }
+      spears:
+        - {
+            name: javelin,
+            tags: [throwable],
+            usage: "1H",
+            required_strength: "1~10",
+            price_calculation: "x10+15",
+          }
+        - {
+            name: short_spear,
+            tags: [throwable],
+            usage: "1H",
+            required_strength: "2~13",
+            price_calculation: "x10+10",
+          }
+        - {
+            name: trident,
+            tags: [throwable],
+            usage: "1H",
+            required_strength: "4~16",
+            price_calculation: "x10+20",
+          }
+        - {
+            name: longspear,
+            usage: "1~2H",
+            required_strength: "4~20",
+            price_calculation: "x10+20",
+          }
+        - {
+            name: pike,
+            usage: "2H",
+            required_strength: "10~",
+            price_calculation: "x10+40",
+          }
+      maces:
+        - {
+            name: light_mace,
+            usage: "1H",
+            required_strength: "5~12",
+            price_calculation: "x20+20",
+          }
+        - {
+            name: heavy_mace,
+            usage: "1~2H",
+            required_strength: "9~16",
+            price_calculation: "x20+30",
+          }
+        - {
+            name: maul,
+            usage: "2H",
+            required_strength: "16~",
+            price_calculation: "x20+40",
+          }
+      clubs:
+        - {
+            name: boomerang,
+            tags: [made_for_throwing],
+            usage: "1H",
+            required_strength: "1~9",
+            price_calculation: "x10+10",
+          }
+        - {
+            name: club,
+            tags: [throwable],
+            usage: "1H",
+            required_strength: "1~",
+            price_calculation: "x5+10",
+          }
+      staves:
+        - {
+            name: mages_staff,
+            usage: "2H",
+            required_strength: "1~10",
+            price_calculation: "x10+100",
+          }
+        - {
+            name: big_club,
+            usage: "2H",
+            required_strength: "1~",
+            price_calculation: "x10+10x",
+            notes:
+              [
+                "The text appears in the source as x10+10x; preserved as-is because the source transcription contains this form.",
+              ],
+          }
+        - {
+            name: quarterstaff,
+            usage: "2H",
+            required_strength: "8~",
+            price_calculation: "x10+20",
+          }
+
+  table_1_8_weapons_2:
+    categories:
+      flails:
+        - {
+            name: light_flail,
+            usage: "1H",
+            required_strength: "7~14",
+            price_calculation: "x10+20",
+          }
+        - {
+            name: morning_star,
+            usage: "1H",
+            required_strength: "11~19",
+            price_calculation: "x20+40",
+          }
+        - {
+            name: heavy_flail,
+            usage: "1~2H",
+            required_strength: "10~",
+            price_calculation: "x20+40",
+          }
+      war_hammers:
+        - {
+            name: pickax,
+            usage: "1H",
+            required_strength: "2~10",
+            price_calculation: "x20+20",
+          }
+        - {
+            name: war_hammer,
+            usage: "1H",
+            required_strength: "6~19",
+            price_calculation: "x20+30",
+          }
+        - {
+            name: mattock,
+            usage: "2H",
+            required_strength: "10~",
+            price_calculation: "x20+40",
+          }
+      bows:
+        - {
+            name: short_bow,
+            tags: [shooting],
+            usage: "2H",
+            required_strength: "2~8",
+            price_calculation: "x10+40",
+          }
+        - {
+            name: longbow,
+            tags: [shooting],
+            usage: "2H",
+            required_strength: "6~",
+            price_calculation: "x10+50",
+          }
+      crossbows:
+        - {
+            name: light_crossbow,
+            usage: "2H",
+            required_strength: "5~15",
+            price_calculation: "x20+60",
+          }
+        - {
+            name: heavy_crossbow,
+            usage: "2H",
+            required_strength: "10~",
+            price_calculation: "x30+80",
+          }
+      slings:
+        - {
+            name: sling,
+            tags: [shooting],
+            usage: "1H",
+            required_strength: "1~8",
+            price_calculation: "x10+10",
+          }
+        - {
+            name: staff_sling,
+            tags: [shooting],
+            usage: "2H",
+            required_strength: "1~14",
+            price_calculation: "x10+20",
+          }
+      rocks:
+        - {
+            name: rock,
+            tags: [made_for_throwing],
+            usage: "1H",
+            required_strength: "1~",
+            price_calculation: "0",
+          }
+      entangling_weapons:
+        - {
+            name: whip,
+            usage: "1H",
+            required_strength: "5",
+            price_calculation: "150",
+          }
+        - {
+            name: net,
+            tags: [throwable],
+            usage: "1H",
+            required_strength: "7",
+            price_calculation: "200",
+          }
+        - {
+            name: bola,
+            tags: [made_for_throwing],
+            usage: "1H",
+            required_strength: "3",
+            price_calculation: "80",
+          }
+      cranequin_crossbows:
+        - {
+            name: light_cranequin_crossbow,
+            tags: [shooting],
+            usage: "2H",
+            required_strength: "5~15",
+            price_calculation: "x30+90",
+          }
+        - {
+            name: heavy_cranequin_crossbow,
+            tags: [shooting],
+            usage: "2H",
+            required_strength: "10~",
+            price_calculation: "x45+120",
+          }
+        - {
+            name: ballista,
+            tags: [shooting],
+            usage: "2H",
+            required_strength: "20~",
+            price_calculation: "x60+200",
+          }
+      other:
+        - {
+            name: pole_weapon,
+            usage: "2H",
+            required_strength: "10~",
+            price_calculation: "x30+50",
+          }
+        - {
+            name: lance,
+            usage: "1H",
+            required_strength: "12~",
+            price_calculation: "x30+60",
+          }
+        - {
+            name: shotel,
+            usage: "1H",
+            required_strength: "8~16",
+            price_calculation: "x20+50",
+          }
+        - {
+            name: cestus,
+            usage: "1H",
+            required_strength: "1~5",
+            price_calculation: "x10+10",
+          }
+        - {
+            name: blackjack,
+            usage: "1H",
+            required_strength: "1~4",
+            price_calculation: "x10+10",
+          }
+        - {
+            name: garrote,
+            usage: "2H",
+            required_strength: "1",
+            price_calculation: "5",
+          }
+        - {
+            name: prodd,
+            tags: [shooting],
+            usage: "2H",
+            required_strength: "5~15",
+            price_calculation: "x20+60",
+          }
+        - {
+            name: dart,
+            tags: [made_for_throwing],
+            usage: "1H",
+            required_strength: "1~3",
+            price_calculation: "x5+10",
+          }
+      arrows_and_ammunition:
+        - { name: arrows, used_for: bows, price: "10 for 12" }
+        - { name: quarrels, used_for: crossbows, price: "10 for 12" }
+        - { name: bullets, used_for: slings, price: "5 for 20" }
+
+  table_1_9_armor:
+    rows:
+      - {
+          category: non_metal_armor,
+          name: cloth_armor,
+          required_strength: "1~3",
+          price_calculation: "x10+10",
+        }
+      - {
+          category: non_metal_armor,
+          name: soft_leather_armor,
+          required_strength: "2~7",
+          price_calculation: "x15+20",
+        }
+      - {
+          category: non_metal_armor,
+          name: hard_leather_armor,
+          required_strength: "5~13",
+          price_calculation: "x30+30",
+        }
+      - {
+          category: metal_armor,
+          name: ring_mail_armor,
+          required_strength: "5~12",
+          price_calculation: "x30+40",
+        }
+      - {
+          category: metal_armor,
+          name: splint_armor,
+          required_strength: "8~17",
+          price_calculation: "x40+50",
+        }
+      - {
+          category: metal_armor,
+          name: chain_mail_armor,
+          required_strength: "10~19",
+          price_calculation: "x50+50",
+        }
+      - {
+          category: metal_armor,
+          name: lamellar_armor,
+          required_strength: "11~22",
+          price_calculation: "x70+70",
+        }
+      - {
+          category: metal_armor,
+          name: plate_armor,
+          required_strength: "13~",
+          price_calculation: "x100+100",
+        }
+
+  table_1_10_shields:
+    rows:
+      - { name: small_shield, required_strength: 1, price: 60 }
+      - { name: large_shield, required_strength: 13, price: 300 }
+
+  table_1_11_equipment:
+    categories:
+      bags:
+        - { name: rucksack_leather, price_in_gamels: 50 }
+        - { name: bag_cloth, price_in_gamels: 15 }
+        - { name: pouch_cloth, price_in_gamels: 5 }
+        - { name: handbag_cloth, price_in_gamels: 10 }
+        - { name: belt_pouch_leather, price_in_gamels: 15 }
+        - { name: water_bag_leather, price_in_gamels: 20 }
+      camping_tools:
+        - { name: mantle, price_in_gamels: 40 }
+        - { name: blanket, price_in_gamels: 50 }
+        - { name: tent_for_5_people, price_in_gamels: 300 }
+        - { name: tableware_set, price_in_gamels: 12 }
+        - { name: cooking_utensils_set, price_in_gamels: 50 }
+      lighting_equipment:
+        - { name: torch_6_lasts_2_hours_each, price_in_gamels: 5 }
+        - { name: lantern, price_in_gamels: 40 }
+        - { name: tinderbox, price_in_gamels: 20 }
+        - {
+            name: oil_1_bottle_for_lantern_lasts_12_hours_each,
+            price_in_gamels: 5,
+          }
+      adventuring_tools:
+        - { name: rope_10_meters, price_in_gamels: 10 }
+        - { name: wedges_10, price_in_gamels: 20 }
+        - { name: small_hammer, price_in_gamels: 10 }
+        - { name: hand_mirror, price_in_gamels: 100 }
+      other:
+        - { name: parchment_10_sheets, price_in_gamels: 10 }
+        - { name: quill_pen_and_ink, price_in_gamels: 5 }
+        - { name: thieves_tools, price_in_gamels: 100 }
+        - { name: musical_instrument, price_in_gamels: "100+" }
+      food:
+        - { name: one_serving, price_in_gamels: "3+" }
+        - { name: one_serving_of_rations, price_in_gamels: "7+" }
+        - { name: wine_1_cup, price_in_gamels: "2+" }
+        - { name: ale_1_cup, price_in_gamels: "1+" }
+      horses:
+        - { name: pack_horse, price_in_gamels: 1500 }
+        - { name: riding_horse, price_in_gamels: 5000 }
+        - { name: warhorse, price_in_gamels: 10000 }
+        - { name: mule, price_in_gamels: 1000 }
+        - { name: donkey, price_in_gamels: 800 }
+        - { name: camel, price_in_gamels: 2000 }
+      lodging:
+        - { name: one_night_not_including_food, price_in_gamels: "30+" }
+        - { name: one_week_not_including_food, price_in_gamels: "150+" }
+        - { name: one_month_not_including_food, price_in_gamels: "300+" }
+      living_expenses:
+        - { name: one_day, price_in_gamels: "10+" }

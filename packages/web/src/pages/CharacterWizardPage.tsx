@@ -5,6 +5,8 @@ import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { Stepper, type StepperItem } from '../components/Stepper';
 import {
+  HALF_ELF_RAISED_BY,
+  RACES,
   backgroundsByRoll,
   computeAbilityBonus,
   computeDerivedAbilities,
@@ -16,6 +18,17 @@ import {
   type SubAbilityKey,
   type SubAbilityScores,
 } from '../data/characterCreationReference';
+import {
+  backgroundOptions,
+  computeEquipmentPreview,
+  computeSkillPurchasePreview,
+  computeStartingPackagePreview,
+  describeSkillLevelCosts,
+  roll2dTotal,
+  skillOptions,
+  starterEquipmentOptions,
+  toSingleSelectCart,
+} from '../data/characterCreationPurchasing';
 import {
   goodHumanRuneMasterAutofill,
   submitCharacterForApproval,
@@ -40,41 +53,31 @@ interface WizardState {
   subAbility: SubAbilityScores;
   backgroundRoll2dTotal: number;
   moneyRoll2dTotal: number;
+  craftsmanSkill: string;
+  merchantScholarChoice: '' | 'MERCHANT' | 'SAGE';
+  generalSkillName: string;
   name: string;
   gender: string;
   age: string;
-  fighterLevel: number;
-  cart: {
-    mage_staff: boolean;
-    cloth_armor: boolean;
+  purchases: Array<{ skill: string; targetLevel: number }>;
+  equipment: {
+    weapon: string;
+    armor: string;
+    shield: string;
   };
   submitNoteToGm: string;
 }
 
-function buildInitialState(): WizardState {
-  return {
-    gameId: 'game-1',
-    characterId: 'char-human-1',
-    race: 'HUMAN',
-    raisedBy: 'HUMANS',
-    subAbility: rollSubAbilitiesForRace('HUMAN'),
-    backgroundRoll2dTotal: 3,
-    moneyRoll2dTotal: 9,
-    name: '',
-    gender: '',
-    age: '',
-    fighterLevel: 1,
-    cart: {
-      mage_staff: true,
-      cloth_armor: true,
-    },
-    submitNoteToGm: 'Ready for review',
-  };
+type WizardStepKey = 'race' | 'dice' | 'background' | 'identity' | 'exp' | 'equipment' | 'submit';
+type SaveButtonState = 'idle' | 'saving' | 'saved';
+
+interface FieldOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
 }
 
 const stepTitles = ['Race', 'Dice A-H', 'Background rolls', 'Name/identity', 'EXP spend', 'Equipment cart', 'Submit'];
-type WizardStepKey = 'race' | 'dice' | 'background' | 'identity' | 'exp' | 'equipment' | 'submit';
-type SaveButtonState = 'idle' | 'saving' | 'saved';
 
 const initialSaveButtonState: Record<WizardStepKey, SaveButtonState> = {
   race: 'idle',
@@ -85,6 +88,45 @@ const initialSaveButtonState: Record<WizardStepKey, SaveButtonState> = {
   equipment: 'idle',
   submit: 'idle',
 };
+
+const rollOptions: FieldOption[] = Array.from({ length: 11 }, (_, index) => {
+  const total = index + 2;
+  return { value: String(total), label: String(total) };
+});
+
+const raceOptions: FieldOption[] = RACES.map((race) => ({ value: race, label: race }));
+const raisedByOptions: FieldOption[] = HALF_ELF_RAISED_BY.map((value) => ({ value, label: value }));
+const merchantScholarOptions: FieldOption[] = [
+  { value: '', label: 'Choose one' },
+  { value: 'MERCHANT', label: 'Merchant 3' },
+  { value: 'SAGE', label: 'Sage 1' },
+];
+const emptyEquipmentOption: FieldOption = { value: '', label: 'None' };
+
+function buildInitialState(): WizardState {
+  return {
+    gameId: 'game-1',
+    characterId: 'char-human-1',
+    race: 'HUMAN',
+    raisedBy: 'HUMANS',
+    subAbility: rollSubAbilitiesForRace('HUMAN'),
+    backgroundRoll2dTotal: 3,
+    moneyRoll2dTotal: 9,
+    craftsmanSkill: '',
+    merchantScholarChoice: '',
+    generalSkillName: '',
+    name: '',
+    gender: '',
+    age: '',
+    purchases: [],
+    equipment: {
+      weapon: '',
+      armor: '',
+      shield: '',
+    },
+    submitNoteToGm: 'Ready for review',
+  };
+}
 
 export function CharacterWizardPage() {
   const auth = useAuthProvider();
@@ -168,14 +210,56 @@ export function CharacterWizardPage() {
 
   const derived = useMemo(() => computeDerivedAbilities(state.subAbility), [state.subAbility]);
   const backgroundEligible = resolveBackgroundEligibility(state.race, state.raisedBy);
-  const backgroundLabel = backgroundsByRoll[state.backgroundRoll2dTotal] ?? 'No background result for this roll.';
+  const isDwarfPath = state.race === 'DWARF';
+  const equipmentCart = useMemo(() => toSingleSelectCart(state.equipment), [state.equipment]);
+  const startingPreview = useMemo(
+    () =>
+      computeStartingPackagePreview({
+        characterId: state.characterId,
+        race: state.race,
+        raisedBy: state.raisedBy,
+        subAbility: state.subAbility,
+        backgroundRoll2dTotal: backgroundEligible ? state.backgroundRoll2dTotal : undefined,
+        startingMoneyRoll2dTotal: state.moneyRoll2dTotal,
+        craftsmanSkill: state.craftsmanSkill.trim() || undefined,
+        merchantScholarChoice: state.merchantScholarChoice || undefined,
+        generalSkillName: state.generalSkillName.trim() || undefined,
+      }),
+    [
+      backgroundEligible,
+      state.backgroundRoll2dTotal,
+      state.characterId,
+      state.craftsmanSkill,
+      state.generalSkillName,
+      state.merchantScholarChoice,
+      state.moneyRoll2dTotal,
+      state.race,
+      state.raisedBy,
+      state.subAbility,
+    ]
+  );
+  const purchasePreview = useMemo(
+    () => computeSkillPurchasePreview(startingPreview.state, state.purchases),
+    [startingPreview.state, state.purchases]
+  );
+  const equipmentPreview = useMemo(
+    () => computeEquipmentPreview(purchasePreview.state, equipmentCart),
+    [equipmentCart, purchasePreview.state]
+  );
   const nameError = state.name.trim() === '' ? 'Name is required.' : ' ';
   const stateFingerprint = useMemo(() => serializeWizardState(state), [state]);
   const isDirty = lastSavedFingerprint === null || lastSavedFingerprint !== stateFingerprint;
   const canEditDraft = snapshot?.status !== 'PENDING' && snapshot?.status !== 'APPROVED';
-  const isDraftReadyForSubmit = state.name.trim() !== '';
-  const canSubmitForApproval =
-    !isExecutingCommand && canEditDraft && isDraftReadyForSubmit;
+  const previewErrors = [...startingPreview.errors, ...purchasePreview.errors, ...equipmentPreview.errors];
+  const isDraftReadyForSubmit =
+    state.name.trim() !== '' &&
+    startingPreview.state !== null &&
+    purchasePreview.state !== null &&
+    equipmentPreview.state !== null &&
+    previewErrors.length === 0;
+  const canSubmitForApproval = !isExecutingCommand && canEditDraft && isDraftReadyForSubmit;
+  const backgroundLabel = backgroundsByRoll[state.backgroundRoll2dTotal] ?? 'No background result for this roll.';
+  const availableMoney = purchasePreview.state?.startingPackage?.startingMoneyGamels ?? 0;
 
   const steps: StepperItem[] = [
     {
@@ -186,21 +270,24 @@ export function CharacterWizardPage() {
           <FieldSelect
             label="Race"
             value={state.race}
-            options={['HUMAN', 'DWARF', 'GRASSRUNNER', 'ELF', 'HALF_ELF']}
-            onChange={(value) => setState((prev) => ({ ...prev, race: value as Race }))}
+            options={raceOptions}
+            onChange={(value) => handleRaceChange(value as Race)}
             disabled={isExecutingCommand}
           />
           <FieldSelect
             label="Raised by"
             value={state.raisedBy}
-            options={['HUMANS', 'ELVES']}
-            onChange={(value) => setState((prev) => ({ ...prev, raisedBy: value as HalfElfRaisedBy }))}
+            options={raisedByOptions}
+            onChange={(value) => handleRaisedByChange(value as HalfElfRaisedBy)}
             disabled={state.race !== 'HALF_ELF' || isExecutingCommand}
             hint="Only used when race is HALF_ELF."
           />
-          <div className="c-note c-note--info">
-            <span className="t-small">Save writes the current race and resets draft-dependent values for that race.</span>
-          </div>
+          <InfoList
+            lines={[
+              `Background table path: ${backgroundEligible ? 'Table 1-5' : 'Race table 1-6'}`,
+              `Current derived STR / MP preview: ${derived.STR} / ${derived.MP}`,
+            ]}
+          />
         </WizardStep>
       ),
       action: renderSaveButton('race', activeStepIndex === 0),
@@ -270,7 +357,7 @@ export function CharacterWizardPage() {
                 className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
                 type="button"
                 disabled={isExecutingCommand}
-                onClick={() => setState((prev) => ({ ...prev, subAbility: rollSubAbilitiesForRace(prev.race) }))}
+                onClick={() => setState((prev) => ({ ...prev, subAbility: rollSubAbilitiesForRace(prev.race), purchases: [] }))}
               >
                 Roll A-H
               </button>
@@ -295,28 +382,87 @@ export function CharacterWizardPage() {
     {
       id: 'step-background',
       title: stepTitles[2]!,
+      isError: startingPreview.errors.length > 0,
       panel: (
         <WizardStep title="3) Background rolls" enabled={activeStepIndex === 2}>
-          <fieldset className="l-col" disabled={!backgroundEligible || isExecutingCommand}>
-            <FieldNumber
-              label="Background roll total"
-              value={state.backgroundRoll2dTotal}
-              min={2}
-              max={12}
-              onChange={(value) => setState((prev) => ({ ...prev, backgroundRoll2dTotal: clamp(value, 2, 12) }))}
-              hint="Enabled only for HUMAN and HALF_ELF raised by HUMANS."
+          <fieldset className="l-col" disabled={isExecutingCommand}>
+            {backgroundEligible ? (
+              <>
+                <FieldSelect
+                  label="Background result"
+                  value={String(state.backgroundRoll2dTotal)}
+                  options={backgroundOptions.map((option) => ({
+                    value: String(option.roll),
+                    label: `${option.roll} - ${option.label}`,
+                  }))}
+                  onChange={(value) => setState((prev) => ({ ...prev, backgroundRoll2dTotal: Number(value), purchases: [] }))}
+                />
+                <button
+                  className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
+                  type="button"
+                  disabled={isExecutingCommand}
+                  onClick={() => setState((prev) => ({ ...prev, backgroundRoll2dTotal: roll2dTotal(), purchases: [] }))}
+                >
+                  Roll Background 2D
+                </button>
+                {state.backgroundRoll2dTotal === 8 ? (
+                  <FieldSelect
+                    label="Merchant / Scholar choice"
+                    value={state.merchantScholarChoice}
+                    options={merchantScholarOptions}
+                    onChange={(value) =>
+                      setState((prev) => ({
+                        ...prev,
+                        merchantScholarChoice: value as WizardState['merchantScholarChoice'],
+                        purchases: normalizePurchasesForBaseSkills(prev.purchases, startingPreview.startingSkills),
+                      }))
+                    }
+                    hint="Merchant 3 or Sage 1 must be selected for background roll 8."
+                  />
+                ) : null}
+                {state.backgroundRoll2dTotal === 7 ? (
+                  <FieldText
+                    label="GM-approved general skill"
+                    value={state.generalSkillName}
+                    onChange={(value) => setState((prev) => ({ ...prev, generalSkillName: value }))}
+                    hint="Required for Ordinary Citizen."
+                  />
+                ) : null}
+              </>
+            ) : null}
+            {isDwarfPath ? (
+              <FieldText
+                label="Craftsman skill"
+                value={state.craftsmanSkill}
+                onChange={(value) => setState((prev) => ({ ...prev, craftsmanSkill: value }))}
+                hint="Dwarves start with one level 5 craftsman skill."
+              />
+            ) : null}
+            <FieldSelect
+              label="Starting money roll"
+              value={String(state.moneyRoll2dTotal)}
+              options={rollOptions}
+              onChange={(value) => setState((prev) => ({ ...prev, moneyRoll2dTotal: Number(value) }))}
+              hint="Manual select or roll 2D."
             />
-            <FieldNumber
-              label="Money roll total"
-              value={state.moneyRoll2dTotal}
-              min={2}
-              max={12}
-              onChange={(value) => setState((prev) => ({ ...prev, moneyRoll2dTotal: clamp(value, 2, 12) }))}
-            />
+            <button
+              className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
+              type="button"
+              disabled={isExecutingCommand}
+              onClick={() => setState((prev) => ({ ...prev, moneyRoll2dTotal: roll2dTotal() }))}
+            >
+              Roll Money 2D
+            </button>
           </fieldset>
-          <div className="c-note c-note--info">
-            <span className="t-small">{backgroundEligible ? backgroundLabel : 'Background table not applicable.'}</span>
-          </div>
+          <InfoList
+            lines={[
+              backgroundEligible ? backgroundLabel : 'Background table not applicable for this race path.',
+              `Starting skills: ${formatSkillList(startingPreview.startingSkills)}`,
+              `Starting EXP / remaining EXP: ${startingPreview.expTotal} / ${purchasePreview.expUnspent}`,
+              `Starting money / remaining money: ${startingPreview.moneyGamels} / ${equipmentPreview.moneyRemaining}`,
+            ]}
+          />
+          <ErrorList errors={startingPreview.errors} />
         </WizardStep>
       ),
       action: renderSaveButton('background', activeStepIndex === 2),
@@ -351,19 +497,48 @@ export function CharacterWizardPage() {
     {
       id: 'step-exp',
       title: stepTitles[4]!,
+      isError: purchasePreview.errors.length > 0,
       panel: (
         <WizardStep title="5) EXP spend" enabled={activeStepIndex === 4}>
           <fieldset className="l-col" disabled={isExecutingCommand}>
-            <FieldText label="Skill" value="Fighter" onChange={() => undefined} disabled />
-            <FieldNumber
-              label="Target level"
-              value={state.fighterLevel}
-              min={1}
-              max={1}
-              onChange={() => setState((prev) => ({ ...prev, fighterLevel: 1 }))}
-              hint="Minimal fixture path: Fighter level 1."
-            />
+            {skillOptions.map((option) => {
+              const baseLevel = findSkillLevel(startingPreview.startingSkills, option.skill);
+              const currentTarget = findPurchaseTargetLevel(state.purchases, option.skill) || baseLevel;
+              const levels = Array.from({ length: option.maxLevel - baseLevel + 1 }, (_, index) => baseLevel + index);
+              const levelCosts = describeSkillLevelCosts(startingPreview.state, option.skill, option.maxLevel);
+              const costSchedule = formatSkillCostSchedule(levelCosts);
+
+              return (
+                <FieldSelect
+                  key={option.skill}
+                  label={option.label}
+                  value={String(currentTarget)}
+                  options={levels.map((level) => ({
+                    value: String(level),
+                    label:
+                      level === baseLevel
+                        ? `${level} (starting)`
+                        : formatSkillLevelOptionLabel(
+                            level,
+                            levelCosts.find((entry) => entry.level === level)?.costExp ?? null,
+                            levelCosts.find((entry) => entry.level === level)?.note
+                          ),
+                    disabled: level !== baseLevel && !isSkillTargetAffordable(option.skill, level, baseLevel),
+                  }))}
+                  onChange={(value) => updateSkillPurchase(option.skill, Number(value), baseLevel)}
+                  hint={`Base ${baseLevel}. Costs: ${costSchedule}. Final skills: ${formatSkillList(purchasePreview.skills)}`}
+                />
+              );
+            })}
           </fieldset>
+          <InfoList
+            lines={[
+              `Starting skills: ${formatSkillList(startingPreview.startingSkills)}`,
+              `Current adventurer skills: ${formatSkillList(purchasePreview.skills)}`,
+              `EXP remaining: ${purchasePreview.expUnspent}`,
+            ]}
+          />
+          <ErrorList errors={purchasePreview.errors} />
         </WizardStep>
       ),
       action: renderSaveButton('exp', activeStepIndex === 4),
@@ -371,24 +546,37 @@ export function CharacterWizardPage() {
     {
       id: 'step-equipment',
       title: stepTitles[5]!,
+      isError: equipmentPreview.errors.length > 0,
       panel: (
         <WizardStep title="6) Equipment cart" enabled={activeStepIndex === 5}>
           <fieldset className="l-col" disabled={isExecutingCommand}>
-            <FieldCheckbox
-              label="mage_staff"
-              checked={state.cart.mage_staff}
-              onChange={(checked) =>
-                setState((prev) => ({ ...prev, cart: { ...prev.cart, mage_staff: checked } }))
-              }
+            <FieldSelect
+              label="Weapon"
+              value={state.equipment.weapon}
+              options={[emptyEquipmentOption, ...toEquipmentOptions('weapon', availableMoney, state.equipment, derived.STR)]}
+              onChange={(value) => setEquipmentSelection('weapon', value)}
             />
-            <FieldCheckbox
-              label="cloth_armor"
-              checked={state.cart.cloth_armor}
-              onChange={(checked) =>
-                setState((prev) => ({ ...prev, cart: { ...prev.cart, cloth_armor: checked } }))
-              }
+            <FieldSelect
+              label="Armor"
+              value={state.equipment.armor}
+              options={[emptyEquipmentOption, ...toEquipmentOptions('armor', availableMoney, state.equipment, derived.STR)]}
+              onChange={(value) => setEquipmentSelection('armor', value)}
+            />
+            <FieldSelect
+              label="Shield"
+              value={state.equipment.shield}
+              options={[emptyEquipmentOption, ...toEquipmentOptions('shield', availableMoney, state.equipment, derived.STR)]}
+              onChange={(value) => setEquipmentSelection('shield', value)}
             />
           </fieldset>
+          <InfoList
+            lines={[
+              `Cart: ${formatCartSummary(equipmentCart)}`,
+              `Total cost: ${equipmentPreview.totalCost} G`,
+              `Money remaining: ${equipmentPreview.moneyRemaining} G`,
+            ]}
+          />
+          <ErrorList errors={equipmentPreview.errors} />
         </WizardStep>
       ),
       action: renderSaveButton('equipment', activeStepIndex === 5),
@@ -396,6 +584,7 @@ export function CharacterWizardPage() {
     {
       id: 'step-submit',
       title: stepTitles[6]!,
+      isError: !isDraftReadyForSubmit,
       panel: (
         <WizardStep title="7) Submit" enabled={activeStepIndex === 6}>
           <fieldset className="l-col" disabled={isExecutingCommand}>
@@ -403,7 +592,7 @@ export function CharacterWizardPage() {
               label="Note to GM"
               value={state.submitNoteToGm}
               onChange={(value) => setState((prev) => ({ ...prev, submitNoteToGm: value }))}
-              hint="Submit will save the current draft first if needed."
+              hint="Submit saves the current draft first if needed, then submits the saved revision."
             />
             <button
               className={`c-btn ${canSubmitForApproval ? '' : 'is-disabled'}`.trim()}
@@ -413,17 +602,17 @@ export function CharacterWizardPage() {
             >
               {snapshot?.status === 'PENDING' ? 'Submitted For Review' : 'Submit Character For Approval'}
             </button>
-            <div className="c-note c-note--info">
-              <span className="t-small">
-                {snapshot?.status === 'PENDING'
+            <InfoList
+              lines={[
+                snapshot?.status === 'PENDING'
                   ? 'This character is already pending GM review.'
-                  : !isDraftReadyForSubmit
-                    ? 'Complete the required fields before submitting for review.'
-                    : isDirty || !snapshot || snapshot.version === null
-                      ? 'Submit will save the current draft first, then send it for review.'
-                      : 'Submit uses the saved draft only.'}
-              </span>
-            </div>
+                  : isDirty || !snapshot || snapshot.version === null
+                    ? 'Submit will save the current draft first, then send it for review.'
+                    : 'Submit uses the current saved draft revision.',
+                `Ready to submit: ${isDraftReadyForSubmit ? 'yes' : 'no'}`,
+              ]}
+            />
+            <ErrorList errors={state.name.trim() === '' ? ['Name is required.'] : previewErrors} />
           </fieldset>
         </WizardStep>
       ),
@@ -433,7 +622,7 @@ export function CharacterWizardPage() {
 
   return (
     <div className="l-page">
-      <Panel title="Character Wizard" subtitle="Each step action submits one command, then polls status until terminal.">
+      <Panel title="Character Wizard" subtitle="Each save and submit sends one command, then polls until terminal.">
         <div className="l-col">
           <div className="c-note c-note--info">
             <span className="t-small">Autofill uses fixture good.human_rune_master_sorcerer_starter.</span>
@@ -455,13 +644,17 @@ export function CharacterWizardPage() {
                 subAbility: { ...goodHumanRuneMasterAutofill.subAbility },
                 backgroundRoll2dTotal: goodHumanRuneMasterAutofill.backgroundRoll2dTotal,
                 moneyRoll2dTotal: goodHumanRuneMasterAutofill.startingMoneyRoll2dTotal,
+                craftsmanSkill: '',
+                merchantScholarChoice: '',
+                generalSkillName: '',
                 name: goodHumanRuneMasterAutofill.identity.name,
                 age: goodHumanRuneMasterAutofill.identity.age,
                 gender: goodHumanRuneMasterAutofill.identity.gender,
-                fighterLevel: goodHumanRuneMasterAutofill.purchases[0]?.targetLevel ?? 1,
-                cart: {
-                  mage_staff: goodHumanRuneMasterAutofill.cart.weapons.includes('mage_staff'),
-                  cloth_armor: goodHumanRuneMasterAutofill.cart.armor.includes('cloth_armor'),
+                purchases: goodHumanRuneMasterAutofill.purchases,
+                equipment: {
+                  weapon: goodHumanRuneMasterAutofill.cart.weapons[0] ?? '',
+                  armor: goodHumanRuneMasterAutofill.cart.armor[0] ?? '',
+                  shield: goodHumanRuneMasterAutofill.cart.shields[0] ?? '',
                 },
                 submitNoteToGm: goodHumanRuneMasterAutofill.submitNoteToGm,
               }));
@@ -520,6 +713,69 @@ export function CharacterWizardPage() {
     </div>
   );
 
+  function handleRaceChange(nextRace: Race) {
+    setState((prev) => ({
+      ...prev,
+      race: nextRace,
+      raisedBy: nextRace === 'HALF_ELF' ? prev.raisedBy : 'HUMANS',
+      subAbility: rollSubAbilitiesForRace(nextRace),
+      craftsmanSkill: nextRace === 'DWARF' ? prev.craftsmanSkill : '',
+      merchantScholarChoice: '',
+      generalSkillName: '',
+      purchases: [],
+      equipment: { weapon: '', armor: '', shield: '' },
+    }));
+  }
+
+  function handleRaisedByChange(nextRaisedBy: HalfElfRaisedBy) {
+    setState((prev) => ({
+      ...prev,
+      raisedBy: nextRaisedBy,
+      merchantScholarChoice: '',
+      generalSkillName: '',
+      purchases: [],
+      equipment: { weapon: '', armor: '', shield: '' },
+    }));
+  }
+
+  function updateSkillPurchase(skill: string, targetLevel: number, baseLevel: number) {
+    setState((prev) => ({
+      ...prev,
+      purchases:
+        targetLevel <= baseLevel
+          ? prev.purchases.filter((entry) => entry.skill !== skill)
+          : [...prev.purchases.filter((entry) => entry.skill !== skill), { skill, targetLevel }].sort((left, right) =>
+              left.skill.localeCompare(right.skill)
+            ),
+    }));
+  }
+
+  function setEquipmentSelection(slot: keyof WizardState['equipment'], value: string) {
+    setState((prev) => ({
+      ...prev,
+      equipment: {
+        ...prev.equipment,
+        [slot]: value,
+      },
+    }));
+  }
+
+  function isSkillTargetAffordable(skill: string, targetLevel: number, baseLevel: number): boolean {
+    if (targetLevel <= baseLevel) {
+      return true;
+    }
+    if (!startingPreview.state) {
+      return false;
+    }
+
+    const candidatePurchases =
+      targetLevel <= baseLevel
+        ? state.purchases.filter((entry) => entry.skill !== skill)
+        : [...state.purchases.filter((entry) => entry.skill !== skill), { skill, targetLevel }];
+    const candidatePreview = computeSkillPurchasePreview(startingPreview.state, candidatePurchases);
+    return !candidatePreview.errors.includes('not enough starting EXP');
+  }
+
   async function executeFinalSubmit() {
     setStepError(' ');
     scrollCommandStatusIntoView();
@@ -531,30 +787,29 @@ export function CharacterWizardPage() {
       raisedBy: state.raisedBy,
       backgroundRoll2dTotal: state.backgroundRoll2dTotal,
       moneyRoll2dTotal: state.moneyRoll2dTotal,
-      fighterLevel: state.fighterLevel,
+      purchases: state.purchases.map((entry) => `${entry.skill}:${entry.targetLevel}`),
+      cart: equipmentCart,
       namePresent: state.name.trim().length > 0,
       noteToGmPresent: state.submitNoteToGm.trim().length > 0,
-      equipment: {
-        mage_staff: state.cart.mage_staff,
-        cloth_armor: state.cart.cloth_armor,
-      },
       expectedVersion: snapshot?.version ?? null,
     });
     try {
       if (!isDraftReadyForSubmit) {
-        throw new Error('Complete the required fields before submitting for approval.');
+        throw new Error(previewErrors[0] ?? 'Complete the required fields before submitting for approval.');
       }
+
       let nextSnapshot = snapshot;
       if (!nextSnapshot || nextSnapshot.version === null || isDirty) {
         setSaveButtonState('submit', 'saving');
         nextSnapshot = await saveCurrentDraft('submit');
         setSaveButtonState('submit', 'saved');
       }
+
       if (!nextSnapshot || nextSnapshot.version === null) {
         throw new Error('Draft save did not return a versioned character snapshot.');
       }
-      const expectedVersion = nextSnapshot.version;
 
+      const expectedVersion = nextSnapshot.version;
       await submitCommandAndAwait('Submit for approval', () =>
         submitCharacterForApproval({
           api,
@@ -782,8 +1037,10 @@ export function CharacterWizardPage() {
       characterId: state.characterId,
       stepKey,
       expectedVersion: snapshot?.version ?? null,
-      backgroundApplied: backgroundEligible || state.race === 'DWARF',
+      backgroundApplied: backgroundEligible || isDwarfPath,
       noteToGmPresent: state.submitNoteToGm.trim().length > 0,
+      purchases: state.purchases.map((entry) => `${entry.skill}:${entry.targetLevel}`),
+      cart: equipmentCart,
     });
 
     const payload: Omit<Parameters<typeof submitSaveCharacterDraft>[0], 'api' | 'gameId' | 'characterId'> = {
@@ -791,24 +1048,22 @@ export function CharacterWizardPage() {
       race: state.race,
       raisedBy: state.raisedBy,
       subAbility: state.subAbility,
+      startingMoneyRoll2dTotal: state.moneyRoll2dTotal,
+      craftsmanSkill: state.craftsmanSkill.trim() || undefined,
+      merchantScholarChoice: state.merchantScholarChoice || undefined,
+      generalSkillName: state.generalSkillName.trim() || undefined,
       identity: {
         name: state.name,
         age: parseOptionalNumber(state.age),
-        gender: state.gender ? state.gender : null,
+        gender: state.gender.trim() ? state.gender.trim() : null,
       },
-      purchases: [{ skill: 'Fighter', targetLevel: state.fighterLevel }],
-      cart: {
-        weapons: state.cart.mage_staff ? ['mage_staff'] : [],
-        armor: state.cart.cloth_armor ? ['cloth_armor'] : [],
-        shields: [],
-        gear: [],
-      },
+      purchases: state.purchases,
+      cart: equipmentCart,
       noteToGm: state.submitNoteToGm,
     };
 
-    if (backgroundEligible || state.race === 'DWARF') {
+    if (backgroundEligible) {
       payload.backgroundRoll2dTotal = state.backgroundRoll2dTotal;
-      payload.startingMoneyRoll2dTotal = state.moneyRoll2dTotal;
     }
 
     return payload;
@@ -886,25 +1141,28 @@ export function CharacterWizardPage() {
         return null;
       }
 
-      const draft = (item as any).draft;
+      const draft = (item as Record<string, unknown>).draft;
       const hydratedState = hydrateWizardStateFromCharacter(item as CharacterItem, state);
       if (options?.syncWizardState) {
         setState(hydratedState);
       }
       setLastSavedFingerprint(serializeWizardState(hydratedState));
       const nextSnapshot = {
-        status: String((item as any).status ?? 'UNKNOWN'),
-        version: typeof (item as any).version === 'number' ? (item as any).version : null,
-        subAbility: draft?.subAbility ?? null,
-        ability: draft?.ability ?? null,
-        skills: Array.isArray(draft?.skills) ? draft.skills : [],
+        status: String((item as Record<string, unknown>).status ?? 'UNKNOWN'),
+        version: typeof (item as Record<string, unknown>).version === 'number' ? ((item as Record<string, unknown>).version as number) : null,
+        subAbility: draft && typeof draft === 'object' ? (((draft as Record<string, unknown>).subAbility as SubAbilityScores) ?? null) : null,
+        ability: draft && typeof draft === 'object' ? (((draft as Record<string, unknown>).ability as Record<string, number>) ?? null) : null,
+        skills:
+          draft && typeof draft === 'object' && Array.isArray((draft as Record<string, unknown>).skills)
+            ? (((draft as Record<string, unknown>).skills as Array<{ skill: string; level: number }>) ?? [])
+            : [],
       };
       setSnapshot(nextSnapshot);
       logWebFlow('WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_OK', {
         gameId: state.gameId,
         characterId: state.characterId,
-        status: String((item as any).status ?? 'UNKNOWN'),
-        version: typeof (item as any).version === 'number' ? (item as any).version : null,
+        status: String((item as Record<string, unknown>).status ?? 'UNKNOWN'),
+        version: nextSnapshot.version,
       });
       return nextSnapshot;
     } catch (error) {
@@ -933,9 +1191,7 @@ function SnapshotView({ snapshot }: { snapshot: CharacterSnapshot | null }) {
         <span className="t-small">status: {snapshot.status}</span>
       </div>
       <div className="c-note c-note--info">
-        <span className="t-small">
-          abilities: {snapshot.ability ? JSON.stringify(snapshot.ability) : 'not set'}
-        </span>
+        <span className="t-small">abilities: {snapshot.ability ? JSON.stringify(snapshot.ability) : 'not set'}</span>
       </div>
       <div className="c-note c-note--info">
         <span className="t-small">
@@ -1041,7 +1297,7 @@ function FieldText(props: {
 function FieldSelect(props: {
   label: string;
   value: string;
-  options: readonly string[];
+  options: readonly FieldOption[];
   onChange: (value: string) => void;
   disabled?: boolean;
   hint?: string;
@@ -1056,8 +1312,8 @@ function FieldSelect(props: {
         onChange={(event) => props.onChange(event.target.value)}
       >
         {props.options.map((option) => (
-          <option key={option} value={option}>
-            {option}
+          <option key={`${props.label}-${option.value}-${option.label}`} value={option.value} disabled={option.disabled}>
+            {option.label}
           </option>
         ))}
       </select>
@@ -1092,21 +1348,34 @@ function FieldNumber(props: {
   );
 }
 
-function FieldCheckbox(props: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+function InfoList({ lines }: { lines: string[] }) {
   return (
-    <div className="c-field">
-      <label className="c-field__label">{props.label}</label>
-      <label className="c-field__check">
-        <input
-          className="c-field__control c-field__control--check"
-          type="checkbox"
-          checked={props.checked}
-          onChange={(event) => props.onChange(event.target.checked)}
-        />
-        <span className="t-small">Include</span>
-      </label>
-      <div className="c-field__hint"> </div>
-      <div className="c-field__err"> </div>
+    <div className="c-note c-note--info">
+      <div className="l-col">
+        {lines.map((line) => (
+          <span key={line} className="t-small">
+            {line}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ErrorList({ errors }: { errors: string[] }) {
+  if (errors.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="c-note c-note--error">
+      <div className="l-col">
+        {errors.map((error) => (
+          <span key={error} className="t-small">
+            {error}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1122,6 +1391,7 @@ function setSubAbility(
       ...prev.subAbility,
       [key]: clamp(value, 1, 20),
     },
+    purchases: [],
   }));
 }
 
@@ -1149,11 +1419,14 @@ function serializeWizardState(state: WizardState): string {
     subAbility: state.subAbility,
     backgroundRoll2dTotal: state.backgroundRoll2dTotal,
     moneyRoll2dTotal: state.moneyRoll2dTotal,
+    craftsmanSkill: state.craftsmanSkill,
+    merchantScholarChoice: state.merchantScholarChoice,
+    generalSkillName: state.generalSkillName,
     name: state.name,
     gender: state.gender,
     age: state.age,
-    fighterLevel: state.fighterLevel,
-    cart: state.cart,
+    purchases: state.purchases,
+    equipment: state.equipment,
     submitNoteToGm: state.submitNoteToGm,
   });
 }
@@ -1162,17 +1435,26 @@ function hydrateWizardStateFromCharacter(item: CharacterItem, fallback: WizardSt
   const record = item as Record<string, unknown>;
   const draft = record.draft && typeof record.draft === 'object' ? (record.draft as Record<string, unknown>) : {};
   const identity = draft.identity && typeof draft.identity === 'object' ? (draft.identity as Record<string, unknown>) : {};
+  const background = draft.background && typeof draft.background === 'object' ? (draft.background as Record<string, unknown>) : {};
+  const starting = draft.starting && typeof draft.starting === 'object' ? (draft.starting as Record<string, unknown>) : {};
   const purchases = draft.purchases && typeof draft.purchases === 'object' ? (draft.purchases as Record<string, unknown>) : {};
-  const weapons = Array.isArray(purchases.weapons) ? purchases.weapons : [];
-  const armor = Array.isArray(purchases.armor) ? purchases.armor : [];
-  const skills = Array.isArray(draft.skills) ? draft.skills : [];
-  const fighter = skills.find(
-    (item) =>
-      item &&
-      typeof item === 'object' &&
-      typeof (item as Record<string, unknown>).skill === 'string' &&
-      String((item as Record<string, unknown>).skill).toLowerCase() === 'fighter'
-  ) as Record<string, unknown> | undefined;
+  const startingSkills = Array.isArray(starting.startingSkills)
+    ? ((starting.startingSkills as Array<Record<string, unknown>>).map((skill) => ({
+        skill: String(skill.skill),
+        level: Number(skill.level),
+      })) as Array<{ skill: string; level: number }>)
+    : [];
+  const skills = Array.isArray(draft.skills)
+    ? ((draft.skills as Array<Record<string, unknown>>).map((skill) => ({
+        skill: String(skill.skill),
+        level: Number(skill.level),
+      })) as Array<{ skill: string; level: number }>)
+    : [];
+  const weaponItems = Array.isArray(purchases.weapons) ? purchases.weapons : [];
+  const armorItems = Array.isArray(purchases.armor) ? purchases.armor : [];
+  const shieldItems = Array.isArray(purchases.shields) ? purchases.shields : [];
+  const backgroundRoll = typeof background.roll2d === 'number' ? background.roll2d : fallback.backgroundRoll2dTotal;
+  const backgroundKind = typeof background.kind === 'string' ? background.kind : null;
 
   return {
     ...fallback,
@@ -1184,28 +1466,218 @@ function hydrateWizardStateFromCharacter(item: CharacterItem, fallback: WizardSt
       draft.subAbility && typeof draft.subAbility === 'object'
         ? (draft.subAbility as SubAbilityScores)
         : fallback.subAbility,
-    backgroundRoll2dTotal:
-      draft.background && typeof draft.background === 'object' && typeof (draft.background as Record<string, unknown>).roll2d === 'number'
-        ? ((draft.background as Record<string, unknown>).roll2d as number)
-        : fallback.backgroundRoll2dTotal,
-    moneyRoll2dTotal:
-      draft.starting && typeof draft.starting === 'object' && typeof (draft.starting as Record<string, unknown>).moneyRoll2d === 'number'
-        ? ((draft.starting as Record<string, unknown>).moneyRoll2d as number)
-        : fallback.moneyRoll2dTotal,
+    backgroundRoll2dTotal: backgroundRoll,
+    moneyRoll2dTotal: typeof starting.moneyRoll2d === 'number' ? starting.moneyRoll2d : fallback.moneyRoll2dTotal,
+    craftsmanSkill: inferCraftsmanSkill(draft.race, startingSkills),
+    merchantScholarChoice: inferMerchantScholarChoice(backgroundKind, startingSkills),
+    generalSkillName: inferGeneralSkillName(backgroundRoll, startingSkills),
     name: typeof identity.name === 'string' ? identity.name : fallback.name,
     gender: typeof identity.gender === 'string' ? identity.gender : fallback.gender,
     age: typeof identity.age === 'number' ? String(identity.age) : fallback.age,
-    fighterLevel: typeof fighter?.level === 'number' ? fighter.level : fallback.fighterLevel,
-    cart: {
-      mage_staff: weapons.some((entry) => readItemId(entry) === 'mage_staff'),
-      cloth_armor: armor.some((entry) => readItemId(entry) === 'cloth_armor'),
+    purchases: deriveSkillPurchases(startingSkills, skills),
+    equipment: {
+      weapon: readFirstPurchasedItemId(weaponItems),
+      armor: readFirstPurchasedItemId(armorItems),
+      shield: readFirstPurchasedItemId(shieldItems),
     },
     submitNoteToGm: typeof draft.noteToGm === 'string' ? draft.noteToGm : fallback.submitNoteToGm,
   };
 }
 
-function readItemId(value: unknown): string | null {
-  return value && typeof value === 'object' && typeof (value as Record<string, unknown>).itemId === 'string'
-    ? ((value as Record<string, unknown>).itemId as string)
-    : null;
+function findSkillLevel(skills: Array<{ skill: string; level: number }>, skillName: string): number {
+  return (
+    skills.find((skill) => skill.skill.trim().toLowerCase() === skillName.trim().toLowerCase())?.level ?? 0
+  );
+}
+
+function deriveSkillPurchases(
+  startingSkills: Array<{ skill: string; level: number }>,
+  skills: Array<{ skill: string; level: number }>
+): Array<{ skill: string; targetLevel: number }> {
+  return skillOptions
+    .map((option) => {
+      const baseLevel = findSkillLevel(startingSkills, option.skill);
+      const currentLevel = findSkillLevel(skills, option.skill);
+      return currentLevel > baseLevel ? { skill: option.skill, targetLevel: currentLevel } : null;
+    })
+    .filter((entry): entry is { skill: string; targetLevel: number } => entry !== null);
+}
+
+function findPurchaseTargetLevel(
+  purchases: Array<{ skill: string; targetLevel: number }>,
+  skillName: string
+): number {
+  return (
+    purchases.find((purchase) => purchase.skill.trim().toLowerCase() === skillName.trim().toLowerCase())?.targetLevel ?? 0
+  );
+}
+
+function inferCraftsmanSkill(
+  race: unknown,
+  startingSkills: Array<{ skill: string; level: number }>
+): string {
+  if (race !== 'DWARF') {
+    return '';
+  }
+  const craftsman = startingSkills.find((skill) => skill.level === 5);
+  return craftsman?.skill === 'CraftsmanSkill_CHOSEN' ? '' : (craftsman?.skill ?? '');
+}
+
+function inferMerchantScholarChoice(
+  backgroundKind: string | null,
+  startingSkills: Array<{ skill: string; level: number }>
+): WizardState['merchantScholarChoice'] {
+  if (backgroundKind === 'MERCHANT') {
+    return 'MERCHANT';
+  }
+  if (backgroundKind === 'SCHOLAR') {
+    return 'SAGE';
+  }
+  if (startingSkills.some((skill) => skill.skill === 'Merchant')) {
+    return 'MERCHANT';
+  }
+  return '';
+}
+
+function inferGeneralSkillName(
+  backgroundRoll: number,
+  startingSkills: Array<{ skill: string; level: number }>
+): string {
+  if (backgroundRoll !== 7) {
+    return '';
+  }
+
+  const generalSkill = startingSkills[0]?.skill ?? '';
+  return generalSkill === 'GeneralSkill_CHOSEN_BY_GM' ? '' : generalSkill;
+}
+
+function readFirstPurchasedItemId(items: unknown[]): string {
+  const first = items[0];
+  return first && typeof first === 'object' && typeof (first as Record<string, unknown>).itemId === 'string'
+    ? ((first as Record<string, unknown>).itemId as string)
+    : '';
+}
+
+function normalizePurchasesForBaseSkills(
+  purchases: Array<{ skill: string; targetLevel: number }>,
+  baseSkills: Array<{ skill: string; level: number }>
+): Array<{ skill: string; targetLevel: number }> {
+  return purchases.filter((purchase) => purchase.targetLevel > findSkillLevel(baseSkills, purchase.skill));
+}
+
+function formatSkillList(skills: Array<{ skill: string; level: number }>): string {
+  return skills.length > 0 ? skills.map((skill) => `${skill.skill}:${skill.level}`).join(', ') : 'none';
+}
+
+function formatCartSummary(cart: { weapons: string[]; armor: string[]; shields: string[]; gear: string[] }): string {
+  const items = [...cart.weapons, ...cart.armor, ...cart.shields, ...cart.gear];
+  return items.length > 0 ? items.join(', ') : 'empty';
+}
+
+function formatSkillCostSchedule(
+  costs: Array<{ level: number; costExp: number | null; note?: string }>
+): string {
+  if (costs.length === 0) {
+    return 'no additional levels available';
+  }
+
+  return costs
+    .map((cost) => {
+      if (cost.costExp === null) {
+        return `Lv${cost.level} n/a`;
+      }
+      return cost.note ? `Lv${cost.level} ${cost.costExp} EXP (${cost.note})` : `Lv${cost.level} ${cost.costExp} EXP`;
+    })
+    .join(', ');
+}
+
+function formatSkillLevelOptionLabel(level: number, costExp: number | null, note?: string): string {
+  if (costExp === null) {
+    return `Lv${level} (n/a)`;
+  }
+  return note ? `Lv${level} (${costExp} EXP, ${note})` : `Lv${level} (${costExp} EXP)`;
+}
+
+function toEquipmentOptions(
+  category: 'weapon' | 'armor' | 'shield',
+  availableMoney: number,
+  selection: WizardState['equipment'],
+  characterStrength: number
+): FieldOption[] {
+  return starterEquipmentOptions
+    .filter((option) => option.category === category)
+    .map((option) => ({
+      value: option.itemId,
+      label: `${option.label} (${option.costGamels}G, STR ${formatStrengthRequirement(option, characterStrength)})`,
+      disabled:
+        !isEquipmentOptionAffordable(category, option.itemId, availableMoney, selection) ||
+        !isWeaponStrengthAllowed(option, characterStrength),
+    }));
+}
+
+function formatStrengthRequirement(
+  option: (typeof starterEquipmentOptions)[number],
+  characterStrength: number
+): string {
+  if (option.category !== 'weapon' || option.reqStrMin === undefined) {
+    return String(option.reqStr);
+  }
+
+  return formatStrengthRange(option.reqStrMin, option.reqStrMax, characterStrength);
+}
+
+function formatStrengthRange(min: number, max: number | undefined, characterStrength: number): string {
+  if (characterStrength < min) {
+    return max === undefined ? `${min}~` : `${min}~${max}`;
+  }
+
+  const effectiveStrength = max === undefined ? characterStrength : Math.min(characterStrength, max);
+
+  if (max === undefined) {
+    return effectiveStrength === min ? `(${min})~` : `${min}~(${effectiveStrength})`;
+  }
+
+  if (effectiveStrength <= min) {
+    return `(${min})~${max}`;
+  }
+
+  if (effectiveStrength >= max) {
+    return `${min}~(${max})`;
+  }
+
+  return `${min}~(${effectiveStrength})~${max}`;
+}
+
+function isWeaponStrengthAllowed(
+  option: (typeof starterEquipmentOptions)[number],
+  characterStrength: number
+): boolean {
+  if (option.category !== 'weapon') {
+    return true;
+  }
+  if (option.reqStrMin === undefined) {
+    return option.reqStr <= characterStrength;
+  }
+  return characterStrength >= option.reqStrMin;
+}
+
+function isEquipmentOptionAffordable(
+  category: 'weapon' | 'armor' | 'shield',
+  itemId: string,
+  availableMoney: number,
+  selection: WizardState['equipment']
+): boolean {
+  const nextSelection = {
+    ...selection,
+    [category]: itemId,
+  };
+  const totalCost = [nextSelection.weapon, nextSelection.armor, nextSelection.shield].reduce(
+    (sum, selectedId) => sum + getEquipmentCost(selectedId),
+    0
+  );
+  return totalCost <= availableMoney;
+}
+
+function getEquipmentCost(itemId: string): number {
+  return starterEquipmentOptions.find((option) => option.itemId === itemId)?.costGamels ?? 0;
 }
