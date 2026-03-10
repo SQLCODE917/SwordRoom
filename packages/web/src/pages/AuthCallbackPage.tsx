@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { createApiClient } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { completeOidcLoginFromCallback } from '../auth/OidcAuthProvider';
 import { Panel } from '../components/Panel';
@@ -7,6 +8,7 @@ import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 export function AuthCallbackPage() {
   const auth = useAuthProvider();
+  const api = useMemo(() => createApiClient({ auth }), [auth]);
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState(true);
@@ -27,6 +29,7 @@ export function AuthCallbackPage() {
       });
       try {
         const returnToPath = await completeOidcLoginFromCallback(window.location.href);
+        await api.syncMyProfile();
         if (cancelled) {
           return;
         }
@@ -53,7 +56,7 @@ export function AuthCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [auth.mode, navigate]);
+  }, [api, auth.mode, navigate]);
 
   return (
     <div className="l-page">

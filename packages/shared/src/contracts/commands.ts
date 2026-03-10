@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 export const COMMAND_TYPES = [
+  'CreateGame',
+  'SetGameVisibility',
+  'InvitePlayerToGameByEmail',
+  'AcceptGameInvite',
+  'RejectGameInvite',
   'SaveCharacterDraft',
   'CreateCharacterDraft',
   'SetCharacterSubAbilities',
@@ -14,6 +19,31 @@ export const COMMAND_TYPES = [
 
 export const commandTypeSchema = z.enum(COMMAND_TYPES);
 export type CommandType = z.infer<typeof commandTypeSchema>;
+
+export const createGamePayloadSchema = z.object({
+  name: z.string().min(1),
+});
+
+export const setGameVisibilityPayloadSchema = z.object({
+  gameId: z.string(),
+  expectedVersion: z.number().int(),
+  visibility: z.enum(['PUBLIC', 'PRIVATE']),
+});
+
+export const invitePlayerToGameByEmailPayloadSchema = z.object({
+  gameId: z.string(),
+  email: z.string().email(),
+});
+
+export const acceptGameInvitePayloadSchema = z.object({
+  gameId: z.string(),
+  inviteId: z.string(),
+});
+
+export const rejectGameInvitePayloadSchema = z.object({
+  gameId: z.string(),
+  inviteId: z.string(),
+});
 
 export const saveCharacterDraftPayloadSchema = z.object({
   characterId: z.string(),
@@ -111,6 +141,11 @@ export const gmReviewCharacterPayloadSchema = z.object({
 });
 
 export const commandPayloadSchemaByType = {
+  CreateGame: createGamePayloadSchema,
+  SetGameVisibility: setGameVisibilityPayloadSchema,
+  InvitePlayerToGameByEmail: invitePlayerToGameByEmailPayloadSchema,
+  AcceptGameInvite: acceptGameInvitePayloadSchema,
+  RejectGameInvite: rejectGameInvitePayloadSchema,
   SaveCharacterDraft: saveCharacterDraftPayloadSchema,
   CreateCharacterDraft: createCharacterDraftPayloadSchema,
   SetCharacterSubAbilities: setCharacterSubAbilitiesPayloadSchema,
@@ -131,6 +166,26 @@ const commandEnvelopeBaseSchema = z.object({
 });
 
 export const commandEnvelopeSchemaByType = {
+  CreateGame: commandEnvelopeBaseSchema.extend({
+    type: z.literal('CreateGame'),
+    payload: createGamePayloadSchema,
+  }),
+  SetGameVisibility: commandEnvelopeBaseSchema.extend({
+    type: z.literal('SetGameVisibility'),
+    payload: setGameVisibilityPayloadSchema,
+  }),
+  InvitePlayerToGameByEmail: commandEnvelopeBaseSchema.extend({
+    type: z.literal('InvitePlayerToGameByEmail'),
+    payload: invitePlayerToGameByEmailPayloadSchema,
+  }),
+  AcceptGameInvite: commandEnvelopeBaseSchema.extend({
+    type: z.literal('AcceptGameInvite'),
+    payload: acceptGameInvitePayloadSchema,
+  }),
+  RejectGameInvite: commandEnvelopeBaseSchema.extend({
+    type: z.literal('RejectGameInvite'),
+    payload: rejectGameInvitePayloadSchema,
+  }),
   SaveCharacterDraft: commandEnvelopeBaseSchema.extend({
     type: z.literal('SaveCharacterDraft'),
     payload: saveCharacterDraftPayloadSchema,
@@ -170,6 +225,11 @@ export const commandEnvelopeSchemaByType = {
 } as const;
 
 export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
+  commandEnvelopeSchemaByType.CreateGame,
+  commandEnvelopeSchemaByType.SetGameVisibility,
+  commandEnvelopeSchemaByType.InvitePlayerToGameByEmail,
+  commandEnvelopeSchemaByType.AcceptGameInvite,
+  commandEnvelopeSchemaByType.RejectGameInvite,
   commandEnvelopeSchemaByType.SaveCharacterDraft,
   commandEnvelopeSchemaByType.CreateCharacterDraft,
   commandEnvelopeSchemaByType.SetCharacterSubAbilities,
@@ -181,6 +241,11 @@ export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
   commandEnvelopeSchemaByType.GMReviewCharacter,
 ]);
 
+export type CreateGamePayload = z.infer<typeof createGamePayloadSchema>;
+export type SetGameVisibilityPayload = z.infer<typeof setGameVisibilityPayloadSchema>;
+export type InvitePlayerToGameByEmailPayload = z.infer<typeof invitePlayerToGameByEmailPayloadSchema>;
+export type AcceptGameInvitePayload = z.infer<typeof acceptGameInvitePayloadSchema>;
+export type RejectGameInvitePayload = z.infer<typeof rejectGameInvitePayloadSchema>;
 export type CreateCharacterDraftPayload = z.infer<typeof createCharacterDraftPayloadSchema>;
 export type SaveCharacterDraftPayload = z.infer<typeof saveCharacterDraftPayloadSchema>;
 export type SetCharacterSubAbilitiesPayload = z.infer<typeof setCharacterSubAbilitiesPayloadSchema>;
@@ -192,6 +257,11 @@ export type SubmitCharacterForApprovalPayload = z.infer<typeof submitCharacterFo
 export type GMReviewCharacterPayload = z.infer<typeof gmReviewCharacterPayloadSchema>;
 
 export type CommandPayloadByType = {
+  CreateGame: CreateGamePayload;
+  SetGameVisibility: SetGameVisibilityPayload;
+  InvitePlayerToGameByEmail: InvitePlayerToGameByEmailPayload;
+  AcceptGameInvite: AcceptGameInvitePayload;
+  RejectGameInvite: RejectGameInvitePayload;
   SaveCharacterDraft: SaveCharacterDraftPayload;
   CreateCharacterDraft: CreateCharacterDraftPayload;
   SetCharacterSubAbilities: SetCharacterSubAbilitiesPayload;

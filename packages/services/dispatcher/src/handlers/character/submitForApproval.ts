@@ -66,9 +66,14 @@ export const submitForApprovalHandler: CommandHandler<'SubmitCharacterForApprova
         kind: 'GM_INBOX_ITEM',
         input: {
           gameId: envelope.gameId,
-          characterId: envelope.payload.characterId,
+          promptId: envelope.commandId,
+          kind: 'PENDING_CHARACTER',
+          ref: { characterId: envelope.payload.characterId, commandId: envelope.commandId, playerId: character.ownerPlayerId },
           ownerPlayerId: character.ownerPlayerId,
+          message: `Character ${envelope.payload.characterId} submitted for review`,
+          createdAt: envelope.createdAt,
           submittedAt: envelope.createdAt,
+          readAt: null,
         },
       },
       {

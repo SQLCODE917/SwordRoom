@@ -3,7 +3,12 @@ import type {
   AddGmInboxItemInput,
   AddPlayerInboxItemInput,
   DbAccess,
+  PutGameInviteInput,
+  PutGameMemberInput,
+  PutGameMetadataInput,
   PutCharacterDraftInput,
+  UpdateGameInviteWithVersionInput,
+  UpdateGameMetadataWithVersionInput,
   UpdateCharacterWithVersionInput,
 } from '@starter/services-shared';
 
@@ -22,8 +27,36 @@ export type WriteEffect =
       input: UpdateCharacterWithVersionInput;
     }
   | {
+      kind: 'PUT_GAME_METADATA';
+      input: PutGameMetadataInput;
+    }
+  | {
+      kind: 'UPDATE_GAME_METADATA_WITH_VERSION';
+      input: UpdateGameMetadataWithVersionInput;
+    }
+  | {
+      kind: 'PUT_GAME_MEMBER';
+      input: PutGameMemberInput;
+    }
+  | {
+      kind: 'DELETE_GAME_MEMBER';
+      input: { gameId: string; playerId: string };
+    }
+  | {
+      kind: 'PUT_GAME_INVITE';
+      input: PutGameInviteInput;
+    }
+  | {
+      kind: 'UPDATE_GAME_INVITE_WITH_VERSION';
+      input: UpdateGameInviteWithVersionInput;
+    }
+  | {
       kind: 'DELETE_GM_INBOX_ITEM';
-      input: { gameId: string; submittedAt: string; characterId: string };
+      input: { gameId: string; createdAt: string; promptId: string };
+    }
+  | {
+      kind: 'DELETE_PLAYER_INBOX_ITEM';
+      input: { playerId: string; createdAt: string; promptId: string };
     };
 
 export type InboxEffect =

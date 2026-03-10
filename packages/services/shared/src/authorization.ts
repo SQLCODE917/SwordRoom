@@ -13,14 +13,16 @@ export async function getGameActorContext(
   db: DbAccess,
   input: { gameId: string; actorId: string }
 ): Promise<GameActorContext> {
-  const [game, profile] = await Promise.all([
+  const [game, profile, membership] = await Promise.all([
     db.gameRepository.getGameMetadata(input.gameId),
     db.playerRepository.getPlayerProfile(input.actorId),
+    db.membershipRepository.getMembership(input.gameId, input.actorId),
   ]);
 
-  const roles = profile?.roles ?? [];
+  const roles = Array.from(new Set([...(profile?.roles ?? inferRolesFromActorId(input.actorId)), ...(membership?.roles ?? [])]));
   const gmPlayerId = game?.gmPlayerId ?? null;
-  const isGameMaster = gmPlayerId === input.actorId && roles.includes('GM');
+  const isAdmin = roles.includes('ADMIN');
+  const isGameMaster = isAdmin || (membership?.roles.includes('GM') ?? false);
 
   return {
     actorId: input.actorId,
@@ -53,6 +55,22 @@ export async function assertGameMasterActor(
   return context;
 }
 
+export async function assertActorHasRole(
+  db: DbAccess,
+  input: { actorId: string; role: 'PLAYER' | 'GM' | 'ADMIN' }
+): Promise<void> {
+  const profile = await db.playerRepository.getPlayerProfile(input.actorId);
+  const roles = profile?.roles ?? inferRolesFromActorId(input.actorId);
+  if (roles.includes('ADMIN') || roles.includes(input.role)) {
+    return;
+  }
+  throw withCode(
+    new Error(`role "${input.role}" required for actor "${input.actorId}"`),
+    'ROLE_REQUIRED',
+    403
+  );
+}
+
 export async function assertCharacterOwnerOrGameMaster(
   db: DbAccess,
   input: { gameId: string; characterId: string; actorId: string }
@@ -81,4 +99,15 @@ function withCode(error: Error, code: string, statusCode: number): Error & { cod
   enriched.code = code;
   enriched.statusCode = statusCode;
   return enriched;
+}
+
+function inferRolesFromActorId(actorId: string): Array<'PLAYER' | 'GM' | 'ADMIN'> {
+  const roles = new Set<'PLAYER' | 'GM' | 'ADMIN'>(['PLAYER']);
+  if (actorId.startsWith('gm-')) {
+    roles.add('GM');
+  }
+  if (actorId.startsWith('admin-')) {
+    roles.add('ADMIN');
+  }
+  return Array.from(roles);
 }

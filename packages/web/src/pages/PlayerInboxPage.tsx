@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { createApiClient, type PlayerInboxItem } from '../api/ApiClient';
+import { createApiClient, type CommandStatusResponse, type PlayerInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
+import { describeFailure, type CommandStatusViewModel } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 const refreshIntervalMs = 3000;
+const pollIntervalsMs = [400, 800, 1200, 1800, 2600];
 
 interface InboxRow {
   key: string;
@@ -14,10 +17,12 @@ interface InboxRow {
   createdAt: string;
   gameId: string;
   characterId: string | null;
+  inviteId: string | null;
 }
 
 interface InboxRef {
   characterId?: unknown;
+  inviteId?: unknown;
 }
 
 interface InboxItemLike extends Record<string, unknown> {
@@ -36,6 +41,14 @@ export function PlayerInboxPage() {
   const [rows, setRows] = useState<InboxRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeInviteId, setActiveInviteId] = useState<string | null>(null);
+  const [commandStatus, setCommandStatus] = useState<CommandStatusViewModel>({
+    state: 'Idle',
+    commandId: null,
+    message: 'No command submitted yet.',
+    errorCode: null,
+    errorMessage: null,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -87,14 +100,15 @@ export function PlayerInboxPage() {
         clearInterval(intervalId);
       }
     };
-  }, [api]);
+  }, [api, auth.actorId, auth.mode]);
 
   const noticeClassName = useMemo(() => `c-note ${error ? 'c-note--error' : 'c-note--info'}`, [error]);
   const placeholderText = loading ? 'Loading inbox...' : 'No inbox items yet.';
 
   return (
     <div className="l-page">
-      <Panel title="Player Inbox" subtitle="Prompt updates from submission and GM review status.">
+      <Panel title="Player Inbox" subtitle="Character updates and game invitations.">
+        <CommandStatusPanel status={commandStatus} />
         <div className={noticeClassName} role="note" aria-live="polite">
           <span className="t-small">{error ?? 'Inbox refreshes automatically.'}</span>
         </div>
@@ -104,38 +118,135 @@ export function PlayerInboxPage() {
             <div className="c-table__cell t-small">Kind</div>
             <div className="c-table__cell t-small">Message</div>
             <div className="c-table__cell t-small">Created</div>
-            <div className="c-table__cell t-small">Character Sheet</div>
+            <div className="c-table__cell t-small">Actions</div>
           </div>
 
           {rows.length === 0 ? (
             <div className="c-table__row" role="row">
               <div className="c-table__cell t-small">{placeholderText}</div>
-              <div className="c-table__cell t-small"> </div>
-              <div className="c-table__cell t-small"> </div>
-              <div className="c-table__cell t-small"> </div>
             </div>
           ) : (
-            rows.map((row) => (
-              <div className="c-table__row" role="row" key={row.key}>
-                <div className="c-table__cell t-small">{row.kind}</div>
-                <div className="c-table__cell t-small">{row.message}</div>
-                <div className="c-table__cell t-small">{row.createdAt}</div>
-                <div className="c-table__cell t-small">
-                  {row.characterId ? (
-                    <Link to={`/games/${encodeURIComponent(row.gameId)}/characters/${encodeURIComponent(row.characterId)}`}>
-                      Open
-                    </Link>
-                  ) : (
-                    ' '
-                  )}
+            rows.map((row) => {
+              const rowBusy = activeInviteId === row.inviteId;
+              return (
+                <div className="c-table__row" role="row" key={row.key}>
+                  <div className="c-table__cell t-small">{row.kind}</div>
+                  <div className="c-table__cell t-small">{row.message}</div>
+                  <div className="c-table__cell t-small">{row.createdAt}</div>
+                  <div className="c-table__cell t-small">
+                    <div className="l-row">
+                      {row.characterId ? (
+                        <Link to={`/games/${encodeURIComponent(row.gameId)}/characters/${encodeURIComponent(row.characterId)}`}>
+                          Open
+                        </Link>
+                      ) : null}
+                      {row.kind === 'GAME_INVITE' && row.inviteId ? (
+                        <>
+                          <button
+                            className={`c-btn ${rowBusy ? 'is-disabled' : ''}`.trim()}
+                            type="button"
+                            disabled={rowBusy}
+                            onClick={() => void respondToInvite(row, 'AcceptGameInvite')}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            className={`c-btn ${rowBusy ? 'is-disabled' : ''}`.trim()}
+                            type="button"
+                            disabled={rowBusy}
+                            onClick={() => void respondToInvite(row, 'RejectGameInvite')}
+                          >
+                            Reject
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </Panel>
     </div>
   );
+
+  async function respondToInvite(row: InboxRow, type: 'AcceptGameInvite' | 'RejectGameInvite') {
+    if (!row.inviteId) {
+      return;
+    }
+    setActiveInviteId(row.inviteId);
+    setError(null);
+    try {
+      const accepted = await api.postCommand({
+        envelope: {
+          commandId: makeUuid(),
+          gameId: row.gameId,
+          type,
+          schemaVersion: 1,
+          createdAt: new Date().toISOString(),
+          payload: {
+            gameId: row.gameId,
+            inviteId: row.inviteId,
+          },
+        },
+      });
+      setCommandStatus({
+        state: 'Queued',
+        commandId: accepted.commandId,
+        message: `${type === 'AcceptGameInvite' ? 'Accept' : 'Reject'} invite queued.`,
+        errorCode: null,
+        errorMessage: null,
+      });
+      const terminal = await pollUntilTerminal(accepted.commandId);
+      if (terminal.status !== 'PROCESSED') {
+        throw new Error(describeFailure(terminal));
+      }
+      const inbox = await api.getMyInbox();
+      setRows(normalizeRows(inbox));
+    } catch (inviteError) {
+      const message = inviteError instanceof Error ? inviteError.message : String(inviteError);
+      setError(message);
+      setCommandStatus({
+        state: 'Failed',
+        commandId: null,
+        message: 'Invite action failed.',
+        errorCode: null,
+        errorMessage: message,
+      });
+      logWebFlow('WEB_PLAYER_INBOX_INVITE_ACTION_FAILED', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId: row.gameId,
+        inviteId: row.inviteId,
+        type,
+        ...summarizeError(inviteError),
+      });
+    } finally {
+      setActiveInviteId(null);
+    }
+  }
+
+  async function pollUntilTerminal(commandId: string): Promise<CommandStatusResponse> {
+    let attempt = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const response = await api.getCommandStatus(commandId);
+      if (!response) {
+        await sleep(pollIntervalsMs[Math.min(attempt, pollIntervalsMs.length - 1)] ?? 2600);
+        attempt += 1;
+        continue;
+      }
+
+      setCommandStatus(mapStatus(response));
+      if (response.status === 'PROCESSED' || response.status === 'FAILED') {
+        return response;
+      }
+
+      await sleep(pollIntervalsMs[Math.min(attempt, pollIntervalsMs.length - 1)] ?? 2600);
+      attempt += 1;
+    }
+  }
 }
 
 function normalizeRows(items: PlayerInboxItem[]): InboxRow[] {
@@ -152,6 +263,7 @@ function normalizeRows(items: PlayerInboxItem[]): InboxRow[] {
     const gameId = typeof candidate.gameId === 'string' ? candidate.gameId : '';
     const ref = typeof candidate.ref === 'object' && candidate.ref !== null ? candidate.ref : null;
     const characterId = ref && typeof ref.characterId === 'string' ? ref.characterId : null;
+    const inviteId = ref && typeof ref.inviteId === 'string' ? ref.inviteId : null;
     const promptId = typeof candidate.promptId === 'string' ? candidate.promptId : `${kind}:${createdAt}:${message}`;
 
     if (!kind || !message || !createdAt || !gameId) {
@@ -165,8 +277,45 @@ function normalizeRows(items: PlayerInboxItem[]): InboxRow[] {
       createdAt,
       gameId,
       characterId,
+      inviteId,
     });
   }
 
   return rows;
+}
+
+function mapStatus(response: CommandStatusResponse): CommandStatusViewModel {
+  return {
+    state:
+      response.status === 'PROCESSED'
+        ? 'Processed'
+        : response.status === 'FAILED'
+          ? 'Failed'
+          : response.status === 'PROCESSING'
+            ? 'Processing'
+            : 'Queued',
+    commandId: response.commandId,
+    message:
+      response.status === 'FAILED'
+        ? describeFailure(response)
+        : response.status === 'PROCESSED'
+          ? 'Command processed.'
+          : response.status === 'PROCESSING'
+            ? 'Command processing.'
+            : 'Command queued.',
+    errorCode: response.errorCode,
+    errorMessage: response.errorMessage,
+  };
+}
+
+function makeUuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const nowHex = Date.now().toString(16).padStart(12, '0').slice(-12);
+  return `00000000-0000-4000-8000-${nowHex}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

@@ -1,10 +1,17 @@
-import type { AnyCommandEnvelope, CommandStatus, GMInboxItem, PlayerInboxItem } from '@starter/shared';
-import type { CharacterItem } from '@starter/shared';
+import type {
+  AnyCommandEnvelope,
+  CharacterItem,
+  CommandStatus,
+  GameMetadataItem,
+  GMInboxItem,
+  PlayerInboxItem,
+  PlayerProfileItem,
+} from '@starter/shared';
 
 export interface ApiRoute {
   method: 'POST' | 'GET';
   path: string;
-  auth: 'required' | 'gm_required';
+  auth: 'required' | 'gm_required' | 'admin_required';
 }
 
 export interface CommandStatusResponse {
@@ -35,9 +42,20 @@ export interface PostCommandResponse {
 }
 
 export interface ReadApis {
+  syncMyProfile(input: {
+    authHeader?: string;
+    bypassActorId?: string;
+  }): Promise<PlayerProfileItem>;
   getCommandStatus(commandId: string): Promise<CommandStatusResponse | null>;
   getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
+  listCharactersByOwner(playerId: string): Promise<CharacterItem[]>;
   getMyInbox(playerId: string): Promise<PlayerInboxItem[]>;
+  getMyProfile(playerId: string): Promise<PlayerProfileItem | null>;
+  listPublicGames(): Promise<GameMetadataItem[]>;
+  listAllGames(): Promise<GameMetadataItem[]>;
+  listGamesForPlayer(playerId: string): Promise<GameMetadataItem[]>;
+  listGamesForGm(playerId: string): Promise<GameMetadataItem[]>;
+  listUsers(): Promise<PlayerProfileItem[]>;
   getGameActorContext(gameId: string, actorId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
 }

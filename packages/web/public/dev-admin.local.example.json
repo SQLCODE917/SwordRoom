@@ -1,0 +1,10 @@
+{
+  "accounts": [
+    {
+      "username": "admin",
+      "password": "change-me",
+      "actorId": "admin-local",
+      "displayName": "Local Admin"
+    }
+  ]
+}

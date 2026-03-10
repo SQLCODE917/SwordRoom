@@ -4,3 +4,4 @@ coverage
 *.swp
 .pnpm-store
 .local
+packages/web/public/dev-admin.local.json

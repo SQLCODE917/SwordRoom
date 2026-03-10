@@ -5,6 +5,7 @@ export type AuthMode = 'dev' | 'oidc';
 export interface AuthProvider {
   mode: AuthMode;
   actorId: string;
+  isAuthenticated: boolean;
   withAuthHeaders(headers?: HeadersInit): Promise<Headers>;
   withActor<T extends Record<string, unknown>>(body: T): T & { bypassActorId?: string };
 }

@@ -56,7 +56,11 @@ export function createDispatcher(deps: DispatcherDependencies) {
           gameId: parsed.gameId,
         });
 
-        if (parsed.type === 'GMReviewCharacter') {
+        if (
+          parsed.type === 'GMReviewCharacter' ||
+          parsed.type === 'SetGameVisibility' ||
+          parsed.type === 'InvitePlayerToGameByEmail'
+        ) {
           await assertGameMasterActor(deps.db, {
             gameId: parsed.gameId,
             actorId: parsed.actorId,
@@ -188,15 +192,136 @@ function toTransactWriteItem(
         },
       };
     }
+    case 'PUT_GAME_METADATA': {
+      const key = db.keyBuilders.gameState.gameMetadata(effect.input.gameId);
+      return {
+        Put: {
+          TableName: db.tables.gameStateTableName,
+          Item: {
+            ...key,
+            type: 'GameMetadata',
+            gameId: effect.input.gameId,
+            name: effect.input.name,
+            visibility: effect.input.visibility,
+            createdByPlayerId: effect.input.createdByPlayerId,
+            gmPlayerId: effect.input.gmPlayerId,
+            createdAt: effect.input.createdAt,
+            updatedAt: effect.input.updatedAt,
+            version: 1,
+          },
+          ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',
+        },
+      };
+    }
+    case 'UPDATE_GAME_METADATA_WITH_VERSION': {
+      const key = db.keyBuilders.gameState.gameMetadata(effect.input.gameId);
+      return {
+        Update: {
+          TableName: db.tables.gameStateTableName,
+          Key: key,
+          ConditionExpression: '#version = :expectedVersion',
+          UpdateExpression:
+            'SET #name = :name, visibility = :visibility, createdByPlayerId = :createdByPlayerId, gmPlayerId = :gmPlayerId, updatedAt = :updatedAt, #version = :nextVersion',
+          ExpressionAttributeNames: {
+            '#version': 'version',
+            '#name': 'name',
+          },
+          ExpressionAttributeValues: {
+            ':name': effect.input.next.name,
+            ':visibility': effect.input.next.visibility,
+            ':createdByPlayerId': effect.input.next.createdByPlayerId,
+            ':gmPlayerId': effect.input.next.gmPlayerId,
+            ':updatedAt': effect.input.next.updatedAt,
+            ':expectedVersion': effect.input.expectedVersion,
+            ':nextVersion': effect.input.expectedVersion + 1,
+          },
+        },
+      };
+    }
+    case 'PUT_GAME_MEMBER': {
+      return {
+        Put: {
+          TableName: db.tables.gameStateTableName,
+          Item: {
+            ...db.keyBuilders.gameState.gameMember(effect.input.gameId, effect.input.playerId),
+            type: 'GameMember',
+            gameId: effect.input.gameId,
+            playerId: effect.input.playerId,
+            roles: effect.input.roles,
+            createdAt: effect.input.createdAt,
+            updatedAt: effect.input.updatedAt,
+          },
+        },
+      };
+    }
+    case 'DELETE_GAME_MEMBER': {
+      return {
+        Delete: {
+          TableName: db.tables.gameStateTableName,
+          Key: db.keyBuilders.gameState.gameMember(effect.input.gameId, effect.input.playerId),
+        },
+      };
+    }
+    case 'PUT_GAME_INVITE': {
+      return {
+        Put: {
+          TableName: db.tables.gameStateTableName,
+          Item: {
+            ...db.keyBuilders.gameState.gameInvite(effect.input.gameId, effect.input.inviteId),
+            type: 'GameInvite',
+            inviteId: effect.input.inviteId,
+            gameId: effect.input.gameId,
+            invitedPlayerId: effect.input.invitedPlayerId,
+            invitedEmailNormalized: effect.input.invitedEmailNormalized,
+            invitedByPlayerId: effect.input.invitedByPlayerId,
+            status: effect.input.status,
+            createdAt: effect.input.createdAt,
+            updatedAt: effect.input.updatedAt,
+            respondedAt: effect.input.respondedAt,
+            version: 1,
+          },
+          ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',
+        },
+      };
+    }
+    case 'UPDATE_GAME_INVITE_WITH_VERSION': {
+      return {
+        Update: {
+          TableName: db.tables.gameStateTableName,
+          Key: db.keyBuilders.gameState.gameInvite(effect.input.gameId, effect.input.inviteId),
+          ConditionExpression: '#version = :expectedVersion',
+          UpdateExpression:
+            'SET invitedPlayerId = :invitedPlayerId, invitedEmailNormalized = :invitedEmailNormalized, invitedByPlayerId = :invitedByPlayerId, #status = :status, updatedAt = :updatedAt, respondedAt = :respondedAt, #version = :nextVersion',
+          ExpressionAttributeNames: {
+            '#status': 'status',
+            '#version': 'version',
+          },
+          ExpressionAttributeValues: {
+            ':invitedPlayerId': effect.input.next.invitedPlayerId,
+            ':invitedEmailNormalized': effect.input.next.invitedEmailNormalized,
+            ':invitedByPlayerId': effect.input.next.invitedByPlayerId,
+            ':status': effect.input.next.status,
+            ':updatedAt': effect.input.next.updatedAt,
+            ':respondedAt': effect.input.next.respondedAt,
+            ':expectedVersion': effect.input.expectedVersion,
+            ':nextVersion': effect.input.expectedVersion + 1,
+          },
+        },
+      };
+    }
     case 'DELETE_GM_INBOX_ITEM': {
       return {
         Delete: {
           TableName: db.tables.gameStateTableName,
-          Key: db.keyBuilders.gameState.gmInboxItem(
-            effect.input.gameId,
-            effect.input.submittedAt,
-            effect.input.characterId
-          ),
+          Key: db.keyBuilders.gameState.gmInboxItem(effect.input.gameId, effect.input.createdAt, effect.input.promptId),
+        },
+      };
+    }
+    case 'DELETE_PLAYER_INBOX_ITEM': {
+      return {
+        Delete: {
+          TableName: db.tables.gameStateTableName,
+          Key: db.keyBuilders.gameState.playerInboxItem(effect.input.playerId, effect.input.createdAt, effect.input.promptId),
         },
       };
     }
@@ -217,17 +342,17 @@ function toTransactInboxItem(
         Put: {
           TableName: db.tables.gameStateTableName,
           Item: {
-            ...db.keyBuilders.gameState.gmInboxItem(
-              effect.input.gameId,
-              effect.input.submittedAt,
-              effect.input.characterId
-            ),
+            ...db.keyBuilders.gameState.gmInboxItem(effect.input.gameId, effect.input.createdAt, effect.input.promptId),
             type: 'GMInboxItem',
+            promptId: effect.input.promptId,
             gameId: effect.input.gameId,
-            characterId: effect.input.characterId,
-            ownerPlayerId: effect.input.ownerPlayerId,
-            status: 'PENDING',
-            submittedAt: effect.input.submittedAt,
+            kind: effect.input.kind,
+            ref: effect.input.ref,
+            ownerPlayerId: effect.input.ownerPlayerId ?? null,
+            message: effect.input.message,
+            createdAt: effect.input.createdAt,
+            submittedAt: effect.input.submittedAt ?? null,
+            readAt: effect.input.readAt ?? null,
           },
         },
       };

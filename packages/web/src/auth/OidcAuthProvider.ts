@@ -42,7 +42,8 @@ export function createOidcAuthProvider(env = import.meta.env as OidcEnv): AuthPr
 
   return {
     mode: 'oidc',
-    actorId: 'oidc-user',
+    actorId: hasOidcSession() ? 'oidc-user' : '',
+    isAuthenticated: hasOidcSession(),
     async withAuthHeaders(headers?: HeadersInit): Promise<Headers> {
       const merged = new Headers(headers ?? {});
       const token = readValidAccessToken();
@@ -59,6 +60,14 @@ export function createOidcAuthProvider(env = import.meta.env as OidcEnv): AuthPr
 
 export function hasOidcSession(): boolean {
   return readValidAccessToken() !== null;
+}
+
+export function clearOidcSession(): void {
+  if (!isBrowser()) {
+    return;
+  }
+  localStorage.removeItem(OIDC_SESSION_KEY);
+  sessionStorage.removeItem(OIDC_PENDING_KEY);
 }
 
 export async function beginOidcLogin(returnToPath = '/', env = import.meta.env as OidcEnv): Promise<void> {
@@ -84,6 +93,29 @@ export async function beginOidcLogin(returnToPath = '/', env = import.meta.env a
   authorizeUrl.searchParams.set('code_challenge_method', 'S256');
 
   window.location.assign(authorizeUrl.toString());
+}
+
+export function beginOidcRegistration(returnToPath = '/', env = import.meta.env as OidcEnv): void {
+  assertBrowser();
+  const config = resolveConfig(env);
+  const registerUrl = new URL(`${config.issuer}/protocol/openid-connect/registrations`);
+  registerUrl.searchParams.set('client_id', config.clientId);
+  registerUrl.searchParams.set('response_type', 'code');
+  registerUrl.searchParams.set('scope', config.scope);
+  registerUrl.searchParams.set('redirect_uri', config.redirectUri);
+  registerUrl.searchParams.set('kc_action', 'register');
+  registerUrl.searchParams.set('returnToPath', returnToPath || '/');
+  window.location.assign(registerUrl.toString());
+}
+
+export function beginOidcLogout(returnToPath = '/', env = import.meta.env as OidcEnv): void {
+  assertBrowser();
+  const config = resolveConfig(env);
+  clearOidcSession();
+  const logoutUrl = new URL(`${config.issuer}/protocol/openid-connect/logout`);
+  logoutUrl.searchParams.set('post_logout_redirect_uri', resolveAbsoluteReturnToPath(returnToPath));
+  logoutUrl.searchParams.set('client_id', config.clientId);
+  window.location.assign(logoutUrl.toString());
 }
 
 export async function completeOidcLoginFromCallback(url = window.location.href, env = import.meta.env as OidcEnv): Promise<string> {
@@ -168,6 +200,13 @@ function defaultRedirectUri(): string {
     return '/auth/callback';
   }
   return `${window.location.origin}/auth/callback`;
+}
+
+function resolveAbsoluteReturnToPath(returnToPath: string): string {
+  if (typeof window === 'undefined') {
+    return returnToPath;
+  }
+  return new URL(returnToPath || '/', window.location.origin).toString();
 }
 
 function readValidAccessToken(): string | null {

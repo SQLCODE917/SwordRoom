@@ -19,7 +19,7 @@ export function logWebFlow(event: string, data: Record<string, unknown> = {}): v
 
 export function summarizeCommandEnvelope(envelope: {
   commandId: string;
-  gameId: string;
+  gameId?: string;
   type: string;
   createdAt: string;
   payload: Record<string, unknown>;
@@ -29,7 +29,7 @@ export function summarizeCommandEnvelope(envelope: {
   return {
     commandId: envelope.commandId,
     type: envelope.type,
-    gameId: envelope.gameId,
+    gameId: envelope.gameId ?? null,
     createdAt: envelope.createdAt,
     characterId: typeof payload.characterId === 'string' ? payload.characterId : null,
     race: typeof payload.race === 'string' ? payload.race : null,

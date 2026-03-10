@@ -1,10 +1,12 @@
 import type { PropsWithChildren } from 'react';
 import { NavLink } from 'react-router-dom';
+import { useAuthProvider } from '../auth/AuthProvider';
 import { useGameActorContext } from '../hooks/useGameActorContext';
 
 export function AppShell({ children }: PropsWithChildren) {
+  const auth = useAuthProvider();
   const { context, loading } = useGameActorContext('game-1');
-  const gmInboxDisabled = loading || !context.isGameMaster;
+  const gmInboxDisabled = !auth.isAuthenticated || loading || !context.isGameMaster;
 
   return (
     <div className="c-shell l-shell">
@@ -23,6 +25,9 @@ export function AppShell({ children }: PropsWithChildren) {
           <NavLink className="c-navlink t-small" to="/me/inbox">
             Player Inbox
           </NavLink>
+          <NavLink className="c-navlink t-small" to="/gm/games">
+            GM Games
+          </NavLink>
           {gmInboxDisabled ? (
             <span className="c-navlink t-small is-disabled" aria-disabled="true">
               GM Inbox
@@ -32,11 +37,14 @@ export function AppShell({ children }: PropsWithChildren) {
               GM Inbox
             </NavLink>
           )}
+          <NavLink className="c-navlink t-small" to="/admin">
+            Admin
+          </NavLink>
           <NavLink className="c-navlink t-small" to="/games/game-1/characters/char-human-1">
             Character Sheet
           </NavLink>
           <NavLink className="c-navlink t-small" to="/login">
-            Login
+            Account
           </NavLink>
         </nav>
       </header>

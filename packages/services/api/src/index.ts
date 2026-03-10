@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { anyCommandEnvelopeSchema, type AnyCommandEnvelope } from '@starter/shared';
 import {
+  assertActorHasRole,
   assertCharacterOwnerOrGameMaster,
   assertGameMasterActor,
   getGameActorContext,
@@ -9,7 +11,7 @@ import {
   summarizeError,
   type DbAccess,
 } from '@starter/services-shared';
-import { resolveActorId } from './auth.js';
+import { resolveActorId, resolveActorIdentity } from './auth.js';
 import type {
   ApiRoute,
   CommandStatusResponse,
@@ -20,11 +22,19 @@ import type {
 
 export const contractRoutes: ApiRoute[] = [
   { method: 'POST', path: '/commands', auth: 'required' },
+  { method: 'POST', path: '/me/profile/sync', auth: 'required' },
   { method: 'GET', path: '/commands/{commandId}', auth: 'required' },
+  { method: 'GET', path: '/me', auth: 'required' },
+  { method: 'GET', path: '/me/characters', auth: 'required' },
+  { method: 'GET', path: '/me/games', auth: 'required' },
   { method: 'GET', path: '/games/{gameId}/me', auth: 'required' },
   { method: 'GET', path: '/me/inbox', auth: 'required' },
+  { method: 'GET', path: '/games/public', auth: 'required' },
   { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
+  { method: 'GET', path: '/gm/games', auth: 'required' },
   { method: 'GET', path: '/gm/{gameId}/inbox', auth: 'gm_required' },
+  { method: 'GET', path: '/admin/users', auth: 'admin_required' },
+  { method: 'GET', path: '/admin/games', auth: 'admin_required' },
 ];
 
 export interface ApiServiceDependencies {
@@ -73,10 +83,7 @@ export function createApiService(deps: ApiServiceDependencies): {
         },
       });
 
-      const envelopeCandidate = {
-        ...request.envelope,
-        actorId,
-      };
+      const envelopeCandidate = normalizeEnvelopeCandidate(request.envelope, actorId);
 
       const envelope = anyCommandEnvelopeSchema.parse(envelopeCandidate);
       logServiceFlow({
@@ -87,6 +94,23 @@ export function createApiService(deps: ApiServiceDependencies): {
       });
 
       if (envelope.type === 'GMReviewCharacter') {
+        const gmContext = await assertGameMasterActor(deps.db, {
+          gameId: envelope.gameId,
+          actorId: envelope.actorId,
+        });
+        logServiceFlow({
+          enabled: flowLogEnabled,
+          service: 'api',
+          event: 'API_GM_AUTHORIZED',
+          data: {
+            ...summarizeCommandEnvelope(envelope),
+            roles: gmContext.roles,
+            gmPlayerId: gmContext.gmPlayerId,
+          },
+        });
+      }
+
+      if (envelope.type === 'SetGameVisibility' || envelope.type === 'InvitePlayerToGameByEmail') {
         const gmContext = await assertGameMasterActor(deps.db, {
           gameId: envelope.gameId,
           actorId: envelope.actorId,
@@ -248,6 +272,35 @@ export function createApiService(deps: ApiServiceDependencies): {
     },
 
     readApis: {
+      async syncMyProfile(input) {
+        const identity = await resolveActorIdentity({
+          bypassAllowed: deps.jwtBypass ?? process.env.JWT_BYPASS === '1',
+          authorizationHeader: input.authHeader,
+          bypassActorId: input.bypassActorId,
+        });
+        const profile = await deps.db.playerRepository.upsertPlayerProfile({
+          playerId: identity.actorId,
+          displayName: identity.displayName,
+          email: identity.email,
+          emailNormalized: identity.emailNormalized,
+          emailVerified: identity.emailVerified,
+          roles: identity.roles,
+          updatedAt: new Date().toISOString(),
+        });
+        logServiceFlow({
+          enabled: flowLogEnabled,
+          service: 'api',
+          event: 'API_PROFILE_SYNCED',
+          data: {
+            actorId: identity.actorId,
+            authMode: identity.authMode,
+            roles: identity.roles,
+            emailNormalized: identity.emailNormalized,
+          },
+        });
+        return profile;
+      },
+
       async getCommandStatus(commandId: string): Promise<CommandStatusResponse | null> {
         const entry = await deps.db.commandLogRepository.get(commandId);
         if (!entry) {
@@ -289,8 +342,36 @@ export function createApiService(deps: ApiServiceDependencies): {
         };
       },
 
+      async listCharactersByOwner(playerId: string) {
+        return deps.db.characterRepository.listCharactersByOwner(playerId);
+      },
+
       async getMyInbox(playerId: string) {
         return deps.db.inboxRepository.queryPlayerInbox(playerId);
+      },
+
+      async getMyProfile(playerId: string) {
+        return deps.db.playerRepository.getPlayerProfile(playerId);
+      },
+
+      async listPublicGames() {
+        return deps.db.gameRepository.listPublicGames();
+      },
+
+      async listAllGames() {
+        return deps.db.gameRepository.listAllGames();
+      },
+
+      async listGamesForPlayer(playerId: string) {
+        return deps.db.gameRepository.listGamesForPlayer(playerId);
+      },
+
+      async listGamesForGm(playerId: string) {
+        return deps.db.gameRepository.listGamesForGm(playerId);
+      },
+
+      async listUsers() {
+        return deps.db.playerRepository.listUsers();
       },
 
       async getGameActorContext(gameId: string, actorId: string) {
@@ -309,6 +390,25 @@ export function createApiService(deps: ApiServiceDependencies): {
       },
     },
   };
+}
+
+function normalizeEnvelopeCandidate(
+  envelope: PostCommandRequest['envelope'],
+  actorId: string
+): Omit<AnyCommandEnvelope, 'actorId'> & { actorId: string } {
+  const candidate = {
+    ...envelope,
+    actorId,
+  } as Omit<AnyCommandEnvelope, 'actorId'> & { actorId: string };
+
+  if (candidate.type === 'CreateGame') {
+    return {
+      ...candidate,
+      gameId: randomUUID(),
+    };
+  }
+
+  return candidate;
 }
 
 function buildFifoMessage(input: { queueUrl: string; envelope: AnyCommandEnvelope }) {

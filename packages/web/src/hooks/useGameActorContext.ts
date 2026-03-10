@@ -31,6 +31,17 @@ export function useGameActorContext(gameId: string): {
     let cancelled = false;
 
     const load = async () => {
+      if (!auth.isAuthenticated) {
+        setContext({
+          ...fallbackContext,
+          actorId: '',
+          roles: [],
+          isGameMaster: false,
+        });
+        setError(null);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       logWebFlow('WEB_GAME_ACTOR_CONTEXT_LOAD_START', {
         gameId,
@@ -73,7 +84,7 @@ export function useGameActorContext(gameId: string): {
     return () => {
       cancelled = true;
     };
-  }, [api, auth.actorId, auth.mode, gameId]);
+  }, [api, auth.actorId, auth.isAuthenticated, auth.mode, gameId]);
 
   return {
     context,

@@ -23,6 +23,9 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
       async getCharacter() {
         return null;
       },
+      async listCharactersByOwner() {
+        return [];
+      },
       async putCharacterDraft() {
         throw new Error('should not be called');
       },
@@ -37,11 +40,32 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
           sk: 'METADATA',
           type: 'GameMetadata',
           gameId: 'g',
+          name: 'Game',
+          visibility: 'PRIVATE',
+          createdByPlayerId: 'actor-1',
           gmPlayerId: 'actor-1',
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-01T00:00:00.000Z',
           version: 1,
         } as any;
+      },
+      async putGameMetadata() {
+        throw new Error('should not be called');
+      },
+      async updateGameMetadataWithVersion() {
+        throw new Error('should not be called');
+      },
+      async listPublicGames() {
+        return [];
+      },
+      async listAllGames() {
+        return [];
+      },
+      async listGamesForPlayer() {
+        return [];
+      },
+      async listGamesForGm() {
+        return [];
       },
     },
     playerRepository: {
@@ -52,10 +76,44 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
           type: 'PlayerProfile',
           playerId: 'actor-1',
           displayName: 'GM',
+          email: 'gm@example.com',
+          emailNormalized: 'gm@example.com',
+          emailVerified: true,
           roles: ['PLAYER', 'GM'],
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-01T00:00:00.000Z',
         } as any;
+      },
+      async getPlayerProfileByEmail() {
+        return null;
+      },
+      async upsertPlayerProfile() {
+        throw new Error('should not be called');
+      },
+      async listUsers() {
+        return [];
+      },
+    },
+    membershipRepository: {
+      async getMembership() {
+        return null;
+      },
+      async putMembership() {
+        throw new Error('should not be called');
+      },
+      async deleteMembership() {
+        throw new Error('should not be called');
+      },
+    },
+    inviteRepository: {
+      async getInvite() {
+        return null;
+      },
+      async putInvite() {
+        throw new Error('should not be called');
+      },
+      async updateInviteWithVersion() {
+        throw new Error('should not be called');
       },
     },
     inboxRepository: {
@@ -65,7 +123,10 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
       async addPlayerInboxItem() {
         throw new Error('should not be called');
       },
-      async resolveGmInboxItem() {
+      async deleteGmInboxItem() {
+        throw new Error('should not be called');
+      },
+      async deletePlayerInboxItem() {
         throw new Error('should not be called');
       },
       async queryGmInbox() {
@@ -113,6 +174,11 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
 describe('services/dispatcher command registry', () => {
   it('registers only command types defined by async-layer contract', () => {
     expect(listRegisteredCommandTypes()).toEqual([
+      'CreateGame',
+      'SetGameVisibility',
+      'InvitePlayerToGameByEmail',
+      'AcceptGameInvite',
+      'RejectGameInvite',
       'SaveCharacterDraft',
       'CreateCharacterDraft',
       'SetCharacterSubAbilities',

@@ -9,13 +9,28 @@ import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
 
 const pollIntervalsMs = [400, 800, 1200, 1800, 2600];
 
+interface PendingCharacterRow {
+  key: string;
+  characterId: string;
+  ownerPlayerId: string;
+  submittedAt: string;
+}
+
+interface ActivityRow {
+  key: string;
+  kind: string;
+  message: string;
+  createdAt: string;
+}
+
 export function GMInboxPage() {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
   const params = useParams<{ gameId: string }>();
   const gameId = params.gameId ?? 'game-1';
 
-  const [rows, setRows] = useState<GMInboxItem[]>([]);
+  const [pendingRows, setPendingRows] = useState<PendingCharacterRow[]>([]);
+  const [activityRows, setActivityRows] = useState<ActivityRow[]>([]);
   const [notesByCharacterId, setNotesByCharacterId] = useState<Record<string, string>>({});
   const [errorsByCharacterId, setErrorsByCharacterId] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -35,7 +50,7 @@ export function GMInboxPage() {
 
   return (
     <div className="l-page">
-      <Panel title="GM Inbox" subtitle={`Pending characters for game ${gameId}.`}>
+      <Panel title="GM Inbox" subtitle={`Pending characters and invite responses for game ${gameId}.`}>
         <CommandStatusPanel status={commandStatus} />
 
         <div className="c-table" role="table" aria-label="GM Pending Characters">
@@ -46,18 +61,18 @@ export function GMInboxPage() {
             <div className="c-table__cell t-small">Review</div>
           </div>
 
-          {rows.length === 0 ? (
+          {pendingRows.length === 0 ? (
             <div className="c-table__row" role="row">
               <div className="c-table__cell t-small">No pending characters.</div>
             </div>
           ) : (
-            rows.map((row) => {
+            pendingRows.map((row) => {
               const note = notesByCharacterId[row.characterId] ?? '';
               const rowError = errorsByCharacterId[row.characterId] ?? ' ';
               const rowBusy = activeCharacterId === row.characterId;
 
               return (
-                <div className="c-table__row" role="row" key={`${row.characterId}-${row.submittedAt}`}>
+                <div className="c-table__row" role="row" key={row.key}>
                   <div className="c-table__cell t-small">{row.characterId}</div>
                   <div className="c-table__cell t-small">{row.ownerPlayerId}</div>
                   <div className="c-table__cell t-small">{row.submittedAt}</div>
@@ -104,6 +119,29 @@ export function GMInboxPage() {
             })
           )}
         </div>
+
+        <Panel title="Invite Activity" subtitle="Player invite responses sent back to the GM inbox.">
+          <div className="c-table" role="table" aria-label="GM invite activity">
+            <div className="c-table__head c-table__row" role="row">
+              <div className="c-table__cell t-small">Kind</div>
+              <div className="c-table__cell t-small">Message</div>
+              <div className="c-table__cell t-small">Created</div>
+            </div>
+            {activityRows.length === 0 ? (
+              <div className="c-table__row" role="row">
+                <div className="c-table__cell t-small">No invite activity yet.</div>
+              </div>
+            ) : (
+              activityRows.map((row) => (
+                <div className="c-table__row" role="row" key={row.key}>
+                  <div className="c-table__cell t-small">{row.kind}</div>
+                  <div className="c-table__cell t-small">{row.message}</div>
+                  <div className="c-table__cell t-small">{row.createdAt}</div>
+                </div>
+              ))
+            )}
+          </div>
+        </Panel>
       </Panel>
     </div>
   );
@@ -117,13 +155,14 @@ export function GMInboxPage() {
     });
     try {
       const inbox = await api.getGmInbox(gameId);
-      const normalized = inbox.filter((item): item is GMInboxItem => Boolean(item?.characterId && item?.submittedAt));
-      setRows(normalized);
+      const normalized = normalizeInbox(inbox);
+      setPendingRows(normalized.pendingRows);
+      setActivityRows(normalized.activityRows);
       logWebFlow('WEB_GM_INBOX_REFRESH_OK', {
         actorId: auth.actorId,
         authMode: auth.mode,
         gameId,
-        count: normalized.length,
+        count: inbox.length,
       });
     } catch (error) {
       logWebFlow('WEB_GM_INBOX_REFRESH_FAILED', {
@@ -138,7 +177,7 @@ export function GMInboxPage() {
     }
   }
 
-  async function reviewRow(row: GMInboxItem, decision: 'APPROVE' | 'REJECT') {
+  async function reviewRow(row: PendingCharacterRow, decision: 'APPROVE' | 'REJECT') {
     const note = (notesByCharacterId[row.characterId] ?? '').trim();
     if (decision === 'REJECT' && note === '') {
       setErrorsByCharacterId((prev) => ({ ...prev, [row.characterId]: 'Rejection note is required.' }));
@@ -180,53 +219,19 @@ export function GMInboxPage() {
         errorCode: null,
         errorMessage: null,
       });
-      logWebFlow('WEB_GM_REVIEW_ACCEPTED', {
-        actorId: auth.actorId,
-        authMode: auth.mode,
-        gameId,
-        characterId: row.characterId,
-        decision,
-        commandId,
-      });
 
       const terminal = await pollUntilTerminal(commandId);
       if (terminal.status === 'PROCESSED') {
         await refreshInbox();
-        logWebFlow('WEB_GM_REVIEW_OK', {
-          actorId: auth.actorId,
-          authMode: auth.mode,
-          gameId,
-          characterId: row.characterId,
-          decision,
-          commandId,
-        });
         return;
       }
 
-      logWebFlow('WEB_GM_REVIEW_FAILED', {
-        actorId: auth.actorId,
-        authMode: auth.mode,
-        gameId,
-        characterId: row.characterId,
-        decision,
-        commandId,
-        errorCode: terminal.errorCode,
-        errorMessage: terminal.errorMessage,
-      });
       setErrorsByCharacterId((prev) => ({
         ...prev,
         [row.characterId]: terminal.errorMessage ?? terminal.errorCode ?? 'Review command failed.',
       }));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      logWebFlow('WEB_GM_REVIEW_REQUEST_FAILED', {
-        actorId: auth.actorId,
-        authMode: auth.mode,
-        gameId,
-        characterId: row.characterId,
-        decision,
-        ...summarizeError(error),
-      });
       setErrorsByCharacterId((prev) => ({ ...prev, [row.characterId]: message }));
       setCommandStatus((prev) => ({
         ...prev,
@@ -253,14 +258,6 @@ export function GMInboxPage() {
       }
 
       setCommandStatus(mapStatus(response));
-      logWebFlow('WEB_GM_REVIEW_STATUS_POLLED', {
-        actorId: auth.actorId,
-        authMode: auth.mode,
-        gameId,
-        commandId,
-        status: response.status,
-        errorCode: response.errorCode,
-      });
 
       if (response.status === 'PROCESSED' || response.status === 'FAILED') {
         return response;
@@ -272,48 +269,59 @@ export function GMInboxPage() {
   }
 }
 
-function mapStatus(response: CommandStatusResponse): CommandStatusViewModel {
-  if (response.status === 'FAILED') {
-    return {
-      state: 'Failed',
-      commandId: response.commandId,
-      message: 'GM review command failed.',
-      errorCode: response.errorCode,
-      errorMessage: response.errorMessage,
-    };
+function normalizeInbox(items: GMInboxItem[]): {
+  pendingRows: PendingCharacterRow[];
+  activityRows: ActivityRow[];
+} {
+  const pendingRows: PendingCharacterRow[] = [];
+  const activityRows: ActivityRow[] = [];
+
+  for (const item of items) {
+    const ref = typeof item.ref === 'object' && item.ref !== null ? (item.ref as Record<string, unknown>) : null;
+    const key = item.promptId || `${item.kind}:${item.createdAt}`;
+    if (item.kind === 'PENDING_CHARACTER' && typeof ref?.characterId === 'string') {
+      pendingRows.push({
+        key,
+        characterId: ref.characterId,
+        ownerPlayerId: item.ownerPlayerId ?? (typeof ref.playerId === 'string' ? ref.playerId : 'unknown'),
+        submittedAt: item.submittedAt ?? item.createdAt ?? '',
+      });
+      continue;
+    }
+
+    activityRows.push({
+      key,
+      kind: item.kind,
+      message: typeof item.message === 'string' ? item.message : '',
+      createdAt: typeof item.createdAt === 'string' ? item.createdAt : '',
+    });
   }
 
-  if (response.status === 'PROCESSED') {
-    return {
-      state: 'Processed',
-      commandId: response.commandId,
-      message: 'GM review command processed.',
-      errorCode: null,
-      errorMessage: null,
-    };
-  }
-
-  if (response.status === 'PROCESSING') {
-    return {
-      state: 'Processing',
-      commandId: response.commandId,
-      message: 'GM review command processing.',
-      errorCode: null,
-      errorMessage: null,
-    };
-  }
-
-  return {
-    state: 'Queued',
-    commandId: response.commandId,
-    message: 'GM review command queued.',
-    errorCode: null,
-    errorMessage: null,
-  };
+  return { pendingRows, activityRows };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function mapStatus(response: CommandStatusResponse): CommandStatusViewModel {
+  return {
+    state:
+      response.status === 'PROCESSED'
+        ? 'Processed'
+        : response.status === 'FAILED'
+          ? 'Failed'
+          : response.status === 'PROCESSING'
+            ? 'Processing'
+            : 'Queued',
+    commandId: response.commandId,
+    message:
+      response.status === 'FAILED'
+        ? response.errorMessage ?? response.errorCode ?? 'Command failed.'
+        : response.status === 'PROCESSED'
+          ? 'Command processed.'
+          : response.status === 'PROCESSING'
+            ? 'Command processing.'
+            : 'Command queued.',
+    errorCode: response.errorCode,
+    errorMessage: response.errorMessage,
+  };
 }
 
 function createCommandId(): string {
@@ -322,4 +330,8 @@ function createCommandId(): string {
   }
   const nowHex = Date.now().toString(16).padStart(12, '0').slice(-12);
   return `00000000-0000-4000-8000-${nowHex}`;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

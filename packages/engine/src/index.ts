@@ -28,6 +28,7 @@ export type {
   StartingPackageTables,
   SubAbility,
 } from './types.js';
+export * from './games.js';
 
 export function createDraftState(input: {
   characterId: string;

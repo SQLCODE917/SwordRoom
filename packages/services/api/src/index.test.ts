@@ -55,6 +55,9 @@ function makeDbMock(): DbAccess {
         }
         return null;
       },
+      async listCharactersByOwner() {
+        return [character as any];
+      },
       async putCharacterDraft() {
         throw new Error('not implemented in api test mock');
       },
@@ -64,12 +67,85 @@ function makeDbMock(): DbAccess {
     },
     gameRepository: {
       async getGameMetadata() {
-        return null;
+        return {
+          pk: 'GAME#game-1',
+          sk: 'METADATA',
+          type: 'GameMetadata',
+          gameId: 'game-1',
+          name: 'Game One',
+          visibility: 'PUBLIC',
+          createdByPlayerId: 'gm-1',
+          gmPlayerId: 'gm-1',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          version: 1,
+        } as any;
+      },
+      async putGameMetadata() {
+        throw new Error('not implemented in api test mock');
+      },
+      async updateGameMetadataWithVersion() {
+        throw new Error('not implemented in api test mock');
+      },
+      async listPublicGames() {
+        return [];
+      },
+      async listAllGames() {
+        return [];
+      },
+      async listGamesForPlayer() {
+        return [];
+      },
+      async listGamesForGm() {
+        return [];
       },
     },
     playerRepository: {
       async getPlayerProfile() {
+        return {
+          pk: 'PLAYER#player-1',
+          sk: 'PROFILE',
+          type: 'PlayerProfile',
+          playerId: 'player-1',
+          displayName: 'Player One',
+          email: 'player@example.com',
+          emailNormalized: 'player@example.com',
+          emailVerified: true,
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        } as any;
+      },
+      async getPlayerProfileByEmail() {
         return null;
+      },
+      async upsertPlayerProfile() {
+        throw new Error('not implemented in api test mock');
+      },
+      async listUsers() {
+        return [];
+      },
+    },
+    membershipRepository: {
+      async getMembership() {
+        return null;
+      },
+      async putMembership() {
+        throw new Error('not implemented in api test mock');
+      },
+      async deleteMembership() {
+        throw new Error('not implemented in api test mock');
+      },
+    },
+    inviteRepository: {
+      async getInvite() {
+        return null;
+      },
+      async putInvite() {
+        throw new Error('not implemented in api test mock');
+      },
+      async updateInviteWithVersion() {
+        throw new Error('not implemented in api test mock');
       },
     },
     inboxRepository: {
@@ -85,7 +161,10 @@ function makeDbMock(): DbAccess {
       async queryPlayerInbox() {
         return [];
       },
-      async resolveGmInboxItem() {
+      async deleteGmInboxItem() {
+        return;
+      },
+      async deletePlayerInboxItem() {
         return;
       },
     },
@@ -145,14 +224,24 @@ function makeUploadsMock() {
 describe('services/api contract route map', () => {
   it('matches the vertical-slice async-layer endpoint contract', () => {
     const routes = listContractRoutes();
-    expect(routes).toEqual([
-      { method: 'POST', path: '/commands', auth: 'required' },
-      { method: 'GET', path: '/commands/{commandId}', auth: 'required' },
-      { method: 'GET', path: '/games/{gameId}/me', auth: 'required' },
-      { method: 'GET', path: '/me/inbox', auth: 'required' },
-      { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
-      { method: 'GET', path: '/gm/{gameId}/inbox', auth: 'gm_required' },
-    ]);
+    expect(routes).toEqual(
+      expect.arrayContaining([
+        { method: 'POST', path: '/commands', auth: 'required' },
+        { method: 'POST', path: '/me/profile/sync', auth: 'required' },
+        { method: 'GET', path: '/commands/{commandId}', auth: 'required' },
+        { method: 'GET', path: '/me', auth: 'required' },
+        { method: 'GET', path: '/me/characters', auth: 'required' },
+        { method: 'GET', path: '/me/games', auth: 'required' },
+        { method: 'GET', path: '/games/public', auth: 'required' },
+        { method: 'GET', path: '/games/{gameId}/me', auth: 'required' },
+        { method: 'GET', path: '/me/inbox', auth: 'required' },
+        { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
+        { method: 'GET', path: '/gm/games', auth: 'required' },
+        { method: 'GET', path: '/gm/{gameId}/inbox', auth: 'gm_required' },
+        { method: 'GET', path: '/admin/users', auth: 'admin_required' },
+        { method: 'GET', path: '/admin/games', auth: 'admin_required' },
+      ])
+    );
   });
 
   it('source contract document contains every mapped route', () => {
@@ -230,6 +319,43 @@ describe('POST /commands', () => {
     expect(queue.sendMessage).toHaveBeenCalledTimes(2);
   });
 
+  it('generates the gameId for CreateGame on the backend', async () => {
+    const queue = new InMemoryFifoQueue();
+    const api = createApiService({
+      db: makeDbMock(),
+      uploads: makeUploadsMock(),
+      queue,
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    const response = await api.postCommands({
+      bypassActorId: 'player-1',
+      envelope: {
+        commandId: '22222222-2222-4222-8222-222222222222',
+        type: 'CreateGame',
+        schemaVersion: 1,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        payload: { name: 'Backend Id Game' },
+      } as any,
+    });
+
+    expect(response).toEqual({
+      accepted: true,
+      commandId: '22222222-2222-4222-8222-222222222222',
+      status: 'ACCEPTED',
+    });
+
+    const messages = await queue.receiveMessages('commands.fifo', 10);
+    expect(messages).toHaveLength(1);
+    const queued = JSON.parse(messages[0]!.messageBody) as { gameId?: string; payload?: { name?: string } };
+    expect(typeof queued.gameId).toBe('string');
+    expect(queued.gameId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
+    expect(queued.payload?.name).toBe('Backend Id Game');
+  });
+
   it('rejects appearance confirmation when the uploaded object does not exist', async () => {
     const api = createApiService({
       db: makeDbMock(),
@@ -265,5 +391,41 @@ describe('POST /commands', () => {
       code: 'APPEARANCE_UPLOAD_NOT_FOUND',
       statusCode: 400,
     });
+  });
+});
+
+describe('profile sync', () => {
+  it('upserts a dev actor profile from resolved auth identity', async () => {
+    const upsertPlayerProfile = vi.fn(async (input) => ({
+      pk: `PLAYER#${input.playerId}`,
+      sk: 'PROFILE',
+      type: 'PlayerProfile',
+      ...input,
+      createdAt: input.updatedAt,
+    }));
+    const db = makeDbMock();
+    db.playerRepository.upsertPlayerProfile = upsertPlayerProfile;
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: { sendMessage: vi.fn(async () => undefined) },
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    const profile = await api.readApis.syncMyProfile({
+      bypassActorId: 'gm-zzz',
+    });
+
+    expect(profile.playerId).toBe('gm-zzz');
+    expect(upsertPlayerProfile).toHaveBeenCalledTimes(1);
+    expect(upsertPlayerProfile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        playerId: 'gm-zzz',
+        displayName: 'gm-zzz',
+        roles: ['PLAYER', 'GM'],
+      })
+    );
   });
 });

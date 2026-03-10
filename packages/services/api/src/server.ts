@@ -3,6 +3,7 @@ import { URL } from 'node:url';
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import {
+  assertActorHasRole,
   assertCharacterOwnerOrGameMaster,
   assertGameMasterActor,
   logServiceFlow,
@@ -65,6 +66,22 @@ const server = createServer(async (req, res) => {
       });
       logFlow('API_POST_COMMAND_ACCEPTED', { requestId, commandId: response.commandId, status: response.status });
       sendJson(res, 202, response);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/me/profile/sync') {
+      const payload = (await readJson(req)) as { bypassActorId?: string };
+      const profile = await service.readApis.syncMyProfile({
+        authHeader: req.headers.authorization,
+        bypassActorId: typeof payload.bypassActorId === 'string' ? payload.bypassActorId : undefined,
+      });
+      logFlow('API_POST_ME_PROFILE_SYNC', {
+        requestId,
+        actorId: profile.playerId,
+        roles: profile.roles,
+        emailNormalized: profile.emailNormalized,
+      });
+      sendJson(res, 200, profile);
       return;
     }
 
@@ -216,6 +233,55 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === 'GET' && url.pathname === '/me') {
+      const actorId = await resolveActorId({
+        bypassAllowed: process.env.AUTH_MODE === 'dev',
+        authorizationHeader: req.headers.authorization,
+      });
+      const existingProfile = await service.readApis.getMyProfile(actorId);
+      const profile =
+        existingProfile ??
+        (await service.readApis.syncMyProfile({
+          authHeader: req.headers.authorization,
+        }));
+      logFlow('API_GET_ME', { requestId, actorId, found: Boolean(profile) });
+      sendJson(res, 200, profile ?? { playerId: actorId });
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/me/characters') {
+      const actorId = await resolveActorId({
+        bypassAllowed: process.env.AUTH_MODE === 'dev',
+        authorizationHeader: req.headers.authorization,
+      });
+      const characters = await service.readApis.listCharactersByOwner(actorId);
+      logFlow('API_GET_MY_CHARACTERS', { requestId, actorId, count: characters.length });
+      sendJson(res, 200, characters);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/me/games') {
+      const actorId = await resolveActorId({
+        bypassAllowed: process.env.AUTH_MODE === 'dev',
+        authorizationHeader: req.headers.authorization,
+      });
+      const games = await service.readApis.listGamesForPlayer(actorId);
+      logFlow('API_GET_MY_GAMES', { requestId, actorId, count: games.length });
+      sendJson(res, 200, games);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/games/public') {
+      const actorId = await resolveActorId({
+        bypassAllowed: process.env.AUTH_MODE === 'dev',
+        authorizationHeader: req.headers.authorization,
+      });
+      const games = await service.readApis.listPublicGames();
+      logFlow('API_GET_PUBLIC_GAMES', { requestId, actorId, count: games.length });
+      sendJson(res, 200, games);
+      return;
+    }
+
     const gmMatch = url.pathname.match(/^\/gm\/([^/]+)\/inbox$/);
     if (req.method === 'GET' && gmMatch) {
       const gameId = decodeURIComponent(gmMatch[1]!);
@@ -227,6 +293,41 @@ const server = createServer(async (req, res) => {
       const inbox = await service.readApis.getGmInbox(gameId);
       logFlow('API_GET_GM_INBOX', { requestId, actorId, gameId, count: inbox.length });
       sendJson(res, 200, inbox);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/gm/games') {
+      const actorId = await resolveActorId({
+        bypassAllowed: process.env.AUTH_MODE === 'dev',
+        authorizationHeader: req.headers.authorization,
+      });
+      const games = await service.readApis.listGamesForGm(actorId);
+      logFlow('API_GET_GM_GAMES', { requestId, actorId, count: games.length });
+      sendJson(res, 200, games);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/admin/users') {
+      const actorId = await resolveActorId({
+        bypassAllowed: process.env.AUTH_MODE === 'dev',
+        authorizationHeader: req.headers.authorization,
+      });
+      await assertActorHasRole(deps.db, { actorId, role: 'ADMIN' });
+      const users = await service.readApis.listUsers();
+      logFlow('API_GET_ADMIN_USERS', { requestId, actorId, count: users.length });
+      sendJson(res, 200, users);
+      return;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/admin/games') {
+      const actorId = await resolveActorId({
+        bypassAllowed: process.env.AUTH_MODE === 'dev',
+        authorizationHeader: req.headers.authorization,
+      });
+      await assertActorHasRole(deps.db, { actorId, role: 'ADMIN' });
+      const games = await service.readApis.listAllGames();
+      logFlow('API_GET_ADMIN_GAMES', { requestId, actorId, count: games.length });
+      sendJson(res, 200, games);
       return;
     }
 

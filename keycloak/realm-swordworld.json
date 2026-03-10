@@ -12,6 +12,14 @@
   "accessTokenLifespan": 3600,
   "ssoSessionIdleTimeout": 28800,
 
+  "roles": {
+    "realm": [
+      { "name": "PLAYER" },
+      { "name": "GM" },
+      { "name": "ADMIN" }
+    ]
+  },
+
   "clients": [
     {
       "clientId": "swordworld-web",
@@ -55,7 +63,8 @@
           "value": "player1234",
           "temporary": false
         }
-      ]
+      ],
+      "realmRoles": ["PLAYER"]
     },
     {
       "username": "gm@example.com",
@@ -70,7 +79,24 @@
           "value": "gm1234",
           "temporary": false
         }
-      ]
+      ],
+      "realmRoles": ["PLAYER", "GM"]
+    },
+    {
+      "username": "admin@example.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Admin",
+      "email": "admin@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin1234",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["PLAYER", "ADMIN"]
     }
   ]
 }

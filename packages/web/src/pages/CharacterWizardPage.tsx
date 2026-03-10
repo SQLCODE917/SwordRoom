@@ -1,4 +1,5 @@
 import { type Dispatch, type ReactNode, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { createApiClient, type CharacterItem, type CommandStatusResponse } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
@@ -105,10 +106,10 @@ const merchantScholarOptions: FieldOption[] = [
   { value: 'SAGE', label: 'Sage 1' },
 ];
 
-function buildInitialState(): WizardState {
+function buildInitialState(gameId: string, characterId: string): WizardState {
   return {
-    gameId: 'game-1',
-    characterId: 'char-human-1',
+    gameId,
+    characterId,
     race: 'HUMAN',
     raisedBy: 'HUMANS',
     subAbility: rollSubAbilitiesForRace('HUMAN'),
@@ -132,10 +133,14 @@ function buildInitialState(): WizardState {
 }
 
 export function CharacterWizardPage() {
+  const params = useParams<{ gameId: string; characterId?: string }>();
+  const routeGameId = params.gameId ?? 'game-1';
+  const routeCharacterId = params.characterId ?? createCharacterId();
+  const isEditMode = typeof params.characterId === 'string' && params.characterId.trim() !== '';
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
 
-  const [state, setState] = useState<WizardState>(() => buildInitialState());
+  const [state, setState] = useState<WizardState>(() => buildInitialState(routeGameId, routeCharacterId));
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const stepPanelRefs = useRef<Array<HTMLElement | null>>([]);
   const commandStatusRef = useRef<HTMLDivElement | null>(null);
@@ -164,14 +169,20 @@ export function CharacterWizardPage() {
   });
 
   useEffect(() => {
+    setState(buildInitialState(routeGameId, routeCharacterId));
+    setSnapshot(null);
+    setLastSavedFingerprint(null);
+    setStepError(' ');
+  }, [routeCharacterId, routeGameId]);
+
+  useEffect(() => {
     logWebFlow('WEB_CHARACTER_WIZARD_MOUNT', {
       gameId: state.gameId,
       characterId: state.characterId,
+      isEditMode,
     });
     void refreshSnapshot({ syncWizardState: true });
-    // initial load only
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isEditMode, state.characterId, state.gameId]);
 
   useEffect(() => {
     return () => {
@@ -644,7 +655,14 @@ export function CharacterWizardPage() {
 
   return (
     <div className="l-page">
-      <Panel title="Character Wizard" subtitle="Each save and submit sends one command, then polls until terminal.">
+      <Panel
+        title={isEditMode ? 'Edit Character Draft' : 'Character Wizard'}
+        subtitle={
+          isEditMode
+            ? 'Edit an existing character draft. Each save and submit sends one command, then polls until terminal.'
+            : 'Create a new character. Each save and submit sends one command, then polls until terminal.'
+        }
+      >
         <div className="l-col">
           <div className="c-note c-note--info">
             <span className="t-small">Autofill uses fixture good.human_rune_master_sorcerer_starter.</span>
@@ -1444,6 +1462,13 @@ function parseOptionalNumber(value: string): number | null {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function createCharacterId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `char-${crypto.randomUUID().slice(0, 8)}`;
+  }
+  return `char-${Date.now().toString(16).slice(-8)}`;
 }
 
 function serializeWizardState(state: WizardState): string {

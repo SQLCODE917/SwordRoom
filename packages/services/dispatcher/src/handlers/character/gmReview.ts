@@ -12,7 +12,7 @@ export const gmReviewHandler: CommandHandler<'GMReviewCharacter'> = async (ctx, 
   };
 
   const gmItems = await ctx.db.inboxRepository.queryGmInbox(envelope.gameId);
-  const gmItem = gmItems.find((item) => item.characterId === envelope.payload.characterId);
+  const gmItem = gmItems.find((item) => item.kind === 'PENDING_CHARACTER' && item.ref.characterId === envelope.payload.characterId);
 
   return {
     writes: [
@@ -38,8 +38,8 @@ export const gmReviewHandler: CommandHandler<'GMReviewCharacter'> = async (ctx, 
               kind: 'DELETE_GM_INBOX_ITEM' as const,
               input: {
                 gameId: envelope.gameId,
-                submittedAt: gmItem.submittedAt,
-                characterId: gmItem.characterId,
+                createdAt: gmItem.createdAt,
+                promptId: gmItem.promptId,
               },
             },
           ]

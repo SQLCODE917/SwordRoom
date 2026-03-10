@@ -94,7 +94,7 @@ ddbDescribe('Local DynamoDB integration', () => {
 
     expect(db.keyBuilders.gameState.gmInboxItem('game-1', '2026-03-01T00:00:00.000Z', 'char-1')).toEqual({
       pk: 'GM#game-1',
-      sk: 'PENDING_CHAR#2026-03-01T00:00:00.000Z#char-1',
+      sk: 'INBOX#2026-03-01T00:00:00.000Z#char-1',
     });
 
     expect(db.keyBuilders.commandLog.command('cmd-1')).toEqual({
@@ -171,9 +171,14 @@ ddbDescribe('Local DynamoDB integration', () => {
   it('Inbox repository: write + query patterns match YAML access patterns', async () => {
     await db.inboxRepository.addGmInboxItem({
       gameId: 'game-1',
-      characterId: 'char-1',
+      promptId: 'prompt-char-1',
+      kind: 'PENDING_CHARACTER',
+      ref: { characterId: 'char-1', playerId: 'player-1', commandId: 'cmd-1' },
       ownerPlayerId: 'player-1',
+      message: 'Character char-1 submitted for review',
+      createdAt: '2026-03-01T00:10:00.000Z',
       submittedAt: '2026-03-01T00:10:00.000Z',
+      readAt: null,
     });
 
     await db.inboxRepository.addPlayerInboxItem({
@@ -190,7 +195,7 @@ ddbDescribe('Local DynamoDB integration', () => {
     const gmItems = await db.inboxRepository.queryGmInbox('game-1');
     expect(gmItems).toHaveLength(1);
     expect(gmItems[0]?.pk).toBe('GM#game-1');
-    expect(gmItems[0]?.sk.startsWith('PENDING_CHAR#')).toBe(true);
+    expect(gmItems[0]?.sk.startsWith('INBOX#')).toBe(true);
 
     const playerItems = await db.inboxRepository.queryPlayerInbox('player-1');
     expect(playerItems).toHaveLength(1);

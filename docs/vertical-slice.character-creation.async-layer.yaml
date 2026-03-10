@@ -14,11 +14,19 @@ aws_components:
     gateway: http_api
     endpoints:
       - { method: POST, path: /commands, auth: required }
+      - { method: POST, path: /me/profile/sync, auth: required }
       - { method: GET, path: /commands/{commandId}, auth: required }
+      - { method: GET, path: /me, auth: required }
+      - { method: GET, path: /me/characters, auth: required }
+      - { method: GET, path: /me/games, auth: required }
       - { method: GET, path: /games/{gameId}/me, auth: required }
       - { method: GET, path: /me/inbox, auth: required }
+      - { method: GET, path: /games/public, auth: required }
       - { method: GET, path: /games/{gameId}/characters/{characterId}, auth: required }
+      - { method: GET, path: /gm/games, auth: required }
       - { method: GET, path: /gm/{gameId}/inbox, auth: gm_required }
+      - { method: GET, path: /admin/users, auth: admin_required }
+      - { method: GET, path: /admin/games, auth: admin_required }
   queue:
     name: commands.fifo
     fifo: true
@@ -43,13 +51,28 @@ command_contracts:
   envelope:
     fields:
       commandId: uuid
-      gameId: string
+      gameId: string   # CreateGame is assigned by the API; all other commands provide the target gameId
       actorId: string   # from JWT sub
       type: string
       schemaVersion: number
       payload: object
       createdAt: string
   types:
+    - type: CreateGame
+      payload: { name: string }
+      authz: "authenticated actor"
+    - type: SetGameVisibility
+      payload: { gameId: string, expectedVersion: int, visibility: "PUBLIC|PRIVATE" }
+      authz: "actorId is GM member of game"
+    - type: InvitePlayerToGameByEmail
+      payload: { gameId: string, email: string }
+      authz: "actorId is GM member of game"
+    - type: AcceptGameInvite
+      payload: { gameId: string, inviteId: string }
+      authz: "invite belongs to actorId"
+    - type: RejectGameInvite
+      payload: { gameId: string, inviteId: string }
+      authz: "invite belongs to actorId"
     - type: SaveCharacterDraft
       payload: { characterId: string, expectedVersion?: int|null, race: string, raisedBy?: string|null, subAbility: object, backgroundRoll2dTotal?: int, startingMoneyRoll2dTotal?: int, identity: object, purchases: object[], cart: object, noteToGm?: string }
       authz: "actorId == ownerPlayerId"

@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
+      '@starter/shared/rules/equipmentRoster': resolve(__dirname, '../shared/src/rules/equipmentRoster.ts'),
       '@starter/shared': resolve(__dirname, '../shared/src/index.ts'),
       '@starter/services-shared': resolve(__dirname, '../services/shared/src/index.ts'),
       '@starter/services-api': resolve(__dirname, '../services/api/src/index.ts'),
