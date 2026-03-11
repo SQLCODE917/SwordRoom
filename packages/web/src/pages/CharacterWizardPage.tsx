@@ -135,7 +135,8 @@ function buildInitialState(gameId: string, characterId: string): WizardState {
 export function CharacterWizardPage() {
   const params = useParams<{ gameId: string; characterId?: string }>();
   const routeGameId = params.gameId ?? 'game-1';
-  const routeCharacterId = params.characterId ?? createCharacterId();
+  const generatedCharacterIdRef = useRef<string>(createCharacterId());
+  const routeCharacterId = params.characterId ?? generatedCharacterIdRef.current;
   const isEditMode = typeof params.characterId === 'string' && params.characterId.trim() !== '';
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
@@ -144,6 +145,7 @@ export function CharacterWizardPage() {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
   const stepPanelRefs = useRef<Array<HTMLElement | null>>([]);
   const commandStatusRef = useRef<HTMLDivElement | null>(null);
+  const commandStatusScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isExecutingCommand, setIsExecutingCommand] = useState(false);
   const [stepError, setStepError] = useState<string>(' ');
   const [snapshot, setSnapshot] = useState<CharacterSnapshot | null>(null);
@@ -181,6 +183,14 @@ export function CharacterWizardPage() {
       characterId: state.characterId,
       isEditMode,
     });
+    if (!isEditMode) {
+      logWebFlow('WEB_CHARACTER_WIZARD_SKIP_INITIAL_SNAPSHOT', {
+        gameId: state.gameId,
+        characterId: state.characterId,
+        reason: 'NEW_CHARACTER_ROUTE',
+      });
+      return;
+    }
     void refreshSnapshot({ syncWizardState: true });
   }, [isEditMode, state.characterId, state.gameId]);
 
@@ -190,6 +200,9 @@ export function CharacterWizardPage() {
         if (timer) {
           clearTimeout(timer);
         }
+      }
+      if (commandStatusScrollTimeoutRef.current) {
+        clearTimeout(commandStatusScrollTimeoutRef.current);
       }
     };
   }, []);
@@ -828,7 +841,7 @@ export function CharacterWizardPage() {
 
   async function executeFinalSubmit() {
     setStepError(' ');
-    scrollCommandStatusIntoView();
+    scheduleCommandStatusScroll();
     setIsExecutingCommand(true);
     logWebFlow('WEB_CHARACTER_WIZARD_EXECUTE_START', {
       gameId: state.gameId,
@@ -939,6 +952,28 @@ export function CharacterWizardPage() {
     });
   }
 
+  function scheduleCommandStatusScroll() {
+    if (commandStatusScrollTimeoutRef.current) {
+      clearTimeout(commandStatusScrollTimeoutRef.current);
+      commandStatusScrollTimeoutRef.current = null;
+    }
+
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          scrollCommandStatusIntoView();
+        });
+      });
+    } else {
+      scrollCommandStatusIntoView();
+    }
+
+    commandStatusScrollTimeoutRef.current = setTimeout(() => {
+      scrollCommandStatusIntoView();
+      commandStatusScrollTimeoutRef.current = null;
+    }, 180);
+  }
+
   async function submitCommandAndAwait(label: string, submit: () => Promise<string>) {
     setCommandStatus({
       state: 'Idle',
@@ -996,7 +1031,7 @@ export function CharacterWizardPage() {
 
   async function saveStepProgress(stepKey: WizardStepKey) {
     setStepError(' ');
-    scrollCommandStatusIntoView();
+    scheduleCommandStatusScroll();
     setIsExecutingCommand(true);
     setSaveButtonState(stepKey, 'saving');
     setCommandStatus({

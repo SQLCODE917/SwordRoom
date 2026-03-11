@@ -23,28 +23,42 @@ const DEV_SESSION_KEY = 'sw_dev_session_v1';
 
 export function createDevAuthProvider(env = import.meta.env as WebEnv): AuthProvider {
   const mode = parseMode(env.VITE_AUTH_MODE);
-  const session = readCurrentDevSession();
-  const actorId = mode === 'dev' ? session?.actorId ?? '' : env.VITE_OIDC_BEARER_TOKEN ? 'oidc-user' : '';
   const oidcToken = env.VITE_OIDC_BEARER_TOKEN;
 
   return {
     mode,
-    actorId,
-    isAuthenticated: mode === 'dev' ? actorId.trim() !== '' : Boolean(oidcToken),
+    get actorId() {
+      return readActorId(mode, oidcToken);
+    },
+    get isAuthenticated() {
+      return mode === 'dev' ? readActorId(mode, oidcToken).trim() !== '' : Boolean(oidcToken);
+    },
     async withAuthHeaders(headers?: HeadersInit): Promise<Headers> {
       const merged = new Headers(headers ?? {});
+      const actorId = readActorId(mode, oidcToken);
+      if (mode === 'dev' && actorId.trim() !== '') {
+        merged.set('x-dev-actor-id', actorId);
+      }
       if (mode === 'oidc' && oidcToken) {
         merged.set('Authorization', `Bearer ${oidcToken}`);
       }
       return merged;
     },
     withActor<T extends Record<string, unknown>>(body: T): T & { bypassActorId?: string } {
+      const actorId = readActorId(mode, oidcToken);
       if (mode === 'dev' && actorId.trim() !== '') {
         return { ...body, bypassActorId: actorId };
       }
       return body;
     },
   };
+}
+
+function readActorId(mode: AuthMode, oidcToken?: string): string {
+  if (mode === 'dev') {
+    return readCurrentDevSession()?.actorId ?? '';
+  }
+  return oidcToken ? 'oidc-user' : '';
 }
 
 export async function registerDevAccount(username: string, password: string): Promise<DevAccount> {

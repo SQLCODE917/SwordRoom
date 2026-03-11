@@ -35,6 +35,22 @@ describe('createDevAuthProvider', () => {
     expect(payload.bypassActorId).toBeUndefined();
   });
 
+  it('reads the current dev session dynamically after provider creation', async () => {
+    const auth = createDevAuthProvider({
+      VITE_AUTH_MODE: 'dev',
+    });
+
+    expect(auth.isAuthenticated).toBe(false);
+    expect(auth.actorId).toBe('');
+
+    writeDevSession({ username: 'player-aaa', actorId: 'player-aaa' });
+
+    expect(auth.isAuthenticated).toBe(true);
+    expect(auth.actorId).toBe('player-aaa');
+    expect((await auth.withAuthHeaders()).get('x-dev-actor-id')).toBe('player-aaa');
+    expect(auth.withActor({ envelope: { commandId: 'c1' } }).bypassActorId).toBe('player-aaa');
+  });
+
   it('adds Authorization header only in oidc mode when token exists', async () => {
     const auth = createDevAuthProvider({
       VITE_AUTH_MODE: 'oidc',

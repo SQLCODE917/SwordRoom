@@ -130,6 +130,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       const context = await service.readApis.getGameActorContext(gameId, actorId);
       logFlow('API_GET_GAME_ACTOR_CONTEXT', {
@@ -151,6 +152,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       await assertCharacterOwnerOrGameMaster(deps.db, {
         gameId,
@@ -226,6 +228,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       const inbox = await service.readApis.getMyInbox(actorId);
       logFlow('API_GET_PLAYER_INBOX', { requestId, actorId, count: inbox.length });
@@ -237,12 +240,14 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       const existingProfile = await service.readApis.getMyProfile(actorId);
       const profile =
         existingProfile ??
         (await service.readApis.syncMyProfile({
           authHeader: req.headers.authorization,
+          bypassActorId: actorId,
         }));
       logFlow('API_GET_ME', { requestId, actorId, found: Boolean(profile) });
       sendJson(res, 200, profile ?? { playerId: actorId });
@@ -253,6 +258,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       const characters = await service.readApis.listCharactersByOwner(actorId);
       logFlow('API_GET_MY_CHARACTERS', { requestId, actorId, count: characters.length });
@@ -264,6 +270,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       const games = await service.readApis.listGamesForPlayer(actorId);
       logFlow('API_GET_MY_GAMES', { requestId, actorId, count: games.length });
@@ -275,6 +282,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       const games = await service.readApis.listPublicGames();
       logFlow('API_GET_PUBLIC_GAMES', { requestId, actorId, count: games.length });
@@ -288,6 +296,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       await assertGameMasterActor(deps.db, { gameId, actorId });
       const inbox = await service.readApis.getGmInbox(gameId);
@@ -300,6 +309,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       const games = await service.readApis.listGamesForGm(actorId);
       logFlow('API_GET_GM_GAMES', { requestId, actorId, count: games.length });
@@ -311,6 +321,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       await assertActorHasRole(deps.db, { actorId, role: 'ADMIN' });
       const users = await service.readApis.listUsers();
@@ -323,6 +334,7 @@ const server = createServer(async (req, res) => {
       const actorId = await resolveActorId({
         bypassAllowed: process.env.AUTH_MODE === 'dev',
         authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
       });
       await assertActorHasRole(deps.db, { actorId, role: 'ADMIN' });
       const games = await service.readApis.listAllGames();
@@ -397,4 +409,11 @@ function readStatusCode(error: unknown): number {
     return (error as { statusCode: number }).statusCode;
   }
   return 400;
+}
+
+function readDevActorIdHeader(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return typeof value[0] === 'string' ? value[0] : undefined;
+  }
+  return typeof value === 'string' ? value : undefined;
 }

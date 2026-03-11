@@ -15,6 +15,7 @@ export interface ResolvedActorIdentity {
 export interface ResolveActorIdInput {
   authorizationHeader?: string;
   bypassActorId?: string;
+  devActorIdHeader?: string;
   bypassAllowed: boolean;
   env?: Record<string, string | undefined>;
 }
@@ -26,7 +27,12 @@ export async function resolveActorId(input: ResolveActorIdInput): Promise<string
 export async function resolveActorIdentity(input: ResolveActorIdInput): Promise<ResolvedActorIdentity> {
   const env = input.env ?? process.env;
   const mode = (env.AUTH_MODE ?? 'dev') as AuthMode;
-  const actorId = typeof input.bypassActorId === 'string' ? input.bypassActorId.trim() : '';
+  const actorId =
+    typeof input.bypassActorId === 'string' && input.bypassActorId.trim() !== ''
+      ? input.bypassActorId.trim()
+      : typeof input.devActorIdHeader === 'string'
+        ? input.devActorIdHeader.trim()
+        : '';
 
   if (input.bypassAllowed) {
     if (actorId) {
