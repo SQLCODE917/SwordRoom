@@ -1,12 +1,14 @@
 import type { PropsWithChildren } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuthProvider } from '../auth/AuthProvider';
-import { useGameActorContext } from '../hooks/useGameActorContext';
+import { useGmGames } from '../hooks/useGmGames';
 
 export function AppShell({ children }: PropsWithChildren) {
   const auth = useAuthProvider();
-  const { context, loading } = useGameActorContext('game-1');
-  const gmInboxDisabled = !auth.isAuthenticated || loading || !context.isGameMaster;
+  const { games: gmGames, loading } = useGmGames();
+  const hasGmGames = gmGames.length > 0;
+  const firstGmGameId = gmGames[0]?.gameId ?? null;
+  const gmNavDisabled = !auth.isAuthenticated || loading || !hasGmGames;
 
   return (
     <div className="c-shell l-shell">
@@ -25,15 +27,21 @@ export function AppShell({ children }: PropsWithChildren) {
           <NavLink className="c-navlink t-small" to="/me/inbox">
             Player Inbox
           </NavLink>
-          <NavLink className="c-navlink t-small" to="/gm/games">
-            GM Games
-          </NavLink>
-          {gmInboxDisabled ? (
+          {gmNavDisabled ? (
+            <span className="c-navlink t-small is-disabled" aria-disabled="true">
+              GM Games
+            </span>
+          ) : (
+            <NavLink className="c-navlink t-small" to="/gm/games">
+              GM Games
+            </NavLink>
+          )}
+          {gmNavDisabled || !firstGmGameId ? (
             <span className="c-navlink t-small is-disabled" aria-disabled="true">
               GM Inbox
             </span>
           ) : (
-            <NavLink className="c-navlink t-small" to="/gm/game-1/inbox">
+            <NavLink className="c-navlink t-small" to={`/gm/${encodeURIComponent(firstGmGameId)}/inbox`}>
               GM Inbox
             </NavLink>
           )}

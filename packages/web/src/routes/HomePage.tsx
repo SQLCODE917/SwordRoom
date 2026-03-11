@@ -9,6 +9,7 @@ interface DashboardState {
   profile: PlayerProfile | null;
   characters: CharacterItem[];
   myGames: GameItem[];
+  gmGames: GameItem[];
   publicGames: GameItem[];
 }
 
@@ -16,6 +17,7 @@ const emptyState: DashboardState = {
   profile: null,
   characters: [],
   myGames: [],
+  gmGames: [],
   publicGames: [],
 };
 
@@ -39,22 +41,24 @@ export function HomePage() {
         if (auth.mode === 'oidc') {
           await api.syncMyProfile();
         }
-        const [profile, characters, myGames, publicGames] = await Promise.all([
+        const [profile, characters, myGames, gmGames, publicGames] = await Promise.all([
           api.getMyProfile(),
           api.getMyCharacters(),
           api.getMyGames(),
+          api.getGmGames(),
           api.getPublicGames(),
         ]);
         if (cancelled) {
           return;
         }
-        setDashboard({ profile, characters, myGames, publicGames });
+        setDashboard({ profile, characters, myGames, gmGames, publicGames });
         setError(null);
         logWebFlow('WEB_HOME_LOAD_OK', {
           actorId: auth.actorId,
           authMode: auth.mode,
           characterCount: characters.length,
           myGameCount: myGames.length,
+          gmGameCount: gmGames.length,
           publicGameCount: publicGames.length,
         });
       } catch (loadError) {
@@ -82,6 +86,8 @@ export function HomePage() {
   }, [api, auth.actorId, auth.mode]);
 
   const profileName = dashboard.profile?.displayName ?? dashboard.profile?.playerId ?? auth.actorId;
+  const joinedGameIds = useMemo(() => new Set(dashboard.myGames.map((game) => game.gameId)), [dashboard.myGames]);
+  const gmGameIds = useMemo(() => new Set(dashboard.gmGames.map((game) => game.gameId)), [dashboard.gmGames]);
 
   return (
     <div className="l-page">
@@ -135,10 +141,16 @@ export function HomePage() {
 
           <div className="l-col l-grow">
             <SectionTitle title="My Games" />
-            <GameTable games={dashboard.myGames} loading={loading} emptyText="You are not in any games yet." />
+            <MyGamesTable games={dashboard.myGames} loading={loading} emptyText="You are not in any games yet." gmGameIds={gmGameIds} />
 
             <SectionTitle title="Public Games" />
-            <GameTable games={dashboard.publicGames} loading={loading} emptyText="No public games found." />
+            <PublicGamesTable
+              games={dashboard.publicGames}
+              loading={loading}
+              emptyText="No public games found."
+              joinedGameIds={joinedGameIds}
+              gmGameIds={gmGameIds}
+            />
           </div>
         </div>
       </Panel>
@@ -150,7 +162,7 @@ function SectionTitle({ title }: { title: string }) {
   return <h3 className="t-h4">{title}</h3>;
 }
 
-function GameTable(input: { games: GameItem[]; loading: boolean; emptyText: string }) {
+function MyGamesTable(input: { games: GameItem[]; loading: boolean; emptyText: string; gmGameIds: ReadonlySet<string> }) {
   return (
     <div className="c-table" role="table" aria-label={input.emptyText}>
       <div className="c-table__head c-table__row" role="row">
@@ -173,7 +185,54 @@ function GameTable(input: { games: GameItem[]; loading: boolean; emptyText: stri
             <div className="c-table__cell t-small">
               <div className="l-row">
                 <Link to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</Link>
-                <Link to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</Link>
+                <Link to="/me/inbox">Player Inbox</Link>
+                {input.gmGameIds.has(game.gameId) ? (
+                  <Link to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</Link>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+export function PublicGamesTable(input: {
+  games: GameItem[];
+  loading: boolean;
+  emptyText: string;
+  joinedGameIds: ReadonlySet<string>;
+  gmGameIds: ReadonlySet<string>;
+}) {
+  return (
+    <div className="c-table" role="table" aria-label={input.emptyText}>
+      <div className="c-table__head c-table__row" role="row">
+        <div className="c-table__cell t-small">Game</div>
+        <div className="c-table__cell t-small">Visibility</div>
+        <div className="c-table__cell t-small">Actions</div>
+      </div>
+      {input.games.length === 0 ? (
+        <div className="c-table__row" role="row">
+          <div className="c-table__cell t-small">{input.loading ? 'Loading games...' : input.emptyText}</div>
+        </div>
+      ) : (
+        input.games.map((game) => (
+          <div className="c-table__row" role="row" key={game.gameId}>
+            <div className="c-table__cell t-small">
+              <div>{game.name}</div>
+              <div>{game.gameId}</div>
+            </div>
+            <div className="c-table__cell t-small">{game.visibility}</div>
+            <div className="c-table__cell t-small">
+              <div className="l-row">
+                {input.joinedGameIds.has(game.gameId) ? <Link to="/me/inbox">Player Inbox</Link> : null}
+                {input.gmGameIds.has(game.gameId) ? (
+                  <Link to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</Link>
+                ) : null}
+                {!input.joinedGameIds.has(game.gameId) ? (
+                  <Link to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>Apply to Join</Link>
+                ) : null}
               </div>
             </div>
           </div>
