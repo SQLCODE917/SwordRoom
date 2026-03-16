@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { isPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient, type CharacterItem, type GameItem, type PlayerProfile } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { Panel } from '../components/Panel';
@@ -106,6 +107,11 @@ export function HomePage() {
             </div>
 
             <SectionTitle title="My Characters" />
+            <div className="l-row">
+              <Link className="c-btn" to={`/player/${encodeURIComponent(auth.actorId)}/character/new`}>
+                New Character
+              </Link>
+            </div>
             <div className="c-table" role="table" aria-label="My characters">
               <div className="c-table__head c-table__row" role="row">
                 <div className="c-table__cell t-small">Character</div>
@@ -123,12 +129,10 @@ export function HomePage() {
                     <div className="c-table__cell t-small">{character.status}</div>
                     <div className="c-table__cell t-small">
                       <div className="l-row">
-                        <Link to={`/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}`}>
+                        <Link to={getCharacterSheetPath(character)}>
                           Sheet
                         </Link>
-                        <Link
-                          to={`/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}/edit`}
-                        >
+                        <Link to={getCharacterEditPath(character)}>
                           Edit
                         </Link>
                       </div>
@@ -247,4 +251,20 @@ function readCharacterName(character: CharacterItem): string {
   const identity = draft && typeof draft.identity === 'object' && draft.identity !== null ? (draft.identity as Record<string, unknown>) : null;
   const name = typeof identity?.name === 'string' ? identity.name.trim() : '';
   return name || character.characterId;
+}
+
+function getCharacterSheetPath(character: CharacterItem): string {
+  if (isPlayerCharacterLibraryGameId(character.gameId)) {
+    const ownerPlayerId = typeof character.ownerPlayerId === 'string' ? character.ownerPlayerId : '';
+    return `/player/${encodeURIComponent(ownerPlayerId)}/characters/${encodeURIComponent(character.characterId)}`;
+  }
+  return `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}`;
+}
+
+function getCharacterEditPath(character: CharacterItem): string {
+  if (isPlayerCharacterLibraryGameId(character.gameId)) {
+    const ownerPlayerId = typeof character.ownerPlayerId === 'string' ? character.ownerPlayerId : '';
+    return `/player/${encodeURIComponent(ownerPlayerId)}/characters/${encodeURIComponent(character.characterId)}/edit`;
+  }
+  return `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}/edit`;
 }

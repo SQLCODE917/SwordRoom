@@ -1,23 +1,23 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { loginOrRegisterDevAccount, logoutDevSession, registerDevAccount } from '../auth/DevAuthProvider';
 import {
   beginOidcLogin,
   beginOidcLogout,
   beginOidcRegistration,
-  hasOidcSession,
 } from '../auth/OidcAuthProvider';
 import { Panel } from '../components/Panel';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 export function LoginPage() {
   const auth = useAuthProvider();
+  const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [busyAction, setBusyAction] = useState<'login' | 'register' | 'logout' | null>(null);
-  const isOidcAuthenticated = useMemo(() => (auth.mode === 'oidc' ? hasOidcSession() : false), [auth.mode]);
+  const isOidcAuthenticated = auth.mode === 'oidc' && auth.isAuthenticated;
   const noticeClassName = useMemo(() => `c-note ${error ? 'c-note--error' : 'c-note--info'}`, [error]);
 
   return (
@@ -121,21 +121,21 @@ export function LoginPage() {
   async function handleDevRegister() {
     await perform('register', async () => {
       await registerDevAccount(username, password);
-      redirectToHome();
+      navigate('/', { replace: true });
     });
   }
 
   async function handleDevLogin() {
     await perform('login', async () => {
       await loginOrRegisterDevAccount(username, password);
-      redirectToHome();
+      navigate('/', { replace: true });
     });
   }
 
   async function handleDevLogout() {
     await perform('logout', async () => {
       logoutDevSession();
-      redirectToLogin();
+      navigate('/login', { replace: true });
     });
   }
 
@@ -158,12 +158,4 @@ export function LoginPage() {
       });
     }
   }
-}
-
-function redirectToHome(): void {
-  window.location.assign('/');
-}
-
-function redirectToLogin(): void {
-  window.location.assign('/login');
 }

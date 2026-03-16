@@ -1,4 +1,4 @@
-import type { AuthProvider } from './AuthProvider';
+import { notifyAuthStateChanged, type AuthProvider } from './AuthProvider';
 
 interface OidcEnv {
   VITE_OIDC_ISSUER?: string;
@@ -68,6 +68,7 @@ export function clearOidcSession(): void {
   }
   localStorage.removeItem(OIDC_SESSION_KEY);
   sessionStorage.removeItem(OIDC_PENDING_KEY);
+  notifyAuthStateChanged();
 }
 
 export async function beginOidcLogin(returnToPath = '/', env = import.meta.env as OidcEnv): Promise<void> {
@@ -170,6 +171,7 @@ export async function completeOidcLoginFromCallback(url = window.location.href, 
     expiresAtEpochMs,
   });
   sessionStorage.removeItem(OIDC_PENDING_KEY);
+  notifyAuthStateChanged();
 
   return pending.returnToPath || '/';
 }
@@ -220,6 +222,7 @@ function readValidAccessToken(): string | null {
   }
   if (Date.now() >= session.expiresAtEpochMs) {
     localStorage.removeItem(OIDC_SESSION_KEY);
+    notifyAuthStateChanged();
     return null;
   }
   return session.accessToken;

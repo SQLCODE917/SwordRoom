@@ -2,13 +2,17 @@ import type { PropsWithChildren } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { useGmGames } from '../hooks/useGmGames';
+import { useMyProfile } from '../hooks/useMyProfile';
 
 export function AppShell({ children }: PropsWithChildren) {
   const auth = useAuthProvider();
-  const { games: gmGames, loading } = useGmGames();
-  const hasGmGames = gmGames.length > 0;
+  const { profile, loading: profileLoading } = useMyProfile();
+  const { games: gmGames, loading: gmGamesLoading } = useGmGames();
+  const roles = new Set(profile?.roles ?? []);
+  const canOpenGmPages = auth.isAuthenticated && !profileLoading && (roles.has('GM') || roles.has('ADMIN'));
+  const canOpenAdmin = auth.isAuthenticated && !profileLoading && roles.has('ADMIN');
   const firstGmGameId = gmGames[0]?.gameId ?? null;
-  const gmNavDisabled = !auth.isAuthenticated || loading || !hasGmGames;
+  const gmInboxDisabled = !canOpenGmPages || gmGamesLoading || !firstGmGameId;
 
   return (
     <div className="c-shell l-shell">
@@ -27,7 +31,7 @@ export function AppShell({ children }: PropsWithChildren) {
           <NavLink className="c-navlink t-small" to="/me/inbox">
             Player Inbox
           </NavLink>
-          {gmNavDisabled ? (
+          {!canOpenGmPages ? (
             <span className="c-navlink t-small is-disabled" aria-disabled="true">
               GM Games
             </span>
@@ -36,7 +40,7 @@ export function AppShell({ children }: PropsWithChildren) {
               GM Games
             </NavLink>
           )}
-          {gmNavDisabled || !firstGmGameId ? (
+          {gmInboxDisabled ? (
             <span className="c-navlink t-small is-disabled" aria-disabled="true">
               GM Inbox
             </span>
@@ -45,9 +49,15 @@ export function AppShell({ children }: PropsWithChildren) {
               GM Inbox
             </NavLink>
           )}
-          <NavLink className="c-navlink t-small" to="/admin">
-            Admin
-          </NavLink>
+          {canOpenAdmin ? (
+            <NavLink className="c-navlink t-small" to="/admin">
+              Admin
+            </NavLink>
+          ) : (
+            <span className="c-navlink t-small is-disabled" aria-disabled="true">
+              Admin
+            </span>
+          )}
           <NavLink className="c-navlink t-small" to="/games/game-1/characters/char-human-1">
             Character Sheet
           </NavLink>

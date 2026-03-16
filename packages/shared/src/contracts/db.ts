@@ -17,6 +17,22 @@ export type PlayerRole = z.infer<typeof playerRoleSchema>;
 export type GameInviteStatus = z.infer<typeof gameInviteStatusSchema>;
 
 export type PkSk = { pk: string; sk: string };
+export const PLAYER_CHARACTER_LIBRARY_PREFIX = 'PLAYER_CHARACTER_LIBRARY::';
+
+export function toPlayerCharacterLibraryGameId(playerId: string): string {
+  return `${PLAYER_CHARACTER_LIBRARY_PREFIX}${playerId}`;
+}
+
+export function isPlayerCharacterLibraryGameId(gameId: string): boolean {
+  return gameId.startsWith(PLAYER_CHARACTER_LIBRARY_PREFIX);
+}
+
+export function getPlayerIdFromCharacterLibraryGameId(gameId: string): string | null {
+  if (!isPlayerCharacterLibraryGameId(gameId)) {
+    return null;
+  }
+  return gameId.slice(PLAYER_CHARACTER_LIBRARY_PREFIX.length) || null;
+}
 
 export const gameStateKeys = {
   gameMetadata: (gameId: string): PkSk => ({ pk: `GAME#${gameId}`, sk: 'METADATA' }),

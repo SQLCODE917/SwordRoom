@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { createApiClient, type CommandStatusResponse, type GMInboxItem } from '../api/ApiClient';
+import { createApiClient, type CommandEnvelopeInput, type GMInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { Panel } from '../components/Panel';
-import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
-
-const pollIntervalsMs = [400, 800, 1200, 1800, 2600];
+import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 
 interface PendingCharacterRow {
   key: string;
@@ -33,15 +31,10 @@ export function GMInboxPage() {
   const [activityRows, setActivityRows] = useState<ActivityRow[]>([]);
   const [notesByCharacterId, setNotesByCharacterId] = useState<Record<string, string>>({});
   const [errorsByCharacterId, setErrorsByCharacterId] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeCharacterId, setActiveCharacterId] = useState<string | null>(null);
-  const [commandStatus, setCommandStatus] = useState<CommandStatusViewModel>({
-    state: 'Idle',
-    commandId: null,
-    message: 'No command submitted yet.',
-    errorCode: null,
-    errorMessage: null,
-  });
+  const { status: commandStatus, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   useEffect(() => {
     void refreshInbox();
@@ -52,6 +45,9 @@ export function GMInboxPage() {
     <div className="l-page">
       <Panel title="GM Inbox" subtitle={`Pending characters and invite responses for game ${gameId}.`}>
         <CommandStatusPanel status={commandStatus} />
+        <div className={`c-note ${error ? 'c-note--error' : 'c-note--info'}`}>
+          <span className="t-small">{error ?? 'GM inbox refreshes after each successful review.'}</span>
+        </div>
 
         <div className="c-table" role="table" aria-label="GM Pending Characters">
           <div className="c-table__head c-table__row" role="row">
@@ -158,6 +154,7 @@ export function GMInboxPage() {
       const normalized = normalizeInbox(inbox);
       setPendingRows(normalized.pendingRows);
       setActivityRows(normalized.activityRows);
+      setError(null);
       logWebFlow('WEB_GM_INBOX_REFRESH_OK', {
         actorId: auth.actorId,
         authMode: auth.mode,
@@ -165,13 +162,15 @@ export function GMInboxPage() {
         count: inbox.length,
       });
     } catch (error) {
+      setPendingRows([]);
+      setActivityRows([]);
+      setError(error instanceof Error ? error.message : String(error));
       logWebFlow('WEB_GM_INBOX_REFRESH_FAILED', {
         actorId: auth.actorId,
         authMode: auth.mode,
         gameId,
         ...summarizeError(error),
       });
-      throw error;
     } finally {
       setLoading(false);
     }
@@ -185,6 +184,7 @@ export function GMInboxPage() {
     }
 
     setErrorsByCharacterId((prev) => ({ ...prev, [row.characterId]: ' ' }));
+    setError(null);
     setActiveCharacterId(row.characterId);
     logWebFlow('WEB_GM_REVIEW_START', {
       actorId: auth.actorId,
@@ -196,75 +196,26 @@ export function GMInboxPage() {
     });
 
     try {
-      const commandId = createCommandId();
-      await api.postCommand({
-        envelope: {
-          commandId,
-          gameId,
-          type: 'GMReviewCharacter',
-          schemaVersion: 1,
-          createdAt: new Date().toISOString(),
-          payload: {
-            characterId: row.characterId,
-            decision,
-            gmNote: note || undefined,
-          },
+      await submitEnvelopeAndAwait(`GM ${decision.toLowerCase()}`, {
+        commandId: createCommandId(),
+        gameId,
+        type: 'GMReviewCharacter',
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        payload: {
+          characterId: row.characterId,
+          decision,
+          gmNote: note || undefined,
         },
-      });
+      } satisfies CommandEnvelopeInput<'GMReviewCharacter'>);
 
-      setCommandStatus({
-        state: 'Queued',
-        commandId,
-        message: `GM ${decision.toLowerCase()} command queued.`,
-        errorCode: null,
-        errorMessage: null,
-      });
-
-      const terminal = await pollUntilTerminal(commandId);
-      if (terminal.status === 'PROCESSED') {
-        await refreshInbox();
-        return;
-      }
-
-      setErrorsByCharacterId((prev) => ({
-        ...prev,
-        [row.characterId]: terminal.errorMessage ?? terminal.errorCode ?? 'Review command failed.',
-      }));
+      await refreshInbox();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setErrorsByCharacterId((prev) => ({ ...prev, [row.characterId]: message }));
-      setCommandStatus((prev) => ({
-        ...prev,
-        state: 'Failed',
-        message: 'GM review command failed.',
-        errorCode: prev.errorCode,
-        errorMessage: message,
-      }));
+      setError(message);
     } finally {
       setActiveCharacterId(null);
-    }
-  }
-
-  async function pollUntilTerminal(commandId: string): Promise<CommandStatusResponse> {
-    let attempt = 0;
-
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await api.getCommandStatus(commandId);
-      if (!response) {
-        await sleep(pollIntervalsMs[Math.min(attempt, pollIntervalsMs.length - 1)] ?? 2600);
-        attempt += 1;
-        continue;
-      }
-
-      setCommandStatus(mapStatus(response));
-
-      if (response.status === 'PROCESSED' || response.status === 'FAILED') {
-        return response;
-      }
-
-      await sleep(pollIntervalsMs[Math.min(attempt, pollIntervalsMs.length - 1)] ?? 2600);
-      attempt += 1;
     }
   }
 }
@@ -298,40 +249,4 @@ function normalizeInbox(items: GMInboxItem[]): {
   }
 
   return { pendingRows, activityRows };
-}
-
-function mapStatus(response: CommandStatusResponse): CommandStatusViewModel {
-  return {
-    state:
-      response.status === 'PROCESSED'
-        ? 'Processed'
-        : response.status === 'FAILED'
-          ? 'Failed'
-          : response.status === 'PROCESSING'
-            ? 'Processing'
-            : 'Queued',
-    commandId: response.commandId,
-    message:
-      response.status === 'FAILED'
-        ? response.errorMessage ?? response.errorCode ?? 'Command failed.'
-        : response.status === 'PROCESSED'
-          ? 'Command processed.'
-          : response.status === 'PROCESSING'
-            ? 'Command processing.'
-            : 'Command queued.',
-    errorCode: response.errorCode,
-    errorMessage: response.errorMessage,
-  };
-}
-
-function createCommandId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  const nowHex = Date.now().toString(16).padStart(12, '0').slice(-12);
-  return `00000000-0000-4000-8000-${nowHex}`;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

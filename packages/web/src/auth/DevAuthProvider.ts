@@ -1,4 +1,4 @@
-import type { AuthMode, AuthProvider } from './AuthProvider';
+import { notifyAuthStateChanged, type AuthMode, type AuthProvider } from './AuthProvider';
 
 interface WebEnv {
   VITE_AUTH_MODE?: string;
@@ -108,6 +108,7 @@ export function logoutDevSession(): void {
     return;
   }
   window.localStorage.removeItem(DEV_SESSION_KEY);
+  notifyAuthStateChanged();
 }
 
 export function writeDevSession(account: Pick<DevAccount, 'username' | 'actorId'>): void {
@@ -115,6 +116,7 @@ export function writeDevSession(account: Pick<DevAccount, 'username' | 'actorId'
     return;
   }
   window.localStorage.setItem(DEV_SESSION_KEY, JSON.stringify(account));
+  notifyAuthStateChanged();
 }
 
 export function readCurrentDevSession(): DevSession | null {
@@ -163,6 +165,7 @@ function writeStoredDevAccounts(accounts: DevAccount[]): void {
     return;
   }
   window.localStorage.setItem(DEV_ACCOUNTS_KEY, JSON.stringify(accounts));
+  notifyAuthStateChanged();
 }
 
 async function loadConfiguredAdminAccounts(): Promise<DevAccount[]> {

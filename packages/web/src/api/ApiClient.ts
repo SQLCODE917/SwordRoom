@@ -176,6 +176,7 @@ export interface ApiClient {
   syncMyProfile(): Promise<PlayerProfile>;
   getCommandStatus(commandId: string): Promise<CommandStatusResponse | null>;
   getMyProfile(): Promise<PlayerProfile>;
+  getGame(gameId: string): Promise<GameItem | null>;
   getMyCharacters(): Promise<CharacterItem[]>;
   getMyGames(): Promise<GameItem[]>;
   getPublicGames(): Promise<GameItem[]>;
@@ -186,6 +187,7 @@ export interface ApiClient {
   getGameActorContext(gameId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
+  getOwnedCharacter(playerId: string, characterId: string): Promise<CharacterItem | null>;
   requestAppearanceUploadUrl(
     gameId: string,
     characterId: string,
@@ -280,6 +282,22 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
         profilePlayerId: response.playerId,
         roles: response.roles ?? [],
+      });
+      return response;
+    },
+
+    async getGame(gameId: string): Promise<GameItem | null> {
+      logWebFlow('WEB_API_GET_GAME_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+      });
+      const response = await requestJsonOrNull<GameItem>(`${baseUrl}/games/${encodeURIComponent(gameId)}`, auth);
+      logWebFlow(response ? 'WEB_API_GET_GAME_HIT' : 'WEB_API_GET_GAME_MISS', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        visibility: response?.visibility ?? null,
       });
       return response;
     },
@@ -451,6 +469,27 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         actorId: auth.actorId,
         authMode: auth.mode,
         gameId,
+        characterId,
+        status: response && typeof response.status === 'string' ? response.status : null,
+      });
+      return response;
+    },
+
+    async getOwnedCharacter(playerId: string, characterId: string): Promise<CharacterItem | null> {
+      logWebFlow('WEB_API_GET_OWNED_CHARACTER_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        playerId,
+        characterId,
+      });
+      const response = await requestJsonOrNull<CharacterItem>(
+        `${baseUrl}/players/${encodeURIComponent(playerId)}/characters/${encodeURIComponent(characterId)}`,
+        auth
+      );
+      logWebFlow(response ? 'WEB_API_GET_OWNED_CHARACTER_HIT' : 'WEB_API_GET_OWNED_CHARACTER_MISS', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        playerId,
         characterId,
         status: response && typeof response.status === 'string' ? response.status : null,
       });

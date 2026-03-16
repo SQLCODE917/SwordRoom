@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { anyCommandEnvelopeSchema, type AnyCommandEnvelope } from '@starter/shared';
+import {
+  anyCommandEnvelopeSchema,
+  getPlayerIdFromCharacterLibraryGameId,
+  isPlayerCharacterLibraryGameId,
+  toPlayerCharacterLibraryGameId,
+  type AnyCommandEnvelope,
+} from '@starter/shared';
 import {
   assertActorHasRole,
   assertCharacterOwnerOrGameMaster,
@@ -27,10 +33,12 @@ export const contractRoutes: ApiRoute[] = [
   { method: 'GET', path: '/me', auth: 'required' },
   { method: 'GET', path: '/me/characters', auth: 'required' },
   { method: 'GET', path: '/me/games', auth: 'required' },
+  { method: 'GET', path: '/games/{gameId}', auth: 'required' },
   { method: 'GET', path: '/games/{gameId}/me', auth: 'required' },
   { method: 'GET', path: '/me/inbox', auth: 'required' },
   { method: 'GET', path: '/games/public', auth: 'required' },
   { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
+  { method: 'GET', path: '/players/{playerId}/characters/{characterId}', auth: 'required' },
   { method: 'GET', path: '/gm/games', auth: 'required' },
   { method: 'GET', path: '/gm/{gameId}/inbox', auth: 'gm_required' },
   { method: 'GET', path: '/admin/users', auth: 'admin_required' },
@@ -125,6 +133,14 @@ export function createApiService(deps: ApiServiceDependencies): {
             gmPlayerId: gmContext.gmPlayerId,
           },
         });
+      }
+
+      if (envelope.type === 'SaveCharacterDraft') {
+        await assertSaveCharacterDraftAuthorized(deps.db, envelope);
+      }
+
+      if (envelope.type === 'SubmitCharacterForApproval') {
+        await assertSubmitCharacterForApprovalAuthorized(deps.db, envelope);
       }
 
       if (envelope.type === 'ConfirmCharacterAppearanceUpload') {
@@ -315,8 +331,40 @@ export function createApiService(deps: ApiServiceDependencies): {
         };
       },
 
+      async getGame(gameId: string) {
+        return deps.db.gameRepository.getGameMetadata(gameId);
+      },
+
       async getCharacter(gameId: string, characterId: string) {
         const character = await deps.db.characterRepository.getCharacter(gameId, characterId);
+        if (!character) {
+          return null;
+        }
+
+        const imageKey = character.draft.appearance?.imageKey ?? null;
+        if (!imageKey) {
+          return character;
+        }
+
+        return {
+          ...character,
+          draft: {
+            ...character.draft,
+            appearance: {
+              imageKey,
+              imageUrl: await deps.uploads.createSignedDownloadUrl({
+                key: imageKey,
+                expiresInSeconds: 900,
+              }),
+              updatedAt: character.draft.appearance?.updatedAt ?? null,
+            },
+          },
+        };
+      },
+
+      async getOwnedCharacter(playerId: string, characterId: string) {
+        const namespaceGameId = toPlayerCharacterLibraryGameId(playerId);
+        const character = await deps.db.characterRepository.getCharacter(namespaceGameId, characterId);
         if (!character) {
           return null;
         }
@@ -390,6 +438,57 @@ export function createApiService(deps: ApiServiceDependencies): {
       },
     },
   };
+}
+
+async function assertSaveCharacterDraftAuthorized(
+  db: DbAccess,
+  envelope: Extract<AnyCommandEnvelope, { type: 'SaveCharacterDraft' }>
+): Promise<void> {
+  const existing = await db.characterRepository.getCharacter(envelope.gameId, envelope.payload.characterId);
+  if (isPlayerCharacterLibraryGameId(envelope.gameId)) {
+    const playerId = getPlayerIdFromCharacterLibraryGameId(envelope.gameId);
+    if (!playerId || playerId !== envelope.actorId) {
+      throw createApiError(
+        `player character library "${envelope.gameId}" is not owned by actor "${envelope.actorId}"`,
+        'PLAYER_CHARACTER_OWNER_REQUIRED',
+        403
+      );
+    }
+    return;
+  }
+
+  if (existing) {
+    return;
+  }
+
+  const game = await db.gameRepository.getGameMetadata(envelope.gameId);
+  if (!game) {
+    throw createApiError(`game not found: ${envelope.gameId}`, 'GAME_NOT_FOUND', 404);
+  }
+  if (game.visibility !== 'PUBLIC') {
+    throw createApiError(`game "${game.name}" is not public`, 'GAME_NOT_PUBLIC', 403);
+  }
+}
+
+async function assertSubmitCharacterForApprovalAuthorized(
+  db: DbAccess,
+  envelope: Extract<AnyCommandEnvelope, { type: 'SubmitCharacterForApproval' }>
+): Promise<void> {
+  if (isPlayerCharacterLibraryGameId(envelope.gameId)) {
+    throw createApiError(
+      `player-owned character drafts cannot be submitted for game review: ${envelope.gameId}`,
+      'PLAYER_CHARACTER_SUBMIT_NOT_ALLOWED',
+      400
+    );
+  }
+
+  const game = await db.gameRepository.getGameMetadata(envelope.gameId);
+  if (!game) {
+    throw createApiError(`game not found: ${envelope.gameId}`, 'GAME_NOT_FOUND', 404);
+  }
+  if (game.visibility !== 'PUBLIC') {
+    throw createApiError(`game "${game.name}" is not public`, 'GAME_NOT_PUBLIC', 403);
+  }
 }
 
 function normalizeEnvelopeCandidate(

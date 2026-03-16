@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { createApiClient, type CommandStatusResponse, type GameItem } from '../api/ApiClient';
+import { createApiClient, type CommandEnvelopeInput, type GameItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
-import { describeFailure, type CommandStatusViewModel } from '../hooks/useCommandStatus';
+import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
-
-const pollIntervalsMs = [400, 800, 1200, 1800, 2600];
 
 export function GMGamesPage() {
   const auth = useAuthProvider();
@@ -18,13 +16,7 @@ export function GMGamesPage() {
   const [createName, setCreateName] = useState('');
   const [inviteEmailByGameId, setInviteEmailByGameId] = useState<Record<string, string>>({});
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [commandStatus, setCommandStatus] = useState<CommandStatusViewModel>({
-    state: 'Idle',
-    commandId: null,
-    message: 'No command submitted yet.',
-    errorCode: null,
-    errorMessage: null,
-  });
+  const { status: commandStatus, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   useEffect(() => {
     void refreshGames();
@@ -147,17 +139,19 @@ export function GMGamesPage() {
     const name = createName.trim();
     setBusyKey('create');
     try {
-      await submitAndAwait('Create game', {
-        commandId: makeUuid(),
+      await submitEnvelopeAndAwait('Create game', {
+        commandId: createCommandId(),
         type: 'CreateGame',
         schemaVersion: 1,
         createdAt: new Date().toISOString(),
         payload: {
           name,
         },
-      });
+      } satisfies CommandEnvelopeInput<'CreateGame'>);
       setCreateName('');
       await refreshGames();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
     } finally {
       setBusyKey(null);
     }
@@ -166,8 +160,8 @@ export function GMGamesPage() {
   async function setVisibility(game: GameItem, visibility: 'PUBLIC' | 'PRIVATE') {
     setBusyKey(game.gameId);
     try {
-      await submitAndAwait('Set visibility', {
-        commandId: makeUuid(),
+      await submitEnvelopeAndAwait('Set visibility', {
+        commandId: createCommandId(),
         gameId: game.gameId,
         type: 'SetGameVisibility',
         schemaVersion: 1,
@@ -177,8 +171,10 @@ export function GMGamesPage() {
           expectedVersion: game.version,
           visibility,
         },
-      });
+      } satisfies CommandEnvelopeInput<'SetGameVisibility'>);
       await refreshGames();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
     } finally {
       setBusyKey(null);
     }
@@ -188,8 +184,8 @@ export function GMGamesPage() {
     const email = (inviteEmailByGameId[game.gameId] ?? '').trim();
     setBusyKey(game.gameId);
     try {
-      await submitAndAwait('Invite player', {
-        commandId: makeUuid(),
+      await submitEnvelopeAndAwait('Invite player', {
+        commandId: createCommandId(),
         gameId: game.gameId,
         type: 'InvitePlayerToGameByEmail',
         schemaVersion: 1,
@@ -198,56 +194,21 @@ export function GMGamesPage() {
           gameId: game.gameId,
           email,
         },
-      });
+      } satisfies CommandEnvelopeInput<'InvitePlayerToGameByEmail'>);
       setInviteEmailByGameId((prev) => ({ ...prev, [game.gameId]: '' }));
+      setError(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setError(message);
+      logWebFlow('WEB_GM_GAMES_COMMAND_FAILED', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId: game.gameId,
+        email,
+        ...summarizeError(error),
+      });
     } finally {
       setBusyKey(null);
-    }
-  }
-
-  async function submitAndAwait(
-    label: string,
-    envelope: Parameters<typeof api.postCommand>[0]['envelope']
-  ): Promise<void> {
-    setCommandStatus({
-      state: 'Idle',
-      commandId: null,
-      message: `${label} submitting...`,
-      errorCode: null,
-      errorMessage: null,
-    });
-    const accepted = await api.postCommand({ envelope: envelope as never });
-    setCommandStatus({
-      state: 'Queued',
-      commandId: accepted.commandId,
-      message: `${label} queued.`,
-      errorCode: null,
-      errorMessage: null,
-    });
-    const terminal = await pollUntilTerminal(accepted.commandId);
-    if (terminal.status === 'PROCESSED') {
-      return;
-    }
-    throw new Error(describeFailure(terminal));
-  }
-
-  async function pollUntilTerminal(commandId: string): Promise<CommandStatusResponse> {
-    let attempt = 0;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await api.getCommandStatus(commandId);
-      if (!response) {
-        await sleep(pollIntervalsMs[Math.min(attempt, pollIntervalsMs.length - 1)] ?? 2600);
-        attempt += 1;
-        continue;
-      }
-
-      setCommandStatus(mapStatus(response));
-      if (response.status === 'PROCESSED' || response.status === 'FAILED') {
-        return response;
-      }
-      await sleep(pollIntervalsMs[Math.min(attempt, pollIntervalsMs.length - 1)] ?? 2600);
-      attempt += 1;
     }
   }
 }
@@ -260,40 +221,4 @@ function FieldText(input: { label: string; value: string; onChange: (value: stri
       <span className="c-field__hint">{input.hint ?? ' '}</span>
     </label>
   );
-}
-
-function mapStatus(response: CommandStatusResponse): CommandStatusViewModel {
-  return {
-    state:
-      response.status === 'PROCESSED'
-        ? 'Processed'
-        : response.status === 'FAILED'
-          ? 'Failed'
-          : response.status === 'PROCESSING'
-            ? 'Processing'
-            : 'Queued',
-    commandId: response.commandId,
-    message:
-      response.status === 'FAILED'
-        ? describeFailure(response)
-        : response.status === 'PROCESSED'
-          ? 'Command processed.'
-          : response.status === 'PROCESSING'
-            ? 'Command processing.'
-            : 'Command queued.',
-    errorCode: response.errorCode,
-    errorMessage: response.errorMessage,
-  };
-}
-
-function makeUuid(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  const nowHex = Date.now().toString(16).padStart(12, '0').slice(-12);
-  return `00000000-0000-4000-8000-${nowHex}`;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

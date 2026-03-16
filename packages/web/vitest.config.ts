@@ -5,6 +5,10 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: '@starter/shared/contracts/db',
+        replacement: fileURLToPath(new URL('../shared/src/contracts/db.ts', import.meta.url)),
+      },
+      {
         find: '@starter/shared/rules/equipmentRoster',
         replacement: fileURLToPath(new URL('../shared/src/rules/equipmentRoster.ts', import.meta.url)),
       },

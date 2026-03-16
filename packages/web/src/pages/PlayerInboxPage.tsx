@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { createApiClient, type CommandStatusResponse, type PlayerInboxItem } from '../api/ApiClient';
+import { createApiClient, type CommandEnvelopeInput, type PlayerInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
-import { describeFailure, type CommandStatusViewModel } from '../hooks/useCommandStatus';
+import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 const refreshIntervalMs = 3000;
-const pollIntervalsMs = [400, 800, 1200, 1800, 2600];
 
 interface InboxRow {
   key: string;
@@ -42,13 +41,7 @@ export function PlayerInboxPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeInviteId, setActiveInviteId] = useState<string | null>(null);
-  const [commandStatus, setCommandStatus] = useState<CommandStatusViewModel>({
-    state: 'Idle',
-    commandId: null,
-    message: 'No command submitted yet.',
-    errorCode: null,
-    errorMessage: null,
-  });
+  const { status: commandStatus, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   useEffect(() => {
     let cancelled = false;
@@ -178,42 +171,22 @@ export function PlayerInboxPage() {
     setActiveInviteId(row.inviteId);
     setError(null);
     try {
-      const accepted = await api.postCommand({
-        envelope: {
-          commandId: makeUuid(),
+      await submitEnvelopeAndAwait(type === 'AcceptGameInvite' ? 'Accept invite' : 'Reject invite', {
+        commandId: createCommandId(),
+        gameId: row.gameId,
+        type,
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        payload: {
           gameId: row.gameId,
-          type,
-          schemaVersion: 1,
-          createdAt: new Date().toISOString(),
-          payload: {
-            gameId: row.gameId,
-            inviteId: row.inviteId,
-          },
+          inviteId: row.inviteId,
         },
-      });
-      setCommandStatus({
-        state: 'Queued',
-        commandId: accepted.commandId,
-        message: `${type === 'AcceptGameInvite' ? 'Accept' : 'Reject'} invite queued.`,
-        errorCode: null,
-        errorMessage: null,
-      });
-      const terminal = await pollUntilTerminal(accepted.commandId);
-      if (terminal.status !== 'PROCESSED') {
-        throw new Error(describeFailure(terminal));
-      }
+      } satisfies CommandEnvelopeInput<typeof type>);
       const inbox = await api.getMyInbox();
       setRows(normalizeRows(inbox));
     } catch (inviteError) {
       const message = inviteError instanceof Error ? inviteError.message : String(inviteError);
       setError(message);
-      setCommandStatus({
-        state: 'Failed',
-        commandId: null,
-        message: 'Invite action failed.',
-        errorCode: null,
-        errorMessage: message,
-      });
       logWebFlow('WEB_PLAYER_INBOX_INVITE_ACTION_FAILED', {
         actorId: auth.actorId,
         authMode: auth.mode,
@@ -224,27 +197,6 @@ export function PlayerInboxPage() {
       });
     } finally {
       setActiveInviteId(null);
-    }
-  }
-
-  async function pollUntilTerminal(commandId: string): Promise<CommandStatusResponse> {
-    let attempt = 0;
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await api.getCommandStatus(commandId);
-      if (!response) {
-        await sleep(pollIntervalsMs[Math.min(attempt, pollIntervalsMs.length - 1)] ?? 2600);
-        attempt += 1;
-        continue;
-      }
-
-      setCommandStatus(mapStatus(response));
-      if (response.status === 'PROCESSED' || response.status === 'FAILED') {
-        return response;
-      }
-
-      await sleep(pollIntervalsMs[Math.min(attempt, pollIntervalsMs.length - 1)] ?? 2600);
-      attempt += 1;
     }
   }
 }
@@ -282,40 +234,4 @@ function normalizeRows(items: PlayerInboxItem[]): InboxRow[] {
   }
 
   return rows;
-}
-
-function mapStatus(response: CommandStatusResponse): CommandStatusViewModel {
-  return {
-    state:
-      response.status === 'PROCESSED'
-        ? 'Processed'
-        : response.status === 'FAILED'
-          ? 'Failed'
-          : response.status === 'PROCESSING'
-            ? 'Processing'
-            : 'Queued',
-    commandId: response.commandId,
-    message:
-      response.status === 'FAILED'
-        ? describeFailure(response)
-        : response.status === 'PROCESSED'
-          ? 'Command processed.'
-          : response.status === 'PROCESSING'
-            ? 'Command processing.'
-            : 'Command queued.',
-    errorCode: response.errorCode,
-    errorMessage: response.errorMessage,
-  };
-}
-
-function makeUuid(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  const nowHex = Date.now().toString(16).padStart(12, '0').slice(-12);
-  return `00000000-0000-4000-8000-${nowHex}`;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

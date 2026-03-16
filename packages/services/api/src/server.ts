@@ -3,6 +3,7 @@ import { URL } from 'node:url';
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import {
+  toPlayerCharacterLibraryGameId,
   assertActorHasRole,
   assertCharacterOwnerOrGameMaster,
   assertGameMasterActor,
@@ -121,6 +122,63 @@ const server = createServer(async (req, res) => {
         version: (character as { version?: unknown }).version ?? null,
       });
       sendJson(res, 200, character);
+      return;
+    }
+
+    const ownedCharMatch = url.pathname.match(/^\/players\/([^/]+)\/characters\/([^/]+)$/);
+    if (req.method === 'GET' && ownedCharMatch) {
+      const playerId = decodeURIComponent(ownedCharMatch[1]!);
+      const characterId = decodeURIComponent(ownedCharMatch[2]!);
+      const actorId = await resolveActorId({
+        bypassAllowed: process.env.AUTH_MODE === 'dev',
+        authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
+      });
+      if (actorId !== playerId) {
+        logFlow('API_GET_OWNED_CHARACTER_FORBIDDEN', { requestId, actorId, playerId, characterId });
+        sendJson(res, 403, { error: `player "${playerId}" does not match signed-in actor` });
+        return;
+      }
+      const character = await service.readApis.getOwnedCharacter(playerId, characterId);
+      if (!character) {
+        logFlow('API_GET_OWNED_CHARACTER_MISS', { requestId, playerId, characterId });
+        sendJson(res, 404, { error: 'character not found' });
+        return;
+      }
+      logFlow('API_GET_OWNED_CHARACTER_HIT', {
+        requestId,
+        playerId,
+        characterId,
+        namespaceGameId: toPlayerCharacterLibraryGameId(playerId),
+        status: (character as { status?: unknown }).status ?? null,
+        version: (character as { version?: unknown }).version ?? null,
+      });
+      sendJson(res, 200, character);
+      return;
+    }
+
+    const gameMatch = url.pathname.match(/^\/games\/([^/]+)$/);
+    if (req.method === 'GET' && gameMatch && url.pathname !== '/games/public') {
+      const gameId = decodeURIComponent(gameMatch[1]!);
+      const actorId = await resolveActorId({
+        bypassAllowed: process.env.AUTH_MODE === 'dev',
+        authorizationHeader: req.headers.authorization,
+        devActorIdHeader: readDevActorIdHeader(req.headers['x-dev-actor-id']),
+      });
+      const game = await service.readApis.getGame(gameId);
+      if (!game) {
+        logFlow('API_GET_GAME_MISS', { requestId, actorId, gameId });
+        sendJson(res, 404, { error: 'game not found' });
+        return;
+      }
+      logFlow('API_GET_GAME_HIT', {
+        requestId,
+        actorId,
+        gameId,
+        visibility: game.visibility,
+        gmPlayerId: game.gmPlayerId,
+      });
+      sendJson(res, 200, game);
       return;
     }
 

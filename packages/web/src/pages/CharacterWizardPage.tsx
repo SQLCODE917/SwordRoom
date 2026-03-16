@@ -1,6 +1,7 @@
 import { type Dispatch, type ReactNode, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { createApiClient, type CharacterItem, type CommandStatusResponse } from '../api/ApiClient';
+import { toPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
+import { createApiClient, type CharacterItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
@@ -34,7 +35,7 @@ import {
   submitCharacterForApproval,
   submitSaveCharacterDraft,
 } from '../flows/characterWizardCommands';
-import { describeFailure, type CommandStatusViewModel } from '../hooks/useCommandStatus';
+import { describeFailure, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 interface CharacterSnapshot {
@@ -68,6 +69,8 @@ interface WizardState {
   };
   submitNoteToGm: string;
 }
+
+type WizardMode = 'apply' | 'library';
 
 type WizardStepKey = 'race' | 'dice' | 'background' | 'identity' | 'exp' | 'equipment' | 'submit';
 type SaveButtonState = 'idle' | 'saving' | 'saved';
@@ -133,12 +136,24 @@ function buildInitialState(gameId: string, characterId: string): WizardState {
 }
 
 export function CharacterWizardPage() {
-  const params = useParams<{ gameId: string; characterId?: string }>();
-  const routeGameId = params.gameId ?? 'game-1';
+  const params = useParams<{ gameId?: string; playerId?: string; characterId?: string }>();
+  const routeKey = `${params.gameId ?? ''}:${params.playerId ?? ''}:${params.characterId ?? ''}`;
+
+  return <CharacterWizardPageContent key={routeKey} params={params} />;
+}
+
+function CharacterWizardPageContent({
+  params,
+}: {
+  params: Readonly<{ gameId?: string; playerId?: string; characterId?: string }>;
+}) {
+  const auth = useAuthProvider();
+  const routePlayerId = params.playerId ?? null;
+  const wizardMode: WizardMode = routePlayerId ? 'library' : 'apply';
+  const routeGameId = params.gameId ?? (routePlayerId ? toPlayerCharacterLibraryGameId(routePlayerId) : 'game-1');
   const generatedCharacterIdRef = useRef<string>(createCharacterId());
   const routeCharacterId = params.characterId ?? generatedCharacterIdRef.current;
   const isEditMode = typeof params.characterId === 'string' && params.characterId.trim() !== '';
-  const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
 
   const [state, setState] = useState<WizardState>(() => buildInitialState(routeGameId, routeCharacterId));
@@ -146,20 +161,16 @@ export function CharacterWizardPage() {
   const stepPanelRefs = useRef<Array<HTMLElement | null>>([]);
   const commandStatusRef = useRef<HTMLDivElement | null>(null);
   const commandStatusScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [isExecutingCommand, setIsExecutingCommand] = useState(false);
   const [stepError, setStepError] = useState<string>(' ');
   const [snapshot, setSnapshot] = useState<CharacterSnapshot | null>(null);
+  const [savedCharacters, setSavedCharacters] = useState<CharacterItem[]>([]);
+  const [routeError, setRouteError] = useState<string | null>(null);
+  const [routeReady, setRouteReady] = useState(false);
   const [lastSavedFingerprint, setLastSavedFingerprint] = useState<string | null>(null);
   const [saveStateByStep, setSaveStateByStep] = useState<Record<WizardStepKey, SaveButtonState>>(
     () => initialSaveButtonState
   );
-  const [commandStatus, setCommandStatus] = useState<CommandStatusViewModel>({
-    state: 'Idle',
-    commandId: null,
-    message: 'No command submitted yet.',
-    errorCode: null,
-    errorMessage: null,
-  });
+  const { status: commandStatus, isRunning: isExecutingCommand, submitAndAwait } = useCommandWorkflow();
   const saveResetTimersRef = useRef<Record<WizardStepKey, ReturnType<typeof setTimeout> | null>>({
     race: null,
     dice: null,
@@ -178,10 +189,61 @@ export function CharacterWizardPage() {
   }, [routeCharacterId, routeGameId]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const loadRouteContext = async () => {
+      setRouteReady(false);
+      setRouteError(null);
+      try {
+        if (wizardMode === 'library') {
+          if (!routePlayerId || routePlayerId !== auth.actorId) {
+            throw new Error(`Player "${routePlayerId ?? 'unknown'}" does not match the signed-in actor.`);
+          }
+        } else if (!isEditMode) {
+          const game = await api.getGame(routeGameId);
+          if (!game) {
+            throw new Error(`Game ${routeGameId} was not found.`);
+          }
+          if (game.visibility !== 'PUBLIC') {
+            throw new Error(`${game.name} is not a public game`);
+          }
+        }
+
+        const characters = await api.getMyCharacters();
+        if (cancelled) {
+          return;
+        }
+        setSavedCharacters(characters);
+        setRouteError(null);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+        setSavedCharacters([]);
+        setRouteError(error instanceof Error ? error.message : String(error));
+      } finally {
+        if (!cancelled) {
+          setRouteReady(true);
+        }
+      }
+    };
+
+    void loadRouteContext();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, auth.actorId, isEditMode, routeGameId, routePlayerId, wizardMode]);
+
+  useEffect(() => {
+    if (!routeReady || routeError) {
+      return;
+    }
     logWebFlow('WEB_CHARACTER_WIZARD_MOUNT', {
       gameId: state.gameId,
       characterId: state.characterId,
       isEditMode,
+      wizardMode,
     });
     if (!isEditMode) {
       logWebFlow('WEB_CHARACTER_WIZARD_SKIP_INITIAL_SNAPSHOT', {
@@ -192,7 +254,7 @@ export function CharacterWizardPage() {
       return;
     }
     void refreshSnapshot({ syncWizardState: true });
-  }, [isEditMode, state.characterId, state.gameId]);
+  }, [isEditMode, routeError, routeReady, state.characterId, state.gameId, wizardMode]);
 
   useEffect(() => {
     return () => {
@@ -285,9 +347,15 @@ export function CharacterWizardPage() {
     purchasePreview.state !== null &&
     equipmentPreview.state !== null &&
     previewErrors.length === 0;
-  const canSubmitForApproval = !isExecutingCommand && canEditDraft && isDraftReadyForSubmit;
+  const canExecuteFinalAction = !isExecutingCommand && canEditDraft && isDraftReadyForSubmit;
   const backgroundLabel = backgroundsByRoll[state.backgroundRoll2dTotal] ?? 'No background result for this roll.';
   const availableMoney = purchasePreview.state?.startingPackage?.startingMoneyGamels ?? 0;
+  const finalActionLabel =
+    wizardMode === 'library'
+      ? snapshot ? 'Update Character' : 'Create Character'
+      : snapshot?.status === 'PENDING'
+        ? 'Submitted For Review'
+        : 'Submit Character For Approval';
 
   const steps: StepperItem[] = [
     {
@@ -632,30 +700,38 @@ export function CharacterWizardPage() {
       title: stepTitles[6]!,
       isError: !isDraftReadyForSubmit,
       panel: (
-        <WizardStep title="7) Submit" enabled={activeStepIndex === 6}>
+        <WizardStep title={wizardMode === 'library' ? '7) Create Character' : '7) Submit'} enabled={activeStepIndex === 6}>
           <fieldset className="l-col" disabled={isExecutingCommand}>
             <FieldText
               label="Note to GM"
               value={state.submitNoteToGm}
               onChange={(value) => setState((prev) => ({ ...prev, submitNoteToGm: value }))}
-              hint="Submit saves the current draft first if needed, then submits the saved revision."
+              hint={
+                wizardMode === 'library'
+                  ? 'Create saves the current draft to your character library.'
+                  : 'Submit saves the current draft first if needed, then submits the saved revision.'
+              }
             />
             <button
-              className={`c-btn ${canSubmitForApproval ? '' : 'is-disabled'}`.trim()}
+              className={`c-btn ${canExecuteFinalAction ? '' : 'is-disabled'}`.trim()}
               type="button"
-              disabled={!canSubmitForApproval}
-              onClick={() => void executeFinalSubmit()}
+              disabled={!canExecuteFinalAction}
+              onClick={() => void executeFinalAction()}
             >
-              {snapshot?.status === 'PENDING' ? 'Submitted For Review' : 'Submit Character For Approval'}
+              {finalActionLabel}
             </button>
             <InfoList
               lines={[
-                snapshot?.status === 'PENDING'
-                  ? 'This character is already pending GM review.'
-                  : isDirty || !snapshot || snapshot.version === null
-                    ? 'Submit will save the current draft first, then send it for review.'
-                    : 'Submit uses the current saved draft revision.',
-                `Ready to submit: ${isDraftReadyForSubmit ? 'yes' : 'no'}`,
+                wizardMode === 'library'
+                  ? isDirty || !snapshot || snapshot.version === null
+                    ? 'Create will save the current draft to your saved characters.'
+                    : 'Create updates the current saved character draft.'
+                  : snapshot?.status === 'PENDING'
+                    ? 'This character is already pending GM review.'
+                    : isDirty || !snapshot || snapshot.version === null
+                      ? 'Submit will save the current draft first, then send it for review.'
+                      : 'Submit uses the current saved draft revision.',
+                `Ready to ${wizardMode === 'library' ? 'create' : 'submit'}: ${isDraftReadyForSubmit ? 'yes' : 'no'}`,
               ]}
             />
             <ErrorList errors={state.name.trim() === '' ? ['Name is required.'] : previewErrors} />
@@ -666,14 +742,40 @@ export function CharacterWizardPage() {
     },
   ];
 
+  if (!routeReady) {
+    return (
+      <div className="l-page">
+        <Panel title="Character Wizard" subtitle="Loading route context.">
+          <div className="c-note c-note--info">
+            <span className="t-small">Loading wizard...</span>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
+
+  if (routeError) {
+    return (
+      <div className="l-page">
+        <Panel title="Character Wizard" subtitle="Route validation failed.">
+          <div className="c-note c-note--error">
+            <span className="t-small">{routeError}</span>
+          </div>
+        </Panel>
+      </div>
+    );
+  }
+
   return (
     <div className="l-page">
       <Panel
-        title={isEditMode ? 'Edit Character Draft' : 'Character Wizard'}
+        title={isEditMode ? 'Edit Character Draft' : wizardMode === 'library' ? 'Create Personal Character' : 'Character Wizard'}
         subtitle={
           isEditMode
-            ? 'Edit an existing character draft. Each save and submit sends one command, then polls until terminal.'
-            : 'Create a new character. Each save and submit sends one command, then polls until terminal.'
+            ? 'Edit an existing character draft. Each save and final action sends one command, then polls until terminal.'
+            : wizardMode === 'library'
+              ? 'Create a character in your saved character library. Saving and creating persist drafts owned by the signed-in player.'
+              : 'Create a new character application for a public game. Each save and submit sends one command, then polls until terminal.'
         }
       >
         <div className="l-col">
@@ -717,6 +819,37 @@ export function CharacterWizardPage() {
           >
             Autofill from fixture
           </button>
+          <FieldSelect
+            label="Autofill from saved character"
+            value=""
+            options={[
+              { value: '', label: savedCharacters.length > 0 ? 'Choose a saved character' : 'No saved characters available' },
+              ...savedCharacters
+                .filter((item) => item.characterId !== state.characterId)
+                .map((item) => ({
+                  value: item.characterId,
+                  label: `${readCharacterIdentityName(item) || item.characterId} (${item.status})`,
+                })),
+            ]}
+            onChange={(value) => {
+              if (!value) {
+                return;
+              }
+              const selected = savedCharacters.find((item) => item.characterId === value);
+              if (!selected) {
+                return;
+              }
+              const hydrated = hydrateWizardStateFromCharacter(selected, state);
+              setState({
+                ...hydrated,
+                gameId: state.gameId,
+                characterId: state.characterId,
+              });
+              setStepError(' ');
+            }}
+            disabled={isExecutingCommand || savedCharacters.length === 0}
+            hint="Copies the selected saved character into the current wizard without changing this draft's owner or target."
+          />
 
           <div className="c-note c-note--error">
             <span className="t-small">{stepError}</span>
@@ -757,7 +890,14 @@ export function CharacterWizardPage() {
                 </Panel>
               </div>
 
-              <Panel title="Current Character Snapshot" subtitle="Read-only snapshot from GET /games/{gameId}/characters/{characterId}">
+              <Panel
+                title="Current Character Snapshot"
+                subtitle={
+                  wizardMode === 'library'
+                    ? 'Read-only snapshot from GET /players/{playerId}/characters/{characterId}'
+                    : 'Read-only snapshot from GET /games/{gameId}/characters/{characterId}'
+                }
+              >
                 <SnapshotView snapshot={snapshot} />
               </Panel>
             </div>
@@ -839,13 +979,13 @@ export function CharacterWizardPage() {
     return !candidatePreview.errors.includes('not enough starting EXP');
   }
 
-  async function executeFinalSubmit() {
+  async function executeFinalAction() {
     setStepError(' ');
     scheduleCommandStatusScroll();
-    setIsExecutingCommand(true);
     logWebFlow('WEB_CHARACTER_WIZARD_EXECUTE_START', {
       gameId: state.gameId,
       characterId: state.characterId,
+      wizardMode,
       race: state.race,
       raisedBy: state.raisedBy,
       backgroundRoll2dTotal: state.backgroundRoll2dTotal,
@@ -858,34 +998,39 @@ export function CharacterWizardPage() {
     });
     try {
       if (!isDraftReadyForSubmit) {
-        throw new Error(previewErrors[0] ?? 'Complete the required fields before submitting for approval.');
+        throw new Error(
+          previewErrors[0] ??
+            (wizardMode === 'library'
+              ? 'Complete the required fields before creating the character.'
+              : 'Complete the required fields before submitting for approval.')
+        );
       }
 
-      let nextSnapshot = snapshot;
-      if (!nextSnapshot || nextSnapshot.version === null || isDirty) {
-        setSaveButtonState('submit', 'saving');
-        nextSnapshot = await saveCurrentDraft('submit');
-        setSaveButtonState('submit', 'saved');
+      setSaveButtonState('submit', 'saving');
+      const nextSnapshot = await saveCurrentDraft('submit');
+      setSaveButtonState('submit', 'saved');
+
+      if (wizardMode === 'apply') {
+        if (!nextSnapshot || nextSnapshot.version === null) {
+          throw new Error('Draft save did not return a versioned character snapshot.');
+        }
+
+        const expectedVersion = nextSnapshot.version;
+        await submitCommandAndAwait('Submit for approval', () =>
+          submitCharacterForApproval({
+            api,
+            gameId: state.gameId,
+            characterId: state.characterId,
+            expectedVersion,
+          })
+        );
+
+        await refreshSnapshot({ syncWizardState: true });
       }
-
-      if (!nextSnapshot || nextSnapshot.version === null) {
-        throw new Error('Draft save did not return a versioned character snapshot.');
-      }
-
-      const expectedVersion = nextSnapshot.version;
-      await submitCommandAndAwait('Submit for approval', () =>
-        submitCharacterForApproval({
-          api,
-          gameId: state.gameId,
-          characterId: state.characterId,
-          expectedVersion,
-        })
-      );
-
-      await refreshSnapshot({ syncWizardState: true });
       logWebFlow('WEB_CHARACTER_WIZARD_EXECUTE_OK', {
         gameId: state.gameId,
         characterId: state.characterId,
+        wizardMode,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -893,18 +1038,10 @@ export function CharacterWizardPage() {
       logWebFlow('WEB_CHARACTER_WIZARD_EXECUTE_FAILED', {
         gameId: state.gameId,
         characterId: state.characterId,
+        wizardMode,
         ...summarizeError(error),
       });
       setStepError(message);
-      setCommandStatus((prev) => ({
-        ...prev,
-        state: 'Failed',
-        message: 'Command failed.',
-        errorCode: prev.errorCode,
-        errorMessage: message,
-      }));
-    } finally {
-      setIsExecutingCommand(false);
     }
   }
 
@@ -975,40 +1112,32 @@ export function CharacterWizardPage() {
   }
 
   async function submitCommandAndAwait(label: string, submit: () => Promise<string>) {
-    setCommandStatus({
-      state: 'Idle',
-      commandId: null,
-      message: `${label} submitting...`,
-      errorCode: null,
-      errorMessage: null,
-    });
     logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_START', {
       gameId: state.gameId,
       characterId: state.characterId,
       label,
     });
-    const commandId = await submit();
-    setCommandStatus({
-      state: 'Queued',
-      commandId,
-      message: `${label} queued.`,
-      errorCode: null,
-      errorMessage: null,
-    });
-    logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_ACCEPTED', {
-      gameId: state.gameId,
-      characterId: state.characterId,
+    let acceptedCommandId: string | null = null;
+    const terminal = await submitAndAwait({
       label,
-      commandId,
+      submit: async () => {
+        const commandId = await submit();
+        acceptedCommandId = commandId;
+        logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_ACCEPTED', {
+          gameId: state.gameId,
+          characterId: state.characterId,
+          label,
+          commandId,
+        });
+        return commandId;
+      },
     });
-
-    const terminal = await pollUntilTerminal(commandId);
     if (terminal.status === 'PROCESSED') {
       logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_OK', {
         gameId: state.gameId,
         characterId: state.characterId,
         label,
-        commandId,
+        commandId: acceptedCommandId,
       });
       return;
     }
@@ -1017,7 +1146,7 @@ export function CharacterWizardPage() {
       gameId: state.gameId,
       characterId: state.characterId,
       label,
-      commandId,
+      commandId: acceptedCommandId,
       errorCode: terminal.errorCode,
       errorMessage: terminal.errorMessage,
     });
@@ -1032,15 +1161,7 @@ export function CharacterWizardPage() {
   async function saveStepProgress(stepKey: WizardStepKey) {
     setStepError(' ');
     scheduleCommandStatusScroll();
-    setIsExecutingCommand(true);
     setSaveButtonState(stepKey, 'saving');
-    setCommandStatus({
-      state: 'Idle',
-      commandId: null,
-      message: `Saving ${stepKey}...`,
-      errorCode: null,
-      errorMessage: null,
-    });
     logWebFlow('WEB_CHARACTER_WIZARD_SAVE_START', {
       gameId: state.gameId,
       characterId: state.characterId,
@@ -1060,42 +1181,31 @@ export function CharacterWizardPage() {
         stepKey,
         ...summarizeError(error),
       });
-      setCommandStatus((prev) => ({
-        ...prev,
-        state: 'Failed',
-        message: 'Save failed.',
-        errorCode: prev.errorCode,
-        errorMessage: message,
-      }));
-    } finally {
-      setIsExecutingCommand(false);
     }
   }
 
   async function saveCurrentDraft(stepKey: WizardStepKey): Promise<CharacterSnapshot> {
     const payload = buildSaveProgressPayload(stepKey);
-    const commandId = await submitSaveCharacterDraft({
-      api,
-      gameId: state.gameId,
-      characterId: state.characterId,
-      ...payload,
+    let acceptedCommandId: string | null = null;
+    const terminal = await submitAndAwait({
+      label: `Save ${stepKey}`,
+      submit: async () => {
+        const commandId = await submitSaveCharacterDraft({
+          api,
+          gameId: state.gameId,
+          characterId: state.characterId,
+          ...payload,
+        });
+        acceptedCommandId = commandId;
+        logWebFlow('WEB_CHARACTER_WIZARD_SAVE_ACCEPTED', {
+          gameId: state.gameId,
+          characterId: state.characterId,
+          stepKey,
+          commandId,
+        });
+        return commandId;
+      },
     });
-
-    setCommandStatus({
-      state: 'Queued',
-      commandId,
-      message: `Save queued for ${stepKey}.`,
-      errorCode: null,
-      errorMessage: null,
-    });
-    logWebFlow('WEB_CHARACTER_WIZARD_SAVE_ACCEPTED', {
-      gameId: state.gameId,
-      characterId: state.characterId,
-      stepKey,
-      commandId,
-    });
-
-    const terminal = await pollUntilTerminal(commandId);
     if (terminal.status !== 'PROCESSED') {
       throw new Error(describeFailure(terminal));
     }
@@ -1108,7 +1218,7 @@ export function CharacterWizardPage() {
       gameId: state.gameId,
       characterId: state.characterId,
       stepKey,
-      commandId,
+      commandId: acceptedCommandId,
     });
     return refreshed;
   }
@@ -1177,51 +1287,24 @@ export function CharacterWizardPage() {
     }
   }
 
-  async function pollUntilTerminal(commandId: string): Promise<CommandStatusResponse> {
-    const intervals = [400, 800, 1200, 1800, 2600];
-    let attempt = 0;
-
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await api.getCommandStatus(commandId);
-      if (!response) {
-        await sleep(intervals[Math.min(attempt, intervals.length - 1)] ?? 2600);
-        attempt += 1;
-        continue;
-      }
-
-      const mapped = mapStatus(response);
-      setCommandStatus(mapped);
-      logWebFlow('WEB_CHARACTER_WIZARD_STATUS_POLLED', {
-        gameId: state.gameId,
-        characterId: state.characterId,
-        commandId,
-        status: response.status,
-        errorCode: response.errorCode,
-      });
-
-      if (response.status === 'PROCESSED' || response.status === 'FAILED') {
-        return response;
-      }
-
-      await sleep(intervals[Math.min(attempt, intervals.length - 1)] ?? 2600);
-      attempt += 1;
-    }
-  }
-
   async function refreshSnapshot(options?: { syncWizardState?: boolean }): Promise<CharacterSnapshot | null> {
     logWebFlow('WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_START', {
       gameId: state.gameId,
       characterId: state.characterId,
+      wizardMode,
     });
     try {
-      const item = await api.getCharacter(state.gameId, state.characterId);
+      const item =
+        wizardMode === 'library' && routePlayerId
+          ? await api.getOwnedCharacter(routePlayerId, state.characterId)
+          : await api.getCharacter(state.gameId, state.characterId);
       if (!item) {
         setSnapshot(null);
         setLastSavedFingerprint(null);
         logWebFlow('WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_MISS', {
           gameId: state.gameId,
           characterId: state.characterId,
+          wizardMode,
         });
         return null;
       }
@@ -1246,6 +1329,7 @@ export function CharacterWizardPage() {
       logWebFlow('WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_OK', {
         gameId: state.gameId,
         characterId: state.characterId,
+        wizardMode,
         status: String((item as Record<string, unknown>).status ?? 'UNKNOWN'),
         version: nextSnapshot.version,
       });
@@ -1254,6 +1338,7 @@ export function CharacterWizardPage() {
       logWebFlow('WEB_CHARACTER_WIZARD_SNAPSHOT_REFRESH_FAILED', {
         gameId: state.gameId,
         characterId: state.characterId,
+        wizardMode,
         ...summarizeError(error),
       });
       throw error;
@@ -1285,46 +1370,6 @@ function SnapshotView({ snapshot }: { snapshot: CharacterSnapshot | null }) {
       </div>
     </div>
   );
-}
-
-function mapStatus(response: CommandStatusResponse): CommandStatusViewModel {
-  if (response.status === 'FAILED') {
-    return {
-      state: 'Failed',
-      commandId: response.commandId,
-      message: describeFailure(response),
-      errorCode: response.errorCode,
-      errorMessage: response.errorMessage,
-    };
-  }
-
-  if (response.status === 'PROCESSED') {
-    return {
-      state: 'Processed',
-      commandId: response.commandId,
-      message: 'Command processed.',
-      errorCode: null,
-      errorMessage: null,
-    };
-  }
-
-  if (response.status === 'PROCESSING') {
-    return {
-      state: 'Processing',
-      commandId: response.commandId,
-      message: 'Command processing.',
-      errorCode: null,
-      errorMessage: null,
-    };
-  }
-
-  return {
-    state: 'Queued',
-    commandId: response.commandId,
-    message: 'Command queued.',
-    errorCode: null,
-    errorMessage: null,
-  };
 }
 
 function WizardStep({
@@ -1495,10 +1540,6 @@ function parseOptionalNumber(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function createCharacterId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `char-${crypto.randomUUID().slice(0, 8)}`;
@@ -1578,6 +1619,13 @@ function hydrateWizardStateFromCharacter(item: CharacterItem, fallback: WizardSt
     },
     submitNoteToGm: typeof draft.noteToGm === 'string' ? draft.noteToGm : fallback.submitNoteToGm,
   };
+}
+
+function readCharacterIdentityName(item: CharacterItem): string {
+  const record = item as Record<string, unknown>;
+  const draft = record.draft && typeof record.draft === 'object' ? (record.draft as Record<string, unknown>) : {};
+  const identity = draft.identity && typeof draft.identity === 'object' ? (draft.identity as Record<string, unknown>) : {};
+  return typeof identity.name === 'string' ? identity.name.trim() : '';
 }
 
 function findSkillLevel(skills: Array<{ skill: string; level: number }>, skillName: string): number {

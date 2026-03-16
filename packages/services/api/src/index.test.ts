@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { toPlayerCharacterLibraryGameId } from '@starter/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { createApiService, listContractRoutes } from './index.js';
 import { InMemoryFifoQueue, type DbAccess } from '@starter/services-shared';
@@ -232,10 +233,12 @@ describe('services/api contract route map', () => {
         { method: 'GET', path: '/me', auth: 'required' },
         { method: 'GET', path: '/me/characters', auth: 'required' },
         { method: 'GET', path: '/me/games', auth: 'required' },
+        { method: 'GET', path: '/games/{gameId}', auth: 'required' },
         { method: 'GET', path: '/games/public', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/me', auth: 'required' },
         { method: 'GET', path: '/me/inbox', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
+        { method: 'GET', path: '/players/{playerId}/characters/{characterId}', auth: 'required' },
         { method: 'GET', path: '/gm/games', auth: 'required' },
         { method: 'GET', path: '/gm/{gameId}/inbox', auth: 'gm_required' },
         { method: 'GET', path: '/admin/users', auth: 'admin_required' },
@@ -390,6 +393,93 @@ describe('POST /commands', () => {
     ).rejects.toMatchObject({
       code: 'APPEARANCE_UPLOAD_NOT_FOUND',
       statusCode: 400,
+    });
+  });
+
+  it('rejects a new game-scoped draft save when the target game is not public', async () => {
+    const db = makeDbMock();
+    db.gameRepository.getGameMetadata = async () =>
+      ({
+        pk: 'GAME#game-1',
+        sk: 'METADATA',
+        type: 'GameMetadata',
+        gameId: 'game-1',
+        name: 'Private Game',
+        visibility: 'PRIVATE',
+        createdByPlayerId: 'gm-1',
+        gmPlayerId: 'gm-1',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+        version: 1,
+      }) as any;
+    db.characterRepository.getCharacter = async () => null;
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: new InMemoryFifoQueue(),
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    await expect(
+      api.postCommands({
+        bypassActorId: 'player-1',
+        envelope: {
+          commandId: '33333333-3333-4333-8333-333333333333',
+          gameId: 'game-1',
+          type: 'SaveCharacterDraft',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          payload: {
+            characterId: 'char-new',
+            race: 'HUMAN',
+            raisedBy: 'HUMANS',
+            subAbility: { A: 1, B: 1, C: 1, D: 1, E: 1, F: 1, G: 1, H: 1 },
+            identity: { name: 'Private Draft', age: null, gender: null },
+            purchases: [],
+            cart: {},
+          },
+        },
+      })
+    ).rejects.toMatchObject({
+      code: 'GAME_NOT_PUBLIC',
+      statusCode: 403,
+    });
+  });
+
+  it('rejects a player-library draft save when the namespace player does not match the actor', async () => {
+    const api = createApiService({
+      db: makeDbMock(),
+      uploads: makeUploadsMock(),
+      queue: new InMemoryFifoQueue(),
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    await expect(
+      api.postCommands({
+        bypassActorId: 'player-1',
+        envelope: {
+          commandId: '44444444-4444-4444-8444-444444444444',
+          gameId: toPlayerCharacterLibraryGameId('player-2'),
+          type: 'SaveCharacterDraft',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          payload: {
+            characterId: 'char-personal',
+            race: 'HUMAN',
+            raisedBy: 'HUMANS',
+            subAbility: { A: 1, B: 1, C: 1, D: 1, E: 1, F: 1, G: 1, H: 1 },
+            identity: { name: 'Wrong Owner', age: null, gender: null },
+            purchases: [],
+            cart: {},
+          },
+        },
+      })
+    ).rejects.toMatchObject({
+      code: 'PLAYER_CHARACTER_OWNER_REQUIRED',
+      statusCode: 403,
     });
   });
 });

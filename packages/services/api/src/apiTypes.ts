@@ -47,7 +47,9 @@ export interface ReadApis {
     bypassActorId?: string;
   }): Promise<PlayerProfileItem>;
   getCommandStatus(commandId: string): Promise<CommandStatusResponse | null>;
+  getGame(gameId: string): Promise<GameMetadataItem | null>;
   getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
+  getOwnedCharacter(playerId: string, characterId: string): Promise<CharacterItem | null>;
   listCharactersByOwner(playerId: string): Promise<CharacterItem[]>;
   getMyInbox(playerId: string): Promise<PlayerInboxItem[]>;
   getMyProfile(playerId: string): Promise<PlayerProfileItem | null>;

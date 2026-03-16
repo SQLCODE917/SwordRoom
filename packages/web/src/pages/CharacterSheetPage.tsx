@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { createApiClient, type CharacterItem, type CommandStatusResponse } from '../api/ApiClient';
+import { toPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
+import { createApiClient, type CharacterItem, type CommandEnvelopeInput } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { ImageBox } from '../components/ImageBox';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
@@ -8,7 +9,7 @@ import { Panel } from '../components/Panel';
 import { SheetTabs, type SheetTabItem } from '../components/SheetTabs';
 import { StatBox } from '../components/StatBox';
 import { TableLite, type TableLiteColumn } from '../components/TableLite';
-import { describeFailure } from '../hooks/useCommandStatus';
+import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 
 type StatKey = 'dex' | 'agi' | 'int' | 'str' | 'lf' | 'mp';
 
@@ -144,8 +145,9 @@ const emptyCombatRows = [
 export function CharacterSheetPage() {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
-  const params = useParams<{ gameId: string; characterId: string }>();
-  const gameId = params.gameId ?? 'game-1';
+  const params = useParams<{ gameId?: string; playerId?: string; characterId: string }>();
+  const playerId = params.playerId ?? null;
+  const gameId = params.gameId ?? (playerId ? toPlayerCharacterLibraryGameId(playerId) : 'game-1');
   const characterId = params.characterId ?? 'char-human-1';
 
   const [activeTabId, setActiveTabId] = useState('sheet-page-1');
@@ -154,10 +156,11 @@ export function CharacterSheetPage() {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(' ');
+  const { submitEnvelopeAndAwait } = useCommandWorkflow();
 
   const refreshCharacter = useCallback(async () => {
     logWebFlow('WEB_CHARACTER_SHEET_REFRESH_START', { gameId, characterId });
-    const response = await api.getCharacter(gameId, characterId);
+    const response = playerId ? await api.getOwnedCharacter(playerId, characterId) : await api.getCharacter(gameId, characterId);
     setCharacter(response);
     setError(response ? null : `Character not found: ${characterId}`);
     logWebFlow(response ? 'WEB_CHARACTER_SHEET_REFRESH_OK' : 'WEB_CHARACTER_SHEET_REFRESH_MISS', {
@@ -165,7 +168,7 @@ export function CharacterSheetPage() {
       characterId,
       status: response && typeof response.status === 'string' ? response.status : null,
     });
-  }, [api, characterId, gameId]);
+  }, [api, characterId, gameId, playerId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -174,7 +177,7 @@ export function CharacterSheetPage() {
       setLoading(true);
       logWebFlow('WEB_CHARACTER_SHEET_LOAD_START', { gameId, characterId });
       try {
-        const response = await api.getCharacter(gameId, characterId);
+        const response = playerId ? await api.getOwnedCharacter(playerId, characterId) : await api.getCharacter(gameId, characterId);
         if (cancelled) {
           return;
         }
@@ -208,7 +211,7 @@ export function CharacterSheetPage() {
     return () => {
       cancelled = true;
     };
-  }, [api, characterId, gameId]);
+  }, [api, characterId, gameId, playerId]);
 
   const view = useMemo(() => normalizeCharacter(character), [character]);
   const noticeClassName = useMemo(() => `c-note ${error ? 'c-note--error' : 'c-note--info'}`, [error]);
@@ -386,32 +389,26 @@ export function CharacterSheetPage() {
         s3Key: uploadSession.s3Key,
       });
 
-      const confirm = await api.postCommand({
-        envelope: {
-          commandId: createCommandId(),
-          gameId,
-          type: 'ConfirmCharacterAppearanceUpload',
-          schemaVersion: 1,
-          createdAt: new Date().toISOString(),
-          payload: {
-            characterId,
-            s3Key: uploadSession.s3Key,
-          },
+      const confirmEnvelope = {
+        commandId: createCommandId(),
+        gameId,
+        type: 'ConfirmCharacterAppearanceUpload',
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        payload: {
+          characterId,
+          s3Key: uploadSession.s3Key,
         },
-      });
-      logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_CONFIRM_ACCEPTED', {
+      } satisfies CommandEnvelopeInput<'ConfirmCharacterAppearanceUpload'>;
+      logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_CONFIRM_START', {
         gameId,
         characterId,
-        commandId: confirm.commandId,
+        commandId: confirmEnvelope.commandId,
         uploadId: uploadSession.uploadId,
         s3Key: uploadSession.s3Key,
-        status: confirm.status,
       });
 
-      const terminal = await pollCommandUntilTerminal(confirm.commandId);
-      if (terminal.status !== 'PROCESSED') {
-        throw new Error(describeFailure(terminal));
-      }
+      await submitEnvelopeAndAwait('Confirm appearance upload', confirmEnvelope);
 
       await refreshCharacter();
       logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_OK', {
@@ -429,35 +426,6 @@ export function CharacterSheetPage() {
       });
     } finally {
       setUploading(false);
-    }
-  }
-
-  async function pollCommandUntilTerminal(commandId: string): Promise<CommandStatusResponse> {
-    const intervals = [400, 800, 1200, 1800, 2600];
-    let attempt = 0;
-
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-      const response = await api.getCommandStatus(commandId);
-      if (!response) {
-        await sleep(intervals[Math.min(attempt, intervals.length - 1)] ?? 2600);
-        attempt += 1;
-        continue;
-      }
-
-      logWebFlow('WEB_CHARACTER_SHEET_UPLOAD_STATUS_POLLED', {
-        gameId,
-        characterId,
-        commandId,
-        status: response.status,
-        errorCode: response.errorCode,
-      });
-      if (response.status === 'PROCESSED' || response.status === 'FAILED') {
-        return response;
-      }
-
-      await sleep(intervals[Math.min(attempt, intervals.length - 1)] ?? 2600);
-      attempt += 1;
     }
   }
 }
@@ -515,20 +483,6 @@ function normalizeCharacter(raw: CharacterItem | null): SheetView {
     moneyGamels: readNumber(starting.moneyGamels),
     purchases: normalizePurchases(purchases),
   };
-}
-
-function createCommandId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  const nowHex = Date.now().toString(16).padStart(12, '0').slice(-12);
-  return `00000000-0000-4000-8000-${nowHex}`;
-}
-
-async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }
 
 function computeAbilityFromSubAbility(subAbility: SubAbilityView): AbilityView {
