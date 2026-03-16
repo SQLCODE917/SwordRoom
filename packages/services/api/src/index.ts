@@ -18,32 +18,14 @@ import {
   type DbAccess,
 } from '@starter/services-shared';
 import { resolveActorId, resolveActorIdentity } from './auth.js';
+import { listContractRoutes } from './httpRoutes.js';
 import type {
-  ApiRoute,
+  ApiRuntimeService,
   CommandStatusResponse,
   PostCommandRequest,
   PostCommandResponse,
   ReadApis,
 } from './apiTypes.js';
-
-export const contractRoutes: ApiRoute[] = [
-  { method: 'POST', path: '/commands', auth: 'required' },
-  { method: 'POST', path: '/me/profile/sync', auth: 'required' },
-  { method: 'GET', path: '/commands/{commandId}', auth: 'required' },
-  { method: 'GET', path: '/me', auth: 'required' },
-  { method: 'GET', path: '/me/characters', auth: 'required' },
-  { method: 'GET', path: '/me/games', auth: 'required' },
-  { method: 'GET', path: '/games/{gameId}', auth: 'required' },
-  { method: 'GET', path: '/games/{gameId}/me', auth: 'required' },
-  { method: 'GET', path: '/me/inbox', auth: 'required' },
-  { method: 'GET', path: '/games/public', auth: 'required' },
-  { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
-  { method: 'GET', path: '/players/{playerId}/characters/{characterId}', auth: 'required' },
-  { method: 'GET', path: '/gm/games', auth: 'required' },
-  { method: 'GET', path: '/gm/{gameId}/inbox', auth: 'gm_required' },
-  { method: 'GET', path: '/admin/users', auth: 'admin_required' },
-  { method: 'GET', path: '/admin/games', auth: 'admin_required' },
-];
 
 export interface ApiServiceDependencies {
   db: DbAccess;
@@ -63,14 +45,9 @@ export interface ApiServiceDependencies {
   jwtBypass?: boolean;
 }
 
-export function listContractRoutes(): ApiRoute[] {
-  return [...contractRoutes];
-}
+export { listContractRoutes };
 
-export function createApiService(deps: ApiServiceDependencies): {
-  postCommands(request: PostCommandRequest): Promise<PostCommandResponse>;
-  readApis: ReadApis;
-} {
+export function createApiService(deps: ApiServiceDependencies): ApiRuntimeService {
   const flowLogEnabled = process.env.FLOW_LOG === '1';
 
   return {

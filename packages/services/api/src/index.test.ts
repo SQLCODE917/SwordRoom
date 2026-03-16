@@ -238,6 +238,7 @@ describe('services/api contract route map', () => {
         { method: 'GET', path: '/games/{gameId}/me', auth: 'required' },
         { method: 'GET', path: '/me/inbox', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
+        { method: 'POST', path: '/games/{gameId}/characters/{characterId}/appearance/upload-url', auth: 'required' },
         { method: 'GET', path: '/players/{playerId}/characters/{characterId}', auth: 'required' },
         { method: 'GET', path: '/gm/games', auth: 'required' },
         { method: 'GET', path: '/gm/{gameId}/inbox', auth: 'gm_required' },

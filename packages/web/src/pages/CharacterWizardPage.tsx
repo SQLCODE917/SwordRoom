@@ -200,7 +200,7 @@ function CharacterWizardPageContent({
             throw new Error(`Player "${routePlayerId ?? 'unknown'}" does not match the signed-in actor.`);
           }
         } else if (!isEditMode) {
-          const game = await api.getGame(routeGameId);
+          const game = (await api.getPublicGames()).find((item) => item.gameId === routeGameId) ?? null;
           if (!game) {
             throw new Error(`Game ${routeGameId} was not found.`);
           }

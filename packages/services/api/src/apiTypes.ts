@@ -8,10 +8,13 @@ import type {
   PlayerProfileItem,
 } from '@starter/shared';
 
+export type ApiRouteMethod = 'POST' | 'GET';
+export type ApiRouteAuth = 'required' | 'gm_required' | 'admin_required';
+
 export interface ApiRoute {
-  method: 'POST' | 'GET';
+  method: ApiRouteMethod;
   path: string;
-  auth: 'required' | 'gm_required' | 'admin_required';
+  auth: ApiRouteAuth;
 }
 
 export interface CommandStatusResponse {
@@ -39,6 +42,11 @@ export interface PostCommandResponse {
   accepted: true;
   commandId: string;
   status: CommandStatus;
+}
+
+export interface ApiRuntimeService {
+  postCommands(request: PostCommandRequest): Promise<PostCommandResponse>;
+  readApis: ReadApis;
 }
 
 export interface ReadApis {
