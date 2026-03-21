@@ -13,6 +13,10 @@ export default defineConfig({
         replacement: fileURLToPath(new URL('../shared/src/rules/equipmentRoster.ts', import.meta.url)),
       },
       {
+        find: '@starter/shared/rules/characterCreation',
+        replacement: fileURLToPath(new URL('../shared/src/rules/characterCreation.ts', import.meta.url)),
+      },
+      {
         find: '@starter/engine',
         replacement: fileURLToPath(new URL('../engine/src/index.ts', import.meta.url)),
       },

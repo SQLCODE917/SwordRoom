@@ -1,4 +1,18 @@
-import { resolveEffectiveRequiredStrength, resolvePrice } from '@starter/shared/rules/equipmentRoster';
+import {
+  canRaceAcquireSkill,
+  computeAbilityBonuses,
+  computeAbilityScores,
+  divideAndRound,
+  getCharacterCreationSkillCost,
+  getCharacterCreationSkillMaxLevel,
+  isPlayerCharacterAdventurerSkill,
+  startingPackageTables as sharedStartingPackageTables,
+} from '@starter/shared/rules/characterCreation';
+import {
+  isStrengthWithinRequiredRange,
+  resolveEffectiveRequiredStrength,
+  resolvePrice,
+} from '@starter/shared/rules/equipmentRoster';
 import type {
   AbilityScores,
   CharacterCreationState,
@@ -59,24 +73,8 @@ export function computeAbilitiesAndBonuses(state: CharacterCreationState): Engin
     return withError(state, 'MISSING_SUBABILITY', 'subAbility is required', null);
   }
 
-  const sub = state.subAbility;
-  const ability: AbilityScores = {
-    dex: sub.A + sub.B,
-    agi: sub.B + sub.C,
-    int: sub.C + sub.D,
-    str: sub.E + sub.F,
-    lf: sub.F + sub.G,
-    mp: sub.G + sub.H,
-  };
-
-  const bonus: AbilityScores = {
-    dex: Math.floor(ability.dex / 6),
-    agi: Math.floor(ability.agi / 6),
-    int: Math.floor(ability.int / 6),
-    str: Math.floor(ability.str / 6),
-    lf: Math.floor(ability.lf / 6),
-    mp: Math.floor(ability.mp / 6),
-  };
+  const ability = computeAbilityScores(state.subAbility);
+  const bonus = computeAbilityBonuses(ability);
 
   return {
     state: {
@@ -98,10 +96,18 @@ export function applyStartingPackage(
     merchantScholarChoice?: 'MERCHANT' | 'SAGE';
     generalSkillName?: string;
   },
-  tables: StartingPackageTables
+  tables: StartingPackageTables = sharedStartingPackageTables as StartingPackageTables
 ): EngineResult {
   if (!state.race) {
     return withError(state, 'MISSING_RACE', 'race is required', null);
+  }
+  if (state.race === 'HALF_ELF' && !state.raisedBy) {
+    return withError(
+      state,
+      'MISSING_RAISED_BY_FOR_HALF_ELF',
+      'raisedBy is required for half-elf characters',
+      null
+    );
   }
 
   const isHumanBackgroundPath =
@@ -210,6 +216,15 @@ export function spendStartingExp(
   state: CharacterCreationState,
   input: { purchases: SpendPurchaseInput[] }
 ): EngineResult {
+  if (state.race === 'HALF_ELF' && !state.raisedBy) {
+    return withError(
+      state,
+      'MISSING_RAISED_BY_FOR_HALF_ELF',
+      'raisedBy is required for half-elf characters',
+      null
+    );
+  }
+
   const starting = state.startingPackage;
   if (!starting) {
     return withError(state, 'EXP_INSUFFICIENT', 'starting package is required', null);
@@ -222,13 +237,32 @@ export function spendStartingExp(
   const targetBySkill = new Map<string, number>();
   for (const purchase of input.purchases) {
     const normalized = normalizeSkillName(purchase.skill);
-    const currentTarget = targetBySkill.get(normalized) ?? 0;
-    targetBySkill.set(normalized, Math.max(currentTarget, purchase.targetLevel));
-    if (!creationSkillCosts[normalized]) {
+    if (!isPlayerCharacterAdventurerSkill(purchase.skill)) {
       return withError(state, 'GENERAL_SKILL_NOT_ALLOWED_WITH_STARTING_EXP', 'skill cannot be purchased at creation', {
         skill: purchase.skill,
       });
     }
+    if (
+      state.race &&
+      !canRaceAcquireSkill(state.race, state.raisedBy ?? null, purchase.skill)
+    ) {
+      return withError(state, 'SKILL_RESTRICTED_BY_RACE', 'race cannot acquire this skill during character creation', {
+        race: state.race,
+        raisedBy: state.raisedBy ?? null,
+        skill: purchase.skill,
+      });
+    }
+    const maxLevel = getCharacterCreationSkillMaxLevel(purchase.skill);
+    if (maxLevel === null || purchase.targetLevel > maxLevel) {
+      return withError(
+        state,
+        'GENERAL_SKILL_NOT_ALLOWED_WITH_STARTING_EXP',
+        'skill level cannot be purchased at creation',
+        { skill: purchase.skill, targetLevel: purchase.targetLevel, maxLevel }
+      );
+    }
+    const currentTarget = targetBySkill.get(normalized) ?? 0;
+    targetBySkill.set(normalized, Math.max(currentTarget, purchase.targetLevel));
   }
 
   const buysSorcerer = (targetBySkill.get('sorcerer') ?? 0) >= 1;
@@ -257,8 +291,8 @@ export function spendStartingExp(
         continue;
       }
 
-      const cost = resolveCreationSkillCost({
-        normalizedSkill: normalized,
+      const cost = getCharacterCreationSkillCost({
+        skill: normalized,
         nextLevel,
         hasSage,
       });
@@ -330,6 +364,15 @@ export function purchaseEquipment(
       continue;
     }
 
+    if (!isCatalogStrengthWithinRange(item, charStr)) {
+      errors.push({
+        code: 'EQUIPMENT_RESTRICTED_BY_SKILL',
+        message: 'item required strength range must include character STR',
+        details: { reason: 'REQ_STR_RANGE_MISMATCH', itemId, charStr },
+      });
+      continue;
+    }
+
     const reqStr = resolveCatalogRequiredStrength(item, charStr);
     if (reqStr > charStr) {
       errors.push({
@@ -361,7 +404,7 @@ export function purchaseEquipment(
   const hasShaman = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'shaman');
   const hasThief = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'thief');
   const hasRanger = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'ranger');
-  const thiefArmorLimit = Math.ceil(charStr / 2);
+  const thiefArmorLimit = divideAndRound(charStr, 2);
 
   if (hasSorcerer) {
     if (input.cart.shields.length > 0) {
@@ -396,6 +439,17 @@ export function purchaseEquipment(
       message: 'shaman cannot use shield',
       details: { reason: 'SHAMAN_FORBIDS_SHIELD' },
     });
+  }
+
+  if (hasShaman) {
+    const invalidArmor = input.cart.armor.find((itemId) => !hasAnyTag(catalog[itemId], ['SHAMAN_ARMOR_OK']));
+    if (invalidArmor) {
+      errors.push({
+        code: 'EQUIPMENT_RESTRICTED_BY_SKILL',
+        message: 'shaman armor must be cloth, soft leather, or hard leather',
+        details: { reason: 'SHAMAN_ARMOR_RESTRICTED', itemId: invalidArmor },
+      });
+    }
   }
 
   if (hasRanger || hasThief) {
@@ -519,28 +573,6 @@ function withError(
   };
 }
 
-const creationSkillCosts: Record<string, Record<number, number>> = {
-  fighter: { 1: 1500, 2: 1500, 3: 1500 },
-  thief: { 1: 1000, 2: 1000 },
-  ranger: { 1: 500 },
-  priest: { 1: 1000 },
-  sage: { 1: 1000 },
-  bard: { 1: 500 },
-  shaman: { 1: 1500 },
-  sorcerer: { 1: 2000, 2: 2000 },
-};
-
-function resolveCreationSkillCost(input: {
-  normalizedSkill: string;
-  nextLevel: number;
-  hasSage: boolean;
-}): number | null {
-  if (input.normalizedSkill === 'sorcerer' && input.nextLevel === 1 && input.hasSage) {
-    return 1500;
-  }
-  return creationSkillCosts[input.normalizedSkill]?.[input.nextLevel] ?? null;
-}
-
 function parseDiceMoneyMultiplier(formula: string): number {
   const match = formula.match(/^2D\*(\d+)$/i);
   if (!match) {
@@ -655,6 +687,22 @@ function isVariablePriceItem(item: ItemCatalogEntry | undefined, characterStreng
     return false;
   }
   return resolvePrice(item.price_spec ?? item.cost_g ?? 0, resolveCatalogRequiredStrength(item, characterStrength)).variablePrice;
+}
+
+function isCatalogStrengthWithinRange(item: ItemCatalogEntry | undefined, characterStrength: number): boolean {
+  if (!item) {
+    return true;
+  }
+  if (typeof item.req_str === 'number' && item.req_str_min === undefined && item.req_str_max === undefined) {
+    return true;
+  }
+  const requiredStrength =
+    item.req_str_min !== undefined
+      ? item.req_str_max === null || item.req_str_max === undefined
+        ? `${item.req_str_min}~`
+        : `${item.req_str_min}~${item.req_str_max}`
+      : item.req_str ?? 0;
+  return isStrengthWithinRequiredRange(requiredStrength, characterStrength);
 }
 
 function zeroAbility(): AbilityScores {

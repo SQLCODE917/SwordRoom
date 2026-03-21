@@ -1,0 +1,578 @@
+doc_type: implementation_contract
+topic: aws_deployment_via_cdk_and_github_actions
+deliverable: aws_cdk_iac_with_github_actions_oidc_deploy
+version: 1
+
+intent:
+  summary: >
+    Deploy the monorepo to AWS from GitHub Actions with minimal manual steps, using AWS CDK as the sole IaC source of truth.
+  source_of_truth_scope:
+    - infrastructure architecture
+    - repository file layout for infra and deploy code
+    - deployment workflow structure
+    - step-by-step implementation units with machine-verifiable checks
+    - explicit human-in-the-loop steps
+  non_goals:
+    - blue_green_deployments
+    - multi_region_deployments
+    - ephemeral_preview_environments
+    - custom_WAF_rules
+    - production_observability_beyond_basic_logs_and_alarms
+
+decision_record:
+  iac_tool:
+    choice: aws_cdk_v2_typescript
+    rationale:
+      - repo is already TypeScript-first
+      - simplest path to keep infra, app config, and GitHub Actions in one language
+      - easier to share constants and deployment conventions across packages than raw CloudFormation
+  deployment_identity:
+    choice: github_actions_oidc_to_aws_iam_role
+    rationale:
+      - avoids long-lived AWS keys in GitHub
+      - minimizes manual secret rotation
+  runtime_shape:
+    web:
+      choice: s3_plus_cloudfront
+      hosting_model: client_rendered_spa_asset_delivery
+      rationale:
+        - Vite produces deployable JS/CSS/assets even when the UI is highly interactive at runtime
+        - chat, CRUD, notifications, and other dynamic behavior can be driven by backend APIs and realtime channels without requiring server-rendered HTML
+        - lowest operational overhead
+    api:
+      choice: lambda_plus_http_api
+      rationale:
+        - aligns with existing async-layer AWS direction
+        - simpler than ECS/Fargate for current scale
+    dispatcher:
+      choice: lambda_plus_sqs_event_source_mapping
+      rationale:
+        - removes the need for a permanently running poller
+        - directly matches SQS-driven command processing
+  environments:
+    required:
+      - staging
+      - production
+    default_first_target: staging
+
+architecture:
+  aws_services:
+    - cloudformation_via_cdk
+    - dynamodb
+    - sqs
+    - lambda
+    - api_gateway_http_api
+    - s3
+    - cloudfront
+    - cognito_user_pools
+    - iam
+    - cloudwatch_logs
+  future_realtime_extension:
+    required_when:
+      - user_facing_chat_is_implemented
+      - push_notifications_or_live_presence_are_implemented
+    preferred_initial_choice: api_gateway_websocket_api_plus_lambda
+    rationale:
+      - keeps the backend on the same CDK and Lambda model as the rest of the stack
+      - avoids introducing a second frontend hosting model
+    not_required_for_initial_cdk_deploy_foundation: true
+  stacks:
+    - id: SharedStack
+      purpose: shared_stateful_resources_and_auth
+      resources:
+        - dynamodb_game_state_table
+        - dynamodb_command_log_table
+        - sqs_commands_queue
+        - sqs_commands_dlq
+        - s3_uploads_bucket
+        - cognito_user_pool
+        - cognito_user_pool_client
+        - cognito_user_pool_domain
+    - id: AppStack
+      purpose: compute_and_edge_resources
+      resources:
+        - lambda_api
+        - lambda_dispatcher
+        - http_api
+        - api_routes_and_integrations
+        - sqs_event_source_mapping
+        - s3_web_bucket
+        - cloudfront_distribution
+        - cloudfront_origin_access_control
+        - cloudwatch_alarms_basic
+  runtime_adapters:
+    api:
+      local_entrypoint: packages/services/api/src/server.ts
+      aws_entrypoint: packages/services/api/src/lambda.ts
+      requirement: >
+        AWS entrypoint must call the same route dispatch layer as local HTTP server code. Business logic must not fork between local and AWS modes.
+    dispatcher:
+      local_entrypoint: packages/services/dispatcher/src/worker.ts
+      aws_entrypoint: packages/services/dispatcher/src/lambda.ts
+      requirement: >
+        AWS entrypoint must process SQS batches using the same dispatcher core logic as local worker mode.
+  auth_mode:
+    browser:
+      required_mode: oidc
+      provider: cognito_user_pool
+    api:
+      required_mode: oidc
+      dev_mode_allowed_only_for_local_non_aws_execution: true
+
+repository_contract:
+  package_of_record: packages/infra
+  required_files:
+    - path: packages/infra/package.json
+      purpose: infra build and deploy scripts
+    - path: packages/infra/cdk.json
+      purpose: CDK app entry configuration
+    - path: packages/infra/tsconfig.json
+      purpose: infra TypeScript configuration
+    - path: packages/infra/src/app.ts
+      purpose: CDK app entrypoint
+    - path: packages/infra/src/config.ts
+      purpose: typed environment and stack configuration
+    - path: packages/infra/src/stacks/shared-stack.ts
+      purpose: stateful shared resources
+    - path: packages/infra/src/stacks/app-stack.ts
+      purpose: compute and edge resources
+    - path: packages/infra/src/constructs/web-site.ts
+      purpose: reusable web hosting construct
+    - path: packages/infra/src/constructs/api-service.ts
+      purpose: reusable API service construct
+    - path: packages/infra/src/constructs/dispatcher-service.ts
+      purpose: reusable dispatcher construct
+    - path: .github/workflows/ci.yml
+      purpose: shared build and test workflow
+    - path: .github/workflows/deploy-staging.yml
+      purpose: automatic staging deploy from main
+    - path: .github/workflows/deploy-production.yml
+      purpose: production deploy gated by GitHub environment approval
+    - path: packages/services/api/src/lambda.ts
+      purpose: API Lambda handler
+    - path: packages/services/dispatcher/src/lambda.ts
+      purpose: dispatcher Lambda handler
+  files_allowed_to_remain_for_local_only:
+    - packages/services/api/src/server.ts
+    - packages/services/dispatcher/src/worker.ts
+  files_not_allowed_as_primary_source_of_truth:
+    - packages/infra/templates/character-creation-vertical-slice.yaml
+
+configuration_contract:
+  cdk_context_or_env_inputs:
+    required:
+      - name: APP_NAME
+        example: swordworld
+      - name: AWS_ACCOUNT_ID
+        example: "123456789012"
+      - name: AWS_REGION
+        example: us-east-1
+      - name: DEPLOY_ENV
+        allowed_values: [staging, production]
+      - name: WEB_DOMAIN_NAME
+        example: app.example.com
+      - name: COGNITO_DOMAIN_PREFIX
+        example: swordworld-staging
+    optional:
+      - name: API_DOMAIN_NAME
+        purpose: custom_domain_for_api_if_default_execute_api_url_is_not_desired
+      - name: HOSTED_ZONE_NAME
+        purpose: route53_alias_records_if_domain_management_is_in_scope
+      - name: CERTIFICATE_ARN_US_EAST_1
+        purpose: required_acm_cert_for_cloudfront_web_domain
+      - name: CERTIFICATE_ARN_REGION
+        purpose: acm_cert_for_api_custom_domain_if_api_domain_name_is_used
+  lambda_environment_variables:
+    api:
+      - AWS_REGION
+      - GAMESTATE_TABLE
+      - COMMANDLOG_TABLE
+      - COMMANDS_QUEUE_URL
+      - UPLOADS_BUCKET
+      - AUTH_MODE=oidc
+      - OIDC_ISSUER=cognito_user_pool_issuer
+      - OIDC_AUDIENCE=cognito_user_pool_client_id
+    dispatcher:
+      - AWS_REGION
+      - GAMESTATE_TABLE
+      - COMMANDLOG_TABLE
+      - COMMANDS_QUEUE_URL
+  web_build_variables:
+    - VITE_AUTH_MODE=oidc
+    - VITE_API_BASE=https://api_domain_or_http_api_base
+    - VITE_OIDC_ISSUER=https://cognito_domain
+    - VITE_OIDC_CLIENT_ID=cognito_user_pool_client_id
+    - VITE_OIDC_REDIRECT_URI=https://web_domain/auth/callback
+    - VITE_OIDC_SCOPE=openid profile email
+  secret_policy:
+    github_actions_should_not_store:
+      - long_lived_aws_access_keys
+    github_actions_may_store:
+      - domain_or_account_identifiers_if_not_sensitive
+    aws_secrets_manager_not_required_in_initial_version: true
+
+implementation_rules:
+  - CDK synth output must be the only deployable infrastructure definition.
+  - GitHub Actions deploy workflows must assume AWS via OIDC, never static AWS keys.
+  - API and dispatcher business logic must remain testable without AWS.
+  - Local development entrypoints must remain supported.
+  - Production deployment must be a separate GitHub workflow or environment gate from staging.
+  - Staging deploy must be fully automated on pushes to main after checks pass.
+  - The document file itself must be treated as implementation source of truth for agents in packages/infra.
+
+manual_steps:
+  - id: manual-01-create-github-oidc-provider_and_role
+    actor: human
+    required_once_per_aws_account: true
+    outcome: GitHub Actions can assume deploy role via OIDC
+    verification:
+      type: human
+      check: github_actions_workflow_can_call_aws_sts_get_caller_identity
+  - id: manual-02-cdk-bootstrap_target_account
+    actor: human
+    required_once_per_account_region: true
+    outcome: CDK toolkit stack exists
+    verification:
+      type: command
+      command: pnpm --filter @starter/infra cdk bootstrap aws://$AWS_ACCOUNT_ID/$AWS_REGION
+  - id: manual-03-web-domain_and_certificate_setup
+    actor: human
+    required_once_per_domain: true
+    outcome: stable_web_redirect_domain_exists_for_oidc
+    verification:
+      type: human
+      check: web_domain_resolves_and_acm_certificate_is_issued
+  - id: manual-03b-api_domain_and_certificate_setup_if_api_custom_domain_is_used
+    actor: human
+    required_once_per_domain: false
+    outcome: valid ACM certificates exist
+    verification:
+      type: human
+      check: api_domain_certificate_issued_and_dns_validated
+  - id: manual-04-create_github_environments
+    actor: human
+    required_once_per_repo: true
+    outcome: staging and production environments exist in GitHub
+    verification:
+      type: human
+      check: production_environment_has_required_reviewers_enabled
+
+deliverables:
+  - id: deliverable-01-cdk-app
+    files:
+      - packages/infra/package.json
+      - packages/infra/cdk.json
+      - packages/infra/tsconfig.json
+      - packages/infra/src/app.ts
+      - packages/infra/src/config.ts
+  - id: deliverable-02-cdk-stacks_and_constructs
+    files:
+      - packages/infra/src/stacks/shared-stack.ts
+      - packages/infra/src/stacks/app-stack.ts
+      - packages/infra/src/constructs/web-site.ts
+      - packages/infra/src/constructs/api-service.ts
+      - packages/infra/src/constructs/dispatcher-service.ts
+  - id: deliverable-03-aws_runtime_entrypoints
+    files:
+      - packages/services/api/src/lambda.ts
+      - packages/services/dispatcher/src/lambda.ts
+  - id: deliverable-04-ci_and_deploy_workflows
+    files:
+      - .github/workflows/ci.yml
+      - .github/workflows/deploy-staging.yml
+      - .github/workflows/deploy-production.yml
+  - id: deliverable-05-implementation_docs
+    files:
+      - docs/deployment.aws-cdk.github-actions.yaml
+      - packages/infra/AGENTS.md
+
+work_units:
+  - id: deploy-01-bootstrap-infra-package
+    goal: create a working CDK TypeScript package in packages/infra
+    delivers:
+      - deliverable-01-cdk-app
+    prerequisites: []
+    implementation_requirements:
+      - package.json must include aws-cdk-lib, constructs, typescript execution support, and scripts for synth, diff, deploy, destroy
+      - cdk.json must point at packages/infra/src/app.ts
+      - tsconfig must compile the infra package cleanly
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/infra type-check
+        - pnpm --filter @starter/infra cdk synth
+      expected_artifacts:
+        - packages/infra/cdk.json
+        - packages/infra/src/app.ts
+      expected_results:
+        - type_check_exit_code_0
+        - synth_exit_code_0
+    human_verification: []
+    done_when:
+      - CDK app can synthesize without requiring deployed AWS resources
+      - infra package has real build and type-check steps, not placeholder echo scripts
+
+  - id: deploy-02-model-shared-stack
+    goal: define stateful shared AWS resources in SharedStack
+    delivers:
+      - deliverable-02-cdk-stacks_and_constructs
+    prerequisites:
+      - deploy-01-bootstrap-infra-package
+    implementation_requirements:
+      - create DynamoDB tables for game state and command log
+      - create SQS queue and DLQ
+      - create uploads bucket
+      - create Cognito user pool, client, and domain
+      - export values needed by AppStack
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/infra cdk synth
+      expected_template_assertions:
+        - contains_AWS::DynamoDB::Table_for_game_state
+        - contains_AWS::DynamoDB::Table_for_command_log
+        - contains_AWS::SQS::Queue_for_commands
+        - contains_AWS::S3::Bucket_for_uploads
+        - contains_AWS::Cognito::UserPool
+        - contains_AWS::Cognito::UserPoolClient
+      expected_results:
+        - synth_exit_code_0
+    human_verification: []
+    done_when:
+      - SharedStack is fully described in CDK and synthesizes deterministically
+
+  - id: deploy-03-add-api-lambda-entrypoint
+    goal: make the API deployable as Lambda without forking business logic
+    delivers:
+      - deliverable-03-aws_runtime_entrypoints
+    prerequisites:
+      - deploy-01-bootstrap-infra-package
+    implementation_requirements:
+      - add packages/services/api/src/lambda.ts
+      - lambda entrypoint must reuse the existing route dispatch logic
+      - local server.ts must remain available for local development
+      - auth configuration must become provider-neutral by using OIDC_ISSUER instead of KEYCLOAK_ISSUER as the AWS runtime variable name
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/services-api build
+        - pnpm --filter @starter/services-api test
+      expected_artifacts:
+        - packages/services/api/src/lambda.ts
+      expected_results:
+        - build_exit_code_0
+        - test_exit_code_0
+    human_verification: []
+    done_when:
+      - API package can be built with a Lambda entrypoint present
+      - no business rules are duplicated between local and Lambda adapters
+
+  - id: deploy-04-add-dispatcher-lambda-entrypoint
+    goal: make the dispatcher deployable from SQS-triggered Lambda
+    delivers:
+      - deliverable-03-aws_runtime_entrypoints
+    prerequisites:
+      - deploy-01-bootstrap-infra-package
+    implementation_requirements:
+      - add packages/services/dispatcher/src/lambda.ts
+      - lambda handler must process SQS batches using the existing dispatcher core
+      - local worker.ts may remain for local development only
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/services-dispatcher build
+        - pnpm --filter @starter/services-dispatcher test
+      expected_artifacts:
+        - packages/services/dispatcher/src/lambda.ts
+      expected_results:
+        - build_exit_code_0
+        - test_exit_code_0
+    human_verification: []
+    done_when:
+      - dispatcher package supports SQS-triggered Lambda execution
+
+  - id: deploy-05-model-app-stack
+    goal: define API, dispatcher, and web hosting resources in AppStack
+    delivers:
+      - deliverable-02-cdk-stacks_and_constructs
+    prerequisites:
+      - deploy-02-model-shared-stack
+      - deploy-03-add-api-lambda-entrypoint
+      - deploy-04-add-dispatcher-lambda-entrypoint
+    implementation_requirements:
+      - create API Lambda and connect it to HTTP API
+      - create dispatcher Lambda and connect it to commands queue via event source mapping
+      - create web bucket and CloudFront distribution
+      - wire IAM permissions minimally
+      - pass runtime environment variables from stack outputs and config
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/infra cdk synth
+      expected_template_assertions:
+        - contains_AWS::Lambda::Function_for_api
+        - contains_AWS::Lambda::Function_for_dispatcher
+        - contains_AWS::ApiGatewayV2::Api
+        - contains_AWS::Lambda::EventSourceMapping
+        - contains_AWS::CloudFront::Distribution
+        - contains_AWS::S3::Bucket_for_web
+      expected_results:
+        - synth_exit_code_0
+    human_verification: []
+    done_when:
+      - AppStack synthesizes all compute and edge resources from CDK
+
+  - id: deploy-06-add-web-build-and-deploy-asset-flow
+    goal: publish the built web app through CDK deployment
+    delivers:
+      - deliverable-02-cdk-stacks_and_constructs
+    prerequisites:
+      - deploy-05-model-app-stack
+    implementation_requirements:
+      - build web assets before or during CDK deploy
+      - upload built web assets to the deployment bucket managed by CDK
+      - CloudFront distribution must serve index.html for SPA routing
+      - VITE_* config must come from deployment configuration, not ad hoc local files
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/web build
+        - pnpm --filter @starter/infra cdk synth
+      expected_results:
+        - web_build_exit_code_0
+        - synth_exit_code_0
+    human_verification: []
+    done_when:
+      - web package produces deployable assets
+      - CDK app models how those assets are published and served
+
+  - id: deploy-07-add-github-actions-ci
+    goal: create a standard CI workflow that blocks deploys on build, type-check, and tests
+    delivers:
+      - deliverable-04-ci_and_deploy_workflows
+    prerequisites:
+      - deploy-01-bootstrap-infra-package
+    implementation_requirements:
+      - workflow must run on pull requests and pushes to main
+      - workflow must install pnpm dependencies reproducibly
+      - workflow must run build, type-check, and tests
+    machine_verification:
+      commands:
+        - test -f .github/workflows/ci.yml
+      expected_artifacts:
+        - .github/workflows/ci.yml
+      expected_results:
+        - file_exists
+    human_verification:
+      - push_branch_and_confirm_workflow_runs_in_github
+    done_when:
+      - CI workflow exists and is wired to the repo event model
+
+  - id: deploy-08-add-github-actions-staging-deploy
+    goal: deploy staging automatically from main using GitHub OIDC
+    delivers:
+      - deliverable-04-ci_and_deploy_workflows
+    prerequisites:
+      - deploy-05-model-app-stack
+      - manual-01-create-github-oidc-provider_and_role
+      - manual-02-cdk-bootstrap_target_account
+      - manual-03-web-domain_and_certificate_setup
+      - manual-04-create_github_environments
+    implementation_requirements:
+      - workflow must use aws-actions configure-aws-credentials with OIDC
+      - workflow must run CI checks before deploy
+      - workflow must deploy DEPLOY_ENV=staging with --require-approval never
+    machine_verification:
+      commands:
+        - test -f .github/workflows/deploy-staging.yml
+      expected_artifacts:
+        - .github/workflows/deploy-staging.yml
+      expected_results:
+        - file_exists
+    human_verification:
+      - merge_to_main_and_confirm_staging_workflow_assumes_role
+      - confirm_staging_cdk_deploy_completes
+    done_when:
+      - staging can be deployed end-to-end from GitHub Actions without manual AWS console intervention
+
+  - id: deploy-09-add-github-actions-production-deploy
+    goal: deploy production using the same mechanism with an explicit approval gate
+    delivers:
+      - deliverable-04-ci_and_deploy_workflows
+    prerequisites:
+      - deploy-08-add-github-actions-staging-deploy
+      - manual-04-create_github_environments
+    implementation_requirements:
+      - workflow must target a GitHub production environment
+      - production deploy must require reviewer approval in GitHub
+      - workflow must deploy DEPLOY_ENV=production
+    machine_verification:
+      commands:
+        - test -f .github/workflows/deploy-production.yml
+      expected_artifacts:
+        - .github/workflows/deploy-production.yml
+      expected_results:
+        - file_exists
+    human_verification:
+      - trigger_production_workflow_and_confirm_github_environment_blocks_until_approved
+    done_when:
+      - production deploy path exists and is approval-gated
+
+  - id: deploy-10-document-and-freeze-agent-contract
+    goal: ensure future agents implement against this document and not ad hoc plans
+    delivers:
+      - deliverable-05-implementation_docs
+    prerequisites: []
+    implementation_requirements:
+      - add packages/infra/AGENTS.md
+      - AGENTS file must point to this document as the primary source of truth
+      - AGENTS file must instruct agents to preserve local-dev entrypoints while adding AWS entrypoints
+    machine_verification:
+      commands:
+        - test -f packages/infra/AGENTS.md
+        - test -f docs/deployment.aws-cdk.github-actions.yaml
+      expected_artifacts:
+        - packages/infra/AGENTS.md
+        - docs/deployment.aws-cdk.github-actions.yaml
+      expected_results:
+        - files_exist
+    human_verification: []
+    done_when:
+      - agent guidance exists in-repo and references this contract directly
+
+test_matrix:
+  local_static_checks:
+    - pnpm --filter @starter/infra type-check
+    - pnpm --filter @starter/infra cdk synth
+    - pnpm --filter @starter/services-api build
+    - pnpm --filter @starter/services-api test
+    - pnpm --filter @starter/services-dispatcher build
+    - pnpm --filter @starter/services-dispatcher test
+    - pnpm --filter @starter/web build
+  integration_checks_after_deploy:
+    staging:
+      - visit_web_homepage_over_cloudfront
+      - complete_oidc_login_against_cognito
+      - POST_command_and_confirm_command_status_progression
+      - verify_dispatcher_consumes_sqs_messages
+      - upload_character_appearance_and_confirm_signed_download_url_is_returned
+    production:
+      - smoke_test_login
+      - smoke_test_homepage_load
+      - smoke_test_command_submission
+
+clarity_review:
+  ambiguity_checks_passed:
+      - runtime_targets_are_explicit_for_web_api_and_dispatcher
+      - manual_steps_are_separated_from_automated_steps
+      - file_paths_for_required_outputs_are_explicit
+      - each_work_unit_has_prerequisites_and_machine_verification
+      - source_of_truth_scope_is_explicit
+      - required_web_domain_for_oidc_redirect_is_explicit
+  resolved_ambiguities:
+    - existing_local_server_and_worker_are_retained_for_local_use_only
+    - existing_cloudformation_template_is_not_the_primary_infra_contract
+    - staging_and_production_are_separate_environments
+    - dev_auth_is_not_allowed_for_aws_runtime
+  second_pass_review:
+    additional_checks_passed:
+      - required_web_domain_setup_is_marked_human_gated
+      - api_custom_domain_is_optional_but_web_domain_is_required
+      - production_approval_gate_is_called_out_as_human_in_the_loop
+      - Lambda_entrypoints_are_required_as_separate_files
+      - verification_commands_are_executable_from_repo_root
+      - step_ordering_is_topologically_valid

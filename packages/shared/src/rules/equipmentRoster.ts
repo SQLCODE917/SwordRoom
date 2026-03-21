@@ -82,9 +82,9 @@ export const equipmentRoster: EquipmentRosterItem[] = [
   { itemId: 'garrote', label: 'Garrote', category: 'weapon', group: 'other', usage: '2H', requiredStrength: '1', priceSpec: '5' },
   { itemId: 'prodd', label: 'Prodd', category: 'weapon', group: 'other', usage: '2H', requiredStrength: '5~15', priceSpec: 'x20+60', tags: ['shooting'] },
   { itemId: 'dart', label: 'Dart', category: 'weapon', group: 'other', usage: '1H', requiredStrength: '1~3', priceSpec: 'x5+10', tags: ['made_for_throwing'] },
-  { itemId: 'arrows', label: 'Arrows (12)', category: 'gear', group: 'ammunition', priceSpec: '10', usedFor: 'bows' },
-  { itemId: 'quarrels', label: 'Quarrels (12)', category: 'gear', group: 'ammunition', priceSpec: '10', usedFor: 'crossbows' },
-  { itemId: 'bullets', label: 'Bullets (20)', category: 'gear', group: 'ammunition', priceSpec: '5', usedFor: 'slings' },
+  { itemId: 'arrows', label: 'Arrows (12)', category: 'gear', group: 'ammunition', priceSpec: '10 for 12', usedFor: 'bows' },
+  { itemId: 'quarrels', label: 'Quarrels (12)', category: 'gear', group: 'ammunition', priceSpec: '10 for 12', usedFor: 'crossbows' },
+  { itemId: 'bullets', label: 'Bullets (20)', category: 'gear', group: 'ammunition', priceSpec: '5 for 20', usedFor: 'slings' },
   { itemId: 'cloth_armor', label: 'Cloth Armor', category: 'armor', group: 'non_metal_armor', requiredStrength: '1~3', priceSpec: 'x10+10', tags: ['LIGHT', 'SHAMAN_ARMOR_OK'] },
   { itemId: 'soft_leather_armor', label: 'Soft Leather Armor', category: 'armor', group: 'non_metal_armor', requiredStrength: '2~7', priceSpec: 'x15+20', tags: ['LIGHT', 'SHAMAN_ARMOR_OK'] },
   { itemId: 'hard_leather_armor', label: 'Hard Leather Armor', category: 'armor', group: 'non_metal_armor', requiredStrength: '5~13', priceSpec: 'x30+30', tags: ['SHAMAN_ARMOR_OK'] },
@@ -193,6 +193,17 @@ export function resolveEffectiveRequiredStrength(requiredStrength: string | numb
     return characterStrength;
   }
   return Math.min(characterStrength, max);
+}
+
+export function isStrengthWithinRequiredRange(requiredStrength: string | number | undefined, characterStrength: number): boolean {
+  const { min, max } = parseRequiredStrength(requiredStrength);
+  if (characterStrength < min) {
+    return false;
+  }
+  if (max !== null && characterStrength > max) {
+    return false;
+  }
+  return true;
 }
 
 export function resolvePrice(priceSpec: string | number, effectiveRequiredStrength: number): {

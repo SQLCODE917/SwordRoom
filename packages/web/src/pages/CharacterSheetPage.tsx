@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { computeAbilityBonuses, computeAbilityScores } from '@starter/shared/rules/characterCreation';
 import { toPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient, type CharacterItem, type CommandEnvelopeInput } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
@@ -454,9 +455,9 @@ function normalizeCharacter(raw: CharacterItem | null): SheetView {
   const gmNote = readString(draft.gmNote);
 
   const subAbility = normalizeSubAbility(draft.subAbility) ?? defaultSubAbility;
-  const derivedFromSub = computeAbilityFromSubAbility(subAbility);
+  const derivedFromSub = computeAbilityScores(subAbility);
   const ability = normalizeAbility(draft.ability) ?? derivedFromSub;
-  const bonus = normalizeAbility(draft.bonus) ?? computeBonus(ability);
+  const bonus = normalizeAbility(draft.bonus) ?? computeAbilityBonuses(ability);
   const race = readString(draft.race);
   const raisedBy = readString(draft.raisedBy);
   const raceLabel = formatRaceLabel(race, raisedBy);
@@ -482,28 +483,6 @@ function normalizeCharacter(raw: CharacterItem | null): SheetView {
     notes: [noteToGm ? `To GM: ${noteToGm}` : '', gmNote ? `GM: ${gmNote}` : ''].filter(Boolean).join(' | ') || ' ',
     moneyGamels: readNumber(starting.moneyGamels),
     purchases: normalizePurchases(purchases),
-  };
-}
-
-function computeAbilityFromSubAbility(subAbility: SubAbilityView): AbilityView {
-  return {
-    dex: subAbility.A + subAbility.B,
-    agi: subAbility.B + subAbility.C,
-    int: subAbility.C + subAbility.D,
-    str: subAbility.E + subAbility.F,
-    lf: subAbility.F + subAbility.G,
-    mp: subAbility.G + subAbility.H,
-  };
-}
-
-function computeBonus(ability: AbilityView): AbilityView {
-  return {
-    dex: Math.floor(ability.dex / 6),
-    agi: Math.floor(ability.agi / 6),
-    int: Math.floor(ability.int / 6),
-    str: Math.floor(ability.str / 6),
-    lf: Math.floor(ability.lf / 6),
-    mp: Math.floor(ability.mp / 6),
   };
 }
 

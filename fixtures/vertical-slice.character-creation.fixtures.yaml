@@ -303,7 +303,7 @@ fixtures:
         purchases:
           # keep it minimal; already starts with Sorcerer 1 + Sage 1.
           # buy Fighter 1 to test multi-skill characters.
-          - { skill: "Fighter", targetLevel: 1, costExpExpected: 500 }
+          - { skill: "Fighter", targetLevel: 1, costExpExpected: 1000 }
       equipment_cart:
         weapons: ["mage_staff"]
         armor: ["cloth_armor"]
@@ -345,12 +345,15 @@ fixtures:
         starting_exp_total: 2000
         starting_money_gamels: 1800
       exp_after_spend:
-        spentExpExpected: 1500
-        unspentExpExpected: 500
+        spentExpExpected: 1000
+        unspentExpExpected: 1000
         skillsExpected:
           - { skill: "Sorcerer", level: 1 }
           - { skill: "Sage", level: 1 }
           - { skill: "Fighter", level: 1 }
+
+  # Engine error codes referenced in unit tests:
+  # "SKILL_RESTRICTED_BY_RACE"
       equipment_validation:
         shouldPass: true
         requiredItemsSatisfied:

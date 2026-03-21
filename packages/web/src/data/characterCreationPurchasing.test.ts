@@ -55,7 +55,7 @@ describe('computeSkillPurchasePreview', () => {
     const preview = computeSkillPurchasePreview(starting.state, [{ skill: 'Fighter', targetLevel: 1 }]);
 
     expect(preview.errors).toEqual([]);
-    expect(preview.expUnspent).toBe(500);
+    expect(preview.expUnspent).toBe(1000);
     expect(preview.skills).toEqual([
       { skill: 'Sorcerer', level: 1 },
       { skill: 'Sage', level: 1 },

@@ -16,8 +16,16 @@ import {
   resolveEquipmentRosterItem,
   type EquipmentRosterCategory,
   type EquipmentRosterItem,
-} from '../../../shared/src/rules/equipmentRoster';
-import type { HalfElfRaisedBy, Race } from './characterCreationReference';
+} from '@starter/shared/rules/equipmentRoster';
+import {
+  backgroundOptions as sharedBackgroundOptions,
+  characterCreationSkillOptions,
+  describeCharacterCreationSkillCosts,
+  startingPackageTables as sharedStartingPackageTables,
+  type HalfElfRaisedBy,
+  type Race,
+  type SkillLevelCostDescriptor,
+} from '@starter/shared/rules/characterCreation';
 
 export interface BackgroundOption {
   roll: number;
@@ -71,155 +79,14 @@ export interface EquipmentPreview {
   totalCost: number;
 }
 
-export interface SkillLevelCostDescriptor {
-  level: number;
-  costExp: number | null;
-  note?: string;
-}
-
-export const backgroundOptions: BackgroundOption[] = [
-  { roll: 2, label: 'Savage' },
-  { roll: 3, label: 'Rune Master' },
-  { roll: 4, label: 'Villain' },
-  { roll: 5, label: 'Traveler' },
-  { roll: 6, label: 'Hunter' },
-  { roll: 7, label: 'Ordinary Citizen' },
-  { roll: 8, label: 'Merchant / Scholar' },
-  { roll: 9, label: 'Mercenary' },
-  { roll: 10, label: 'Priest' },
-  { roll: 11, label: 'Curse Specialist' },
-  { roll: 12, label: 'Noble' },
-];
-
-export const skillOptions: SkillOption[] = [
-  { skill: 'Fighter', label: 'Fighter', maxLevel: 3 },
-  { skill: 'Thief', label: 'Thief', maxLevel: 2 },
-  { skill: 'Ranger', label: 'Ranger', maxLevel: 1 },
-  { skill: 'Priest', label: 'Priest', maxLevel: 1 },
-  { skill: 'Sage', label: 'Sage', maxLevel: 1 },
-  { skill: 'Bard', label: 'Bard', maxLevel: 1 },
-  { skill: 'Shaman', label: 'Shaman', maxLevel: 1 },
-  { skill: 'Sorcerer', label: 'Sorcerer', maxLevel: 2 },
-];
+export const backgroundOptions: BackgroundOption[] = sharedBackgroundOptions.map((option) => ({ ...option }));
+export const skillOptions: SkillOption[] = characterCreationSkillOptions.map((option) => ({ ...option }));
 
 export const starterEquipmentOptions: EquipmentOption[] = equipmentRoster.map((item) =>
   toEquipmentOption(item, 10)
 );
 
-const startingPackageTables: StartingPackageTables = {
-  backgroundsRows: {
-    '2': {
-      name: 'Savage',
-      starting_skills: [
-        { skill: 'Fighter', level: 1 },
-        { skill: 'Ranger', level: 1 },
-      ],
-      starting_exp: 2000,
-      money: '2D*100',
-    },
-    '3': {
-      name: 'Rune Master',
-      starting_skills: [
-        { skill: 'Sorcerer', level: 1 },
-        { skill: 'Sage', level: 1 },
-      ],
-      starting_exp: 2000,
-      money: '2D*200',
-    },
-    '4': {
-      name: 'Villain',
-      starting_skills: [{ skill: 'Thief', level: 1 }],
-      starting_exp: 2500,
-      money: '2D*200',
-    },
-    '5': {
-      name: 'Traveler',
-      starting_skills: [{ skill: 'Bard', level: 1 }],
-      starting_exp: 3000,
-      money: '2D*200',
-    },
-    '6': {
-      name: 'Hunter',
-      starting_skills: [{ skill: 'Ranger', level: 1 }],
-      starting_exp: 3000,
-      money: '2D*200',
-    },
-    '7': {
-      name: 'Ordinary Citizen',
-      starting_skills: [{ skill: 'GeneralSkill_CHOSEN_BY_GM', level: 3 }],
-      starting_exp: 3000,
-      money: '2D*200',
-    },
-    '8': {
-      name: 'Merchant / Scholar',
-      starting_skills: [{ skill: 'Merchant_3_OR_Sage_1', level: 0 }],
-      starting_exp: 3000,
-      money: '2D*200',
-    },
-    '9': {
-      name: 'Mercenary',
-      starting_skills: [{ skill: 'Fighter', level: 1 }],
-      starting_exp: 2500,
-      money: '2D*200',
-    },
-    '10': {
-      name: 'Priest',
-      starting_skills: [{ skill: 'Priest', level: 1 }],
-      starting_exp: 2500,
-      money: '2D*200',
-    },
-    '11': {
-      name: 'Curse Specialist',
-      starting_skills: [{ skill: 'Shaman', level: 1 }],
-      starting_exp: 2000,
-      money: '2D*200',
-    },
-    '12': {
-      name: 'Noble',
-      starting_skills: [
-        { skill: 'Fighter', level: 1 },
-        { skill: 'Sage', level: 1 },
-      ],
-      starting_exp: 2000,
-      money: '2D*500',
-    },
-  },
-  raceRows: {
-    DWARF: {
-      pre_adventure_exp: 3000,
-      money: '2D*300',
-      starting_skills: [{ skill: 'CraftsmanSkill_CHOSEN', level: 5 }],
-      restrictions: ['Can see in the dark', 'Cannot acquire Shaman or Sorcerer'],
-    },
-    GRASSRUNNER: {
-      pre_adventure_exp: 3000,
-      money: '2D*200',
-      starting_skills: [
-        { skill: 'Ranger', level: 1 },
-        { skill: 'Thief', level: 1 },
-      ],
-      restrictions: ['Can communicate with plants and insects', 'Cannot acquire any Rune Master skills'],
-    },
-    ELF: {
-      pre_adventure_exp: 2000,
-      money: '2D*200',
-      starting_skills: [{ skill: 'Shaman', level: 1 }],
-      restrictions: ['Cannot acquire Priest'],
-    },
-    HALF_ELF: {
-      pre_adventure_exp: { raised_by_elves: 'Same as ELF', raised_by_humans: 'Same as HUMAN (Table 1-5)' },
-      money: { raised_by_elves: 'Same as ELF', raised_by_humans: 'Same as backgrounds (Table 1-5)' },
-      starting_skills: [],
-      restrictions: { raised_by_elves: ['Cannot acquire Priest'], raised_by_humans: [] },
-    },
-    HUMAN: {
-      pre_adventure_exp: 'Same as backgrounds (Table 1-5)',
-      money: 'Same as backgrounds',
-      starting_skills: [],
-      restrictions: [],
-    },
-  },
-};
+const startingPackageTables = sharedStartingPackageTables as StartingPackageTables;
 
 const itemCatalog: Record<string, ItemCatalogEntry> = Object.fromEntries(
   Object.values(equipmentRosterById).map((item) => [
@@ -237,17 +104,6 @@ const itemCatalog: Record<string, ItemCatalogEntry> = Object.fromEntries(
     },
   ])
 );
-
-const creationSkillCosts: Record<string, Record<number, number>> = {
-  fighter: { 1: 1500, 2: 1500, 3: 1500 },
-  thief: { 1: 1000, 2: 1000 },
-  ranger: { 1: 500 },
-  priest: { 1: 1000 },
-  sage: { 1: 1000 },
-  bard: { 1: 500 },
-  shaman: { 1: 1500 },
-  sorcerer: { 1: 2000, 2: 2000 },
-};
 
 export function computeStartingPackagePreview(input: {
   characterId: string;
@@ -389,35 +245,7 @@ export function describeSkillLevelCosts(
   skill: string,
   maxLevel: number
 ): SkillLevelCostDescriptor[] {
-  const normalizedSkill = normalizeSkillName(skill);
-  const baseLevel = state?.skills.find((entry) => normalizeSkillName(entry.skill) === normalizedSkill)?.level ?? 0;
-  const hasSorcerer = (state?.skills.find((entry) => normalizeSkillName(entry.skill) === 'sorcerer')?.level ?? 0) > 0;
-  const hasSage = (state?.skills.find((entry) => normalizeSkillName(entry.skill) === 'sage')?.level ?? 0) > 0;
-
-  return Array.from({ length: Math.max(0, maxLevel - baseLevel) }, (_, index) => {
-    const level = baseLevel + index + 1;
-
-    if (normalizedSkill === 'sorcerer' && level === 1 && !hasSorcerer && !hasSage) {
-      return {
-        level,
-        costExp: 2000,
-        note: 'bundle with Sage 1',
-      };
-    }
-
-    if (normalizedSkill === 'sage' && level === 1 && !hasSorcerer && !hasSage) {
-      return {
-        level,
-        costExp: 1000,
-        note: 'or 2000 total with Sorcerer 1 bundle',
-      };
-    }
-
-    return {
-      level,
-      costExp: creationSkillCosts[normalizedSkill]?.[level] ?? null,
-    };
-  });
+  return describeCharacterCreationSkillCosts(state?.skills, skill).filter((entry) => entry.level <= maxLevel);
 }
 
 export function roll2dTotal(rng: () => number = Math.random): number {
@@ -439,10 +267,6 @@ export function toSingleSelectCart(selection: {
 
 function rollD6(rng: () => number): number {
   return Math.floor(rng() * 6) + 1;
-}
-
-function normalizeSkillName(skill: string): string {
-  return skill.trim().toLowerCase();
 }
 
 function toEquipmentOption(item: EquipmentRosterItem, characterStrength: number): EquipmentOption {

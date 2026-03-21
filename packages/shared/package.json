@@ -35,6 +35,11 @@
       "import": "./dist/rules/equipmentRoster.js",
       "default": "./dist/rules/equipmentRoster.js",
       "types": "./dist/rules/equipmentRoster.d.ts"
+    },
+    "./rules/characterCreation": {
+      "import": "./dist/rules/characterCreation.js",
+      "default": "./dist/rules/characterCreation.js",
+      "types": "./dist/rules/characterCreation.d.ts"
     }
   },
   "scripts": {

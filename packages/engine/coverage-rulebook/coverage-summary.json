@@ -1,0 +1,4 @@
+{"total": {"lines":{"total":842,"covered":596,"skipped":0,"pct":70.78},"statements":{"total":842,"covered":596,"skipped":0,"pct":70.78},"functions":{"total":27,"covered":19,"skipped":0,"pct":70.37},"branches":{"total":166,"covered":111,"skipped":0,"pct":66.86},"branchesTrue":{"total":0,"covered":0,"skipped":0,"pct":"Unknown"}}
+,"/workspaces/hello-world-monorepo/packages/engine/src/games.ts": {"lines":{"total":132,"covered":33,"skipped":0,"pct":25},"functions":{"total":6,"covered":0,"skipped":0,"pct":0},"statements":{"total":132,"covered":33,"skipped":0,"pct":25},"branches":{"total":0,"covered":0,"skipped":0,"pct":100}}
+,"/workspaces/hello-world-monorepo/packages/engine/src/index.ts": {"lines":{"total":710,"covered":563,"skipped":0,"pct":79.29},"functions":{"total":21,"covered":19,"skipped":0,"pct":90.47},"statements":{"total":710,"covered":563,"skipped":0,"pct":79.29},"branches":{"total":166,"covered":111,"skipped":0,"pct":66.86}}
+}

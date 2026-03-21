@@ -5,6 +5,8 @@ import { describe, expect, it } from 'vitest';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const TEMPLATE_PATH = resolve(HERE, 'templates/character-creation-vertical-slice.yaml');
+const DEPLOYMENT_CONTRACT_PATH = resolve(HERE, '../../docs/deployment.aws-cdk.github-actions.yaml');
+const AGENTS_PATH = resolve(HERE, 'AGENTS.md');
 
 describe('infra scaffold', () => {
   it('declares core async-layer resources from contract', () => {
@@ -20,5 +22,27 @@ describe('infra scaffold', () => {
     expect(template).toContain('FunctionName: notifier');
     expect(template).toContain('TableName: GameState');
     expect(template).toContain('TableName: CommandLog');
+  });
+
+  it('includes an AWS CDK deployment contract for agents', () => {
+    const contract = readFileSync(DEPLOYMENT_CONTRACT_PATH, 'utf8');
+
+    expect(contract).toContain('doc_type: implementation_contract');
+    expect(contract).toContain('topic: aws_deployment_via_cdk_and_github_actions');
+    expect(contract).toContain('deliverable: aws_cdk_iac_with_github_actions_oidc_deploy');
+    expect(contract).toContain('package_of_record: packages/infra');
+    expect(contract).toContain('path: packages/services/api/src/lambda.ts');
+    expect(contract).toContain('path: packages/services/dispatcher/src/lambda.ts');
+    expect(contract).toContain('id: deploy-08-add-github-actions-staging-deploy');
+    expect(contract).toContain('id: deploy-09-add-github-actions-production-deploy');
+  });
+
+  it('points infra agents at the deployment contract', () => {
+    const agents = readFileSync(AGENTS_PATH, 'utf8');
+
+    expect(agents).toContain('docs/deployment.aws-cdk.github-actions.yaml');
+    expect(agents).toContain('GitHub Actions with AWS OIDC');
+    expect(agents).toContain('server.ts');
+    expect(agents).toContain('worker.ts');
   });
 });

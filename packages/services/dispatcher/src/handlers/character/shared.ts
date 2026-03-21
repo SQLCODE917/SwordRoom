@@ -1,4 +1,4 @@
-import { equipmentRosterById, resolveEquipmentRosterItem } from '@starter/shared';
+import { equipmentRosterById, resolveEquipmentRosterItem, startingPackageTables as sharedStartingPackageTables } from '@starter/shared';
 import {
   applyStartingPackage,
   computeAbilitiesAndBonuses,
@@ -8,13 +8,7 @@ import {
   type EquipmentCart,
   type StartingPackageTables,
 } from '@starter/engine';
-import {
-  loadVerticalSliceFixtures,
-  type CharacterDraft,
-  type CharacterItem,
-  type CharacterRace,
-  type RaisedBy,
-} from '@starter/shared';
+import { type CharacterDraft, type CharacterItem, type CharacterRace, type RaisedBy } from '@starter/shared';
 import type { DbAccess } from '@starter/services-shared';
 
 export async function requireCharacter(db: DbAccess, gameId: string, characterId: string): Promise<CharacterItem> {
@@ -190,12 +184,7 @@ function toPurchaseDraft(
 }
 
 export function loadStartingPackageTables(): StartingPackageTables {
-  const fixtures = loadVerticalSliceFixtures() as Record<string, unknown>;
-  const refs = fixtures.rulebook_context_refs as Record<string, any>;
-  return {
-    backgroundsRows: (refs.backgrounds_table_1_5?.rows ?? {}) as Record<string, any>,
-    raceRows: (refs.starting_experience_by_race_table_1_6?.rows ?? {}) as Record<string, any>,
-  };
+  return sharedStartingPackageTables as StartingPackageTables;
 }
 
 function loadItemCatalogRaw(): Record<string, { category: string; req_str?: number; req_str_min?: number; req_str_max?: number | null; cost_g?: number; price_spec?: string | number; tags?: string[]; usage?: string; used_for?: string }> {
