@@ -7,19 +7,9 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "verifyEmail": false,
-
   "sslRequired": "external",
   "accessTokenLifespan": 3600,
   "ssoSessionIdleTimeout": 28800,
-
-  "roles": {
-    "realm": [
-      { "name": "PLAYER" },
-      { "name": "GM" },
-      { "name": "ADMIN" }
-    ]
-  },
-
   "clients": [
     {
       "clientId": "swordworld-web",
@@ -30,7 +20,6 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-
       "redirectUris": [
         "http://localhost:3000/*",
         "http://localhost:5173/*",
@@ -41,17 +30,16 @@
         "http://localhost:5173",
         "http://localhost:4173"
       ],
-
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5173/*##http://localhost:4173/*"
       }
     }
   ],
-
   "users": [
     {
-      "username": "player@example.com",
+      "id": "player-aaa",
+      "username": "player-aaa",
       "enabled": true,
       "emailVerified": true,
       "firstName": "Local",
@@ -63,11 +51,11 @@
           "value": "player1234",
           "temporary": false
         }
-      ],
-      "realmRoles": ["PLAYER"]
+      ]
     },
     {
-      "username": "gm@example.com",
+      "id": "gm-zzz",
+      "username": "gm-zzz",
       "enabled": true,
       "emailVerified": true,
       "firstName": "Local",
@@ -79,11 +67,11 @@
           "value": "gm1234",
           "temporary": false
         }
-      ],
-      "realmRoles": ["PLAYER", "GM"]
+      ]
     },
     {
-      "username": "admin@example.com",
+      "id": "admin-001",
+      "username": "admin-001",
       "enabled": true,
       "emailVerified": true,
       "firstName": "Local",
@@ -95,8 +83,7 @@
           "value": "admin1234",
           "temporary": false
         }
-      ],
-      "realmRoles": ["PLAYER", "ADMIN"]
+      ]
     }
   ]
 }

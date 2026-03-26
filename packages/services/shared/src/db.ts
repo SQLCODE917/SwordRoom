@@ -22,6 +22,7 @@ import {
   gameMemberItemSchema,
   gmInboxItemSchema,
   gameMetadataItemSchema,
+  platformEntitlementItemSchema,
   playerInboxItemSchema,
   playerProfileItemSchema,
   type CharacterDraft,
@@ -35,6 +36,7 @@ import {
   type GameMetadataItem,
   type GMInboxItem,
   type GameVisibility,
+  type PlatformEntitlementItem,
   type PlayerProfileItem,
   type PlayerInboxItem,
 } from '@starter/shared';
@@ -71,6 +73,12 @@ export interface DbAccess {
     getPlayerProfileByEmail(emailNormalized: string): Promise<PlayerProfileItem | null>;
     upsertPlayerProfile(input: UpsertPlayerProfileInput): Promise<PlayerProfileItem>;
     listUsers(): Promise<PlayerProfileItem[]>;
+  };
+  entitlementRepository: {
+    getPlatformEntitlement(playerId: string): Promise<PlatformEntitlementItem | null>;
+    upsertPlatformEntitlement(input: UpsertPlatformEntitlementInput): Promise<PlatformEntitlementItem>;
+    deletePlatformEntitlement(playerId: string): Promise<void>;
+    listPlatformEntitlements(): Promise<PlatformEntitlementItem[]>;
   };
   membershipRepository: {
     getMembership(gameId: string, playerId: string): Promise<GameMemberItem | null>;
@@ -195,7 +203,13 @@ export interface UpsertPlayerProfileInput {
   email: string | null;
   emailNormalized: string | null;
   emailVerified: boolean;
-  roles: Array<'PLAYER' | 'GM' | 'ADMIN'>;
+  updatedAt: string;
+}
+
+export interface UpsertPlatformEntitlementInput {
+  playerId: string;
+  roles: Array<'ADMIN'>;
+  grantedByPlayerId?: string | null;
   updatedAt: string;
 }
 
@@ -530,7 +544,7 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
       async upsertPlayerProfile(input) {
         const key = gameStateKeys.playerProfile(input.playerId);
         const existing = await this.getPlayerProfile(input.playerId);
-        const item: PlayerProfileItem = {
+        const item = {
           ...key,
           type: 'PlayerProfile',
           playerId: input.playerId,
@@ -538,7 +552,6 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
           email: input.email,
           emailNormalized: input.emailNormalized,
           emailVerified: input.emailVerified,
-          roles: input.roles,
           createdAt: existing?.createdAt ?? input.updatedAt,
           updatedAt: input.updatedAt,
         };
@@ -550,7 +563,7 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
           })
         );
 
-        return item;
+        return playerProfileItemSchema.parse(item);
       },
 
       async listUsers() {
@@ -568,6 +581,70 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
         );
 
         return (result.Items ?? []).map((item) => playerProfileItemSchema.parse(item));
+      },
+    },
+    entitlementRepository: {
+      async getPlatformEntitlement(playerId) {
+        const result = await client.send(
+          new GetCommand({
+            TableName: tables.gameStateTableName,
+            Key: gameStateKeys.platformEntitlement(playerId),
+          })
+        );
+
+        if (!result.Item) {
+          return null;
+        }
+
+        return platformEntitlementItemSchema.parse(result.Item);
+      },
+
+      async upsertPlatformEntitlement(input) {
+        const existing = await this.getPlatformEntitlement(input.playerId);
+        const item: PlatformEntitlementItem = {
+          ...gameStateKeys.platformEntitlement(input.playerId),
+          type: 'PlatformEntitlement',
+          playerId: input.playerId,
+          roles: input.roles,
+          grantedByPlayerId: input.grantedByPlayerId ?? existing?.grantedByPlayerId ?? null,
+          createdAt: existing?.createdAt ?? input.updatedAt,
+          updatedAt: input.updatedAt,
+        };
+
+        await client.send(
+          new PutCommand({
+            TableName: tables.gameStateTableName,
+            Item: item,
+          })
+        );
+
+        return item;
+      },
+
+      async deletePlatformEntitlement(playerId) {
+        await client.send(
+          new DeleteCommand({
+            TableName: tables.gameStateTableName,
+            Key: gameStateKeys.platformEntitlement(playerId),
+          })
+        );
+      },
+
+      async listPlatformEntitlements() {
+        const result = await client.send(
+          new ScanCommand({
+            TableName: tables.gameStateTableName,
+            FilterExpression: '#type = :type',
+            ExpressionAttributeNames: {
+              '#type': 'type',
+            },
+            ExpressionAttributeValues: {
+              ':type': 'PlatformEntitlement',
+            },
+          })
+        );
+
+        return (result.Items ?? []).map((item) => platformEntitlementItemSchema.parse(item));
       },
     },
     membershipRepository: {

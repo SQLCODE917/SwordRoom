@@ -3,8 +3,11 @@ set -euo pipefail
 
 source .env.local
 
-# Avoid opening CLI pagers (for example, `less`) in non-interactive scripts.
+# Avoid opening CLI pagers in non-interactive scripts.
 export AWS_PAGER=""
+
+: "${OIDC_ISSUER:=${KEYCLOAK_ISSUER:-http://localhost:8080/realms/swordworld}}"
+: "${KEYCLOAK_ISSUER:=${OIDC_ISSUER}}"
 
 detect_docker_host() {
   if [[ -n "${LOCAL_DOCKER_HOST:-}" ]]; then
@@ -78,7 +81,8 @@ if [[ -f /.dockerenv ]]; then
   DDB_ENDPOINT="$(rewrite_local_url_host "$DDB_ENDPOINT" "$DOCKER_HOST_FORWARDED")"
   SQS_ENDPOINT="$(rewrite_local_url_host "$SQS_ENDPOINT" "$DOCKER_HOST_FORWARDED")"
   S3_ENDPOINT="$(rewrite_local_url_host "${S3_ENDPOINT:-$SQS_ENDPOINT}" "$DOCKER_HOST_FORWARDED")"
-  KEYCLOAK_ISSUER="$(rewrite_local_url_host "$KEYCLOAK_ISSUER" "$DOCKER_HOST_FORWARDED")"
+  OIDC_ISSUER="$(rewrite_local_url_host "$OIDC_ISSUER" "$DOCKER_HOST_FORWARDED")"
+  KEYCLOAK_ISSUER="$OIDC_ISSUER"
 
   if ! endpoint_reachable "$DDB_ENDPOINT"; then
     ddb_ip="$(compose_service_ip dynamodb || true)"
@@ -101,12 +105,13 @@ if [[ -f /.dockerenv ]]; then
     fi
   fi
 
-  if ! endpoint_reachable "$KEYCLOAK_ISSUER"; then
+  if ! endpoint_reachable "$OIDC_ISSUER"; then
     keycloak_ip="$(compose_service_ip keycloak || true)"
     if [[ -n "${keycloak_ip:-}" ]]; then
-      KEYCLOAK_ISSUER="$(rewrite_url_to_ip_port "$KEYCLOAK_ISSUER" "$keycloak_ip" "8080")"
+      OIDC_ISSUER="$(rewrite_url_to_ip_port "$OIDC_ISSUER" "$keycloak_ip" "8080")"
+      KEYCLOAK_ISSUER="$OIDC_ISSUER"
     fi
   fi
 
-  export DDB_ENDPOINT SQS_ENDPOINT S3_ENDPOINT KEYCLOAK_ISSUER
+  export DDB_ENDPOINT SQS_ENDPOINT S3_ENDPOINT OIDC_ISSUER KEYCLOAK_ISSUER
 fi

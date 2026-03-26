@@ -127,6 +127,20 @@ function makeDbMock(): DbAccess {
         return [];
       },
     },
+    entitlementRepository: {
+      async getPlatformEntitlement() {
+        return null;
+      },
+      async upsertPlatformEntitlement() {
+        throw new Error("not implemented in api test mock");
+      },
+      async deletePlatformEntitlement() {
+        throw new Error("not implemented in api test mock");
+      },
+      async listPlatformEntitlements() {
+        return [];
+      },
+    },
     membershipRepository: {
       async getMembership() {
         return null;
@@ -510,12 +524,12 @@ describe('profile sync', () => {
     });
 
     expect(profile.playerId).toBe('gm-zzz');
+    expect(profile.roles).toEqual(['PLAYER']);
     expect(upsertPlayerProfile).toHaveBeenCalledTimes(1);
     expect(upsertPlayerProfile).toHaveBeenCalledWith(
       expect.objectContaining({
         playerId: 'gm-zzz',
         displayName: 'gm-zzz',
-        roles: ['PLAYER', 'GM'],
       })
     );
   });

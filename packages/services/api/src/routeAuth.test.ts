@@ -49,34 +49,45 @@ describe('routeAuth', () => {
     ).rejects.toMatchObject({ code: 'CHARACTER_ACCESS_REQUIRED', statusCode: 403 });
   });
 
-  it('allows admins to read command logs they do not own', async () => {
+  it('rejects raw token admin roles when no platform entitlement exists', async () => {
     const db = makeDb();
+
+    await expect(
+      requireCommandAccess({
+        db,
+        identity: makeIdentity('admin-1', ['PLAYER', 'ADMIN']),
+        commandId: 'cmd-1',
+      })
+    ).rejects.toMatchObject({ code: 'COMMAND_ACCESS_REQUIRED', statusCode: 403 });
+  });
+
+  it('allows admin-entitled actors to read command logs they do not own', async () => {
+    const db = makeDb({
+      entitlement: {
+        playerId: 'admin-1',
+        roles: ['ADMIN'],
+      },
+    });
 
     const entry = await requireCommandAccess({
       db,
-      identity: makeIdentity('admin-1', ['PLAYER', 'ADMIN']),
+      identity: makeIdentity('admin-1', ['PLAYER']),
       commandId: 'cmd-1',
     });
 
     expect(entry.commandId).toBe('cmd-1');
   });
 
-  it('rejects non-admin command log access for another actor', async () => {
+  it('requires admin entitlement when admin role is requested explicitly', async () => {
     const db = makeDb();
 
     await expect(
-      requireCommandAccess({
+      requireRole({
         db,
-        identity: makeIdentity('player-2', ['PLAYER']),
-        commandId: 'cmd-1',
+        identity: makeIdentity('player-1', ['PLAYER', 'ADMIN']),
+        role: 'ADMIN',
       })
-    ).rejects.toMatchObject({ code: 'COMMAND_ACCESS_REQUIRED', statusCode: 403 });
-  });
-
-  it('requires explicit roles when requested', () => {
-    expect(() => requireRole({ identity: makeIdentity('player-1', ['PLAYER']), role: 'ADMIN' })).toThrow(
-      /role "ADMIN" required/
-    );
+    ).rejects.toMatchObject({ code: 'ROLE_REQUIRED', statusCode: 403 });
   });
 });
 
@@ -94,6 +105,7 @@ function makeIdentity(actorId: string, roles: Array<'PLAYER' | 'GM' | 'ADMIN'>):
 
 function makeDb(input?: {
   membership?: { gameId: string; playerId: string; roles: Array<'PLAYER' | 'GM'> } | null;
+  entitlement?: { playerId: string; roles: Array<'ADMIN'> } | null;
 }): DbAccess {
   return {
     tables: { gameStateTableName: 'GameState', commandLogTableName: 'CommandLog' },
@@ -176,7 +188,24 @@ function makeDb(input?: {
       async listGamesForPlayer() {
         return [];
       },
-      async listGamesForGm() {
+      async listGamesForGm(playerId) {
+        if (input?.membership?.playerId === playerId && input.membership.roles.includes('GM')) {
+          return [
+            {
+              pk: 'GAME#game-1',
+              sk: 'METADATA',
+              type: 'GameMetadata',
+              gameId: 'game-1',
+              name: 'Game One',
+              visibility: 'PRIVATE',
+              createdByPlayerId: 'gm-1',
+              gmPlayerId: 'gm-1',
+              createdAt: '2026-03-01T00:00:00.000Z',
+              updatedAt: '2026-03-01T00:00:00.000Z',
+              version: 1,
+            } as Awaited<ReturnType<DbAccess['gameRepository']['getGameMetadata']>>,
+          ];
+        }
         return [];
       },
     },
@@ -191,6 +220,32 @@ function makeDb(input?: {
         throw new Error('not implemented');
       },
       async listUsers() {
+        return [];
+      },
+    },
+    entitlementRepository: {
+      async getPlatformEntitlement(playerId) {
+        if (input?.entitlement && input.entitlement.playerId === playerId) {
+          return {
+            pk: `PLAYER#${playerId}`,
+            sk: 'ENTITLEMENTS#PLATFORM',
+            type: 'PlatformEntitlement',
+            playerId,
+            roles: input.entitlement.roles,
+            grantedByPlayerId: 'bootstrap-admin',
+            createdAt: '2026-03-01T00:00:00.000Z',
+            updatedAt: '2026-03-01T00:00:00.000Z',
+          } as Awaited<ReturnType<DbAccess['entitlementRepository']['getPlatformEntitlement']>>;
+        }
+        return null;
+      },
+      async upsertPlatformEntitlement() {
+        throw new Error('not implemented');
+      },
+      async deletePlatformEntitlement() {
+        throw new Error('not implemented');
+      },
+      async listPlatformEntitlements() {
         return [];
       },
     },
@@ -267,7 +322,7 @@ function makeDb(input?: {
             pk: 'COMMAND#cmd-1',
             sk: 'METADATA',
             type: 'Command',
-            commandType: 'CreateGame',
+            commandType: 'CreateCharacterDraft',
             commandId: 'cmd-1',
             gameId: 'game-1',
             actorId: 'player-1',

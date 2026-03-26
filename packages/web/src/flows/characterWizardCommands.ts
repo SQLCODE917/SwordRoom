@@ -31,7 +31,7 @@ export interface WizardAutofillValues {
 export const goodHumanRuneMasterAutofill: WizardAutofillValues = {
   race: 'HUMAN',
   raisedBy: 'HUMANS',
-  subAbility: { A: 9, B: 8, C: 6, D: 7, E: 7, F: 12, G: 8, H: 6 },
+  subAbility: { A: 6, B: 4, C: 5, D: 4, E: 4, F: 6, G: 4, H: 5 },
   backgroundRoll2dTotal: 3,
   startingMoneyRoll2dTotal: 9,
   identity: {
@@ -42,7 +42,7 @@ export const goodHumanRuneMasterAutofill: WizardAutofillValues = {
   purchases: [{ skill: 'Fighter', targetLevel: 1 }],
   cart: {
     weapons: ['mage_staff'],
-    armor: ['cloth_armor'],
+    armor: [],
     shields: [],
     gear: [],
   },

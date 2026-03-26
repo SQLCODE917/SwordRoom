@@ -136,14 +136,15 @@ export FLOW_LOG="${FLOW_LOG:-1}"
 export RUN_AUTH_MODE="${RUN_AUTH_MODE:-${AUTH_MODE:-dev}}"
 
 if [[ "$RUN_AUTH_MODE" == "dev" ]]; then
+  export ALLOW_DEV_AUTH="${ALLOW_DEV_AUTH:-1}"
   export RUN_DEV_ACTOR_ID="${RUN_DEV_ACTOR_ID:-${DEV_ACTOR_ID:-player-aaa}}"
   export VITE_AUTH_MODE=dev
   export VITE_DEV_ACTOR_ID="$RUN_DEV_ACTOR_ID"
 else
-  export RUN_KEYCLOAK_ISSUER="${RUN_KEYCLOAK_ISSUER:-${KEYCLOAK_ISSUER:-http://localhost:8080/realms/swordworld}}"
+  export RUN_OIDC_ISSUER="${RUN_OIDC_ISSUER:-${RUN_KEYCLOAK_ISSUER:-${OIDC_ISSUER:-${KEYCLOAK_ISSUER:-http://localhost:8080/realms/swordworld}}}}"
   export RUN_OIDC_AUDIENCE="${RUN_OIDC_AUDIENCE:-${OIDC_AUDIENCE:-swordworld-web}}"
   export VITE_AUTH_MODE=oidc
-  export VITE_OIDC_ISSUER="$RUN_KEYCLOAK_ISSUER"
+  export VITE_OIDC_DISCOVERY_URL="${RUN_OIDC_ISSUER%/}/.well-known/openid-configuration"
   export VITE_OIDC_CLIENT_ID="${VITE_OIDC_CLIENT_ID:-swordworld-web}"
   export VITE_OIDC_REDIRECT_URI="${VITE_OIDC_REDIRECT_URI:-http://localhost:5173/auth/callback}"
 fi

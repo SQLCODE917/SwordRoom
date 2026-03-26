@@ -9,26 +9,32 @@ function env(name: string, fallback?: string): string {
   return value;
 }
 
-function awsBaseConfig() {
+function hasEndpointOverride(endpoint: string | undefined): endpoint is string {
+  return typeof endpoint === 'string' && endpoint.trim() !== '';
+}
+
+function localCredentials() {
   return {
-    region: env('AWS_REGION', 'us-east-1'),
-    credentials: {
-      accessKeyId: env('AWS_ACCESS_KEY_ID', 'test'),
-      secretAccessKey: env('AWS_SECRET_ACCESS_KEY', 'test'),
-    },
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID?.trim() || 'test',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY?.trim() || 'test',
   };
 }
 
-export function createDispatcherAwsClients() {
-  const ddb = createDynamoDbDocumentClient({
-    ...awsBaseConfig(),
-    endpoint: process.env.DDB_ENDPOINT,
-  });
+function awsBaseConfig(endpoint: string | undefined) {
+  const config: { region: string; endpoint?: string; credentials?: { accessKeyId: string; secretAccessKey: string } } = {
+    region: env('AWS_REGION', 'us-east-1'),
+  };
+  if (hasEndpointOverride(endpoint)) {
+    config.endpoint = endpoint;
+    config.credentials = localCredentials();
+  }
+  return config;
+}
 
-  const sqs = new SQSClient({
-    ...awsBaseConfig(),
-    endpoint: process.env.SQS_ENDPOINT,
-  });
+export function createDispatcherAwsClients() {
+  const ddb = createDynamoDbDocumentClient(awsBaseConfig(process.env.DDB_ENDPOINT));
+
+  const sqs = new SQSClient(awsBaseConfig(process.env.SQS_ENDPOINT));
 
   return {
     db: createDbAccess(ddb, {

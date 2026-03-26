@@ -11,37 +11,52 @@ function env(name: string, fallback?: string): string {
   return value;
 }
 
-function awsClientConfig() {
+function region(): string {
+  return env('AWS_REGION', 'us-east-1');
+}
+
+function hasEndpointOverride(endpoint: string | undefined): endpoint is string {
+  return typeof endpoint === 'string' && endpoint.trim() !== '';
+}
+
+function localCredentials() {
   return {
-    region: env('AWS_REGION', 'us-east-1'),
-    endpoint: process.env.SQS_ENDPOINT,
-    credentials: {
-      accessKeyId: env('AWS_ACCESS_KEY_ID', 'test'),
-      secretAccessKey: env('AWS_SECRET_ACCESS_KEY', 'test'),
-    },
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID?.trim() || 'test',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY?.trim() || 'test',
   };
 }
 
-function s3ClientConfig(endpoint: string | undefined) {
-  return {
-    region: env('AWS_REGION', 'us-east-1'),
-    endpoint,
-    forcePathStyle: true,
-    credentials: {
-      accessKeyId: env('AWS_ACCESS_KEY_ID', 'test'),
-      secretAccessKey: env('AWS_SECRET_ACCESS_KEY', 'test'),
-    },
+function awsConfigForEndpoint(endpoint: string | undefined) {
+  const config: { region: string; endpoint?: string; credentials?: { accessKeyId: string; secretAccessKey: string } } = {
+    region: region(),
   };
+  if (hasEndpointOverride(endpoint)) {
+    config.endpoint = endpoint;
+    config.credentials = localCredentials();
+  }
+  return config;
+}
+
+function s3ClientConfig(endpoint: string | undefined) {
+  const config: {
+    region: string;
+    endpoint?: string;
+    forcePathStyle?: boolean;
+    credentials?: { accessKeyId: string; secretAccessKey: string };
+  } = {
+    region: region(),
+  };
+  if (hasEndpointOverride(endpoint)) {
+    config.endpoint = endpoint;
+    config.forcePathStyle = true;
+    config.credentials = localCredentials();
+  }
+  return config;
 }
 
 export function createApiAwsClients() {
   const ddbClient = createDynamoDbDocumentClient({
-    region: env('AWS_REGION', 'us-east-1'),
-    endpoint: process.env.DDB_ENDPOINT,
-    credentials: {
-      accessKeyId: env('AWS_ACCESS_KEY_ID', 'test'),
-      secretAccessKey: env('AWS_SECRET_ACCESS_KEY', 'test'),
-    },
+    ...awsConfigForEndpoint(process.env.DDB_ENDPOINT),
   });
 
   const db = createDbAccess(ddbClient, {
@@ -49,7 +64,7 @@ export function createApiAwsClients() {
     commandLogTableName: env('COMMANDLOG_TABLE', 'CommandLog'),
   });
 
-  const sqs = new SQSClient(awsClientConfig());
+  const sqs = new SQSClient(awsConfigForEndpoint(process.env.SQS_ENDPOINT));
   const queue: CommandQueue = {
     async sendMessage(input) {
       await sqs.send(

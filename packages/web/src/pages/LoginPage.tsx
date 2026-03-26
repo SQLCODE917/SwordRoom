@@ -29,7 +29,7 @@ export function LoginPage() {
               (auth.mode === 'oidc'
                 ? isOidcAuthenticated
                   ? 'Authenticated with OIDC.'
-                  : 'Sign in or create an account with Keycloak.'
+                  : 'Sign in or create an account with the configured OIDC provider.'
                 : `Dev auth enabled as ${auth.actorId}. Restart dev with RUN_DEV_ACTOR_ID to switch actors.`)}
           </span>
         </div>

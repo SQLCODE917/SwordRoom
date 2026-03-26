@@ -23,6 +23,7 @@ interface ApiRouteDispatchInput {
   url: URL;
   requestId: string;
   runtime: ApiRouteRuntime;
+  trustedIdentity?: ResolvedActorIdentity;
   readJson(req: IncomingMessage): Promise<unknown>;
   sendJson(res: ServerResponse, statusCode: number, body: unknown): void;
   logFlow(event: string, data: Record<string, unknown>): void;
@@ -421,9 +422,7 @@ const routeDefinitions: ApiRouteDefinition[] = [
     auth: 'gm_required',
     handler: async (context) => {
       const gameId = context.params.gameId!;
-      if (!context.identity.roles.includes('ADMIN')) {
-        await assertGameMasterActor(context.runtime.db, { gameId, actorId: context.identity.actorId });
-      }
+      await assertGameMasterActor(context.runtime.db, { gameId, actorId: context.identity.actorId });
       const inbox = await context.runtime.service.readApis.getGmInbox(gameId);
       context.logFlow('API_GET_GM_INBOX', {
         requestId: context.requestId,
@@ -488,6 +487,8 @@ export async function dispatchApiRoute(input: ApiRouteDispatchInput): Promise<bo
     route: matched.route,
     req: input.req,
     authBypassAllowed: input.runtime.authBypassAllowed,
+    db: input.runtime.db,
+    trustedIdentity: input.trustedIdentity,
     readDevActorIdHeader: input.readDevActorIdHeader,
     readJsonBody,
   });
@@ -525,18 +526,22 @@ async function authorizeRoute(input: {
   route: ApiRouteDefinition;
   req: IncomingMessage;
   authBypassAllowed: boolean;
+  db: DbAccess;
+  trustedIdentity?: ResolvedActorIdentity;
   readDevActorIdHeader(value: string | string[] | undefined): string | undefined;
   readJsonBody(): Promise<unknown>;
 }): Promise<ResolvedActorIdentity> {
   const body = input.route.method === 'POST' ? ((await input.readJsonBody()) as { bypassActorId?: unknown }) : null;
-  const identity = await requireActor({
-    bypassAllowed: input.authBypassAllowed,
-    authorizationHeader: input.req.headers.authorization,
-    devActorIdHeader: input.readDevActorIdHeader(input.req.headers['x-dev-actor-id']),
-    bypassActorId: typeof body?.bypassActorId === 'string' ? body.bypassActorId : undefined,
-  });
+  const identity =
+    input.trustedIdentity ??
+    (await requireActor({
+      bypassAllowed: input.authBypassAllowed,
+      authorizationHeader: input.req.headers.authorization,
+      devActorIdHeader: input.readDevActorIdHeader(input.req.headers['x-dev-actor-id']),
+      bypassActorId: typeof body?.bypassActorId === 'string' ? body.bypassActorId : undefined,
+    }));
   if (input.route.auth === 'admin_required') {
-    requireRole({ identity, role: 'ADMIN' });
+    await requireRole({ db: input.db, identity, role: 'ADMIN' });
   }
   return identity;
 }

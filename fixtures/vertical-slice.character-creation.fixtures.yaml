@@ -285,14 +285,14 @@ fixtures:
       dice:
         # Human sub-abilities are 2D each. Provide raw dice pairs to make it auditable.
         subAbility_rolls:
-          A: [4, 5] # 9
-          B: [2, 6] # 8
-          C: [3, 3] # 6
-          D: [1, 6] # 7
-          E: [2, 5] # 7
-          F: [6, 6] # 12
-          G: [4, 4] # 8
-          H: [1, 5] # 6
+          A: [2, 4] # 6
+          B: [2, 2] # 4
+          C: [2, 3] # 5
+          D: [2, 2] # 4
+          E: [2, 2] # 4
+          F: [3, 3] # 6
+          G: [2, 2] # 4
+          H: [2, 3] # 5
         background_roll_2d: [1, 2] # 3 => Rune Master
         starting_money_roll_2d: [4, 5] # 9; money=9*200=1800
       identity:
@@ -306,35 +306,35 @@ fixtures:
           - { skill: "Fighter", targetLevel: 1, costExpExpected: 1000 }
       equipment_cart:
         weapons: ["mage_staff"]
-        armor: ["cloth_armor"]
+        armor: []
         shields: []
         gear: []
     expected:
       derived_subAbility:
-        A: 9
-        B: 8
-        C: 6
-        D: 7
-        E: 7
-        F: 12
-        G: 8
-        H: 6
+        A: 6
+        B: 4
+        C: 5
+        D: 4
+        E: 4
+        F: 6
+        G: 4
+        H: 5
       derived_ability:
         # DEX=A+B, AGI=B+C, INT=C+D, STR=E+F, LF=F+G, MP=G+H
-        dex: 17
-        agi: 14
-        int: 13
-        str: 19
-        lf: 20
-        mp: 14
+        dex: 10
+        agi: 9
+        int: 9
+        str: 10
+        lf: 10
+        mp: 9
       derived_bonus:
         # floor(score/6)
-        dex: 2
-        agi: 2
-        int: 2
-        str: 3
-        lf: 3
-        mp: 2
+        dex: 1
+        agi: 1
+        int: 1
+        str: 1
+        lf: 1
+        mp: 1
       starting_package:
         background:
           roll2d_total: 3
@@ -599,7 +599,7 @@ command_sequences_for_integration:
           expectedVersion: null
           race: "HUMAN"
           raisedBy: null
-          subAbility: { A: 9, B: 8, C: 6, D: 7, E: 7, F: 12, G: 8, H: 6 }
+          subAbility: { A: 6, B: 4, C: 5, D: 4, E: 4, F: 6, G: 4, H: 5 }
           backgroundRoll2dTotal: 3
           startingMoneyRoll2dTotal: 9
           identity: { name: "Ducard Sample II", age: 24, gender: "M" }
@@ -607,7 +607,7 @@ command_sequences_for_integration:
           cart:
             {
               weapons: ["mage_staff"],
-              armor: ["cloth_armor"],
+              armor: [],
               shields: [],
               gear: [],
             }

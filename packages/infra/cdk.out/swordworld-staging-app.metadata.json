@@ -1,0 +1,305 @@
+{
+  "/swordworld-staging-app": [
+    {
+      "type": "aws:cdk:stack-tags",
+      "data": [
+        {
+          "key": "Application",
+          "value": "swordworld"
+        },
+        {
+          "key": "Environment",
+          "value": "staging"
+        },
+        {
+          "key": "ManagedBy",
+          "value": "aws-cdk"
+        },
+        {
+          "key": "SecurityBoundary",
+          "value": "idm-secure-aws"
+        }
+      ]
+    }
+  ],
+  "/swordworld-staging-app/Custom::S3AutoDeleteObjectsCustomResourceProvider": [
+    {
+      "type": "aws:cdk:is-custom-resource-handler-customResourceProvider",
+      "data": true
+    }
+  ],
+  "/swordworld-staging-app/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C512MiB512MiB": [
+    {
+      "type": "aws:cdk:is-custom-resource-handler-singleton",
+      "data": true
+    },
+    {
+      "type": "aws:cdk:is-custom-resource-handler-runtime-family",
+      "data": 2
+    }
+  ],
+  "/swordworld-staging-app/ApiBaseUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiBaseUrl"
+    }
+  ],
+  "/swordworld-staging-app/WebBucketName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebBucketName"
+    }
+  ],
+  "/swordworld-staging-app/WebDistributionId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebDistributionId"
+    }
+  ],
+  "/swordworld-staging-app/WebDistributionDomainName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebDistributionDomainName"
+    }
+  ],
+  "/swordworld-staging-app/WebUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebUrl"
+    }
+  ],
+  "/swordworld-staging-app/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    }
+  ],
+  "/swordworld-staging-app/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    }
+  ],
+  "/swordworld-staging-app/WebSite/WebOriginAccessControl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSiteWebOriginAccessControl3D6AB41F"
+    }
+  ],
+  "/swordworld-staging-app/WebSite/WebDistribution": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSiteWebDistributionCB101E38"
+    }
+  ],
+  "/swordworld-staging-app/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+    }
+  ],
+  "/swordworld-staging-app/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F"
+    }
+  ],
+  "/swordworld-staging-app/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C512MiB512MiB/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C512MiB512MiBD007F188"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/HttpApi": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceHttpApi59435BF9"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/LambdaIntegration": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceLambdaIntegration96FA2BAC"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/JwtAuthorizer": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceJwtAuthorizerC52AEDBB"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/RootRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceRootRoute7D3AFC17"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/ProxyRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceProxyRouteC20F1F2E"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/DefaultStage": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceDefaultStage15BFD5C4"
+    }
+  ],
+  "/swordworld-staging-app/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aFD4BFC8A"
+    }
+  ],
+  "/swordworld-staging-app/ApiLambdaErrorsAlarm/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiLambdaErrorsAlarm096618CC"
+    }
+  ],
+  "/swordworld-staging-app/DispatcherLambdaErrorsAlarm/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DispatcherLambdaErrorsAlarm0B18067F"
+    }
+  ],
+  "/swordworld-staging-app/CommandsDlqVisibleAlarm/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CommandsDlqVisibleAlarmE1845247"
+    }
+  ],
+  "/swordworld-staging-app/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    }
+  ],
+  "/swordworld-staging-app/WebSite/WebBucket/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSiteWebBucket3BA7112F"
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketAutoDeleteObjects"
+      }
+    }
+  ],
+  "/swordworld-staging-app/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C512MiB512MiB/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C512MiB512MiBServiceRoleCFA2F118"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/ApiLambda/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceApiLambda4C81FF6C"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/ApiLambda/AllowHttpApiInvoke": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceApiLambdaAllowHttpApiInvokeA3FE8CA6"
+    }
+  ],
+  "/swordworld-staging-app/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRole9741ECFB"
+    }
+  ],
+  "/swordworld-staging-app/DispatcherService/DispatcherLambda/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DispatcherServiceDispatcherLambda936771F2"
+    }
+  ],
+  "/swordworld-staging-app/WebSite/WebBucket/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSiteWebBucketPolicy6D2DCC4E"
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketPolicyStatements"
+      }
+    }
+  ],
+  "/swordworld-staging-app/WebSite/WebBucket/AutoDeleteObjectsCustomResource/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSiteWebBucketAutoDeleteObjectsCustomResource0B4AD51A"
+    }
+  ],
+  "/swordworld-staging-app/WebSite/BootstrapWebAssets/AwsCliLayer/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSiteBootstrapWebAssetsAwsCliLayerD80398AE"
+    }
+  ],
+  "/swordworld-staging-app/WebSite/BootstrapWebAssets/CustomResource-512MiB-512MiB/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "WebSiteBootstrapWebAssetsCustomResource512MiB512MiB0D918448"
+    }
+  ],
+  "/swordworld-staging-app/Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C512MiB512MiB/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomCDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C512MiB512MiBServiceRoleDefaultPolicyEA2DA91D"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/ApiLambda/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceApiLambdaServiceRole47084DF1"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/ApiLambda/LogRetention/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceApiLambdaLogRetentionD1CD9C67"
+    }
+  ],
+  "/swordworld-staging-app/LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8aServiceRoleDefaultPolicyADDA7DEB"
+    }
+  ],
+  "/swordworld-staging-app/DispatcherService/DispatcherLambda/ServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DispatcherServiceDispatcherLambdaServiceRole906D254A"
+    }
+  ],
+  "/swordworld-staging-app/DispatcherService/DispatcherLambda/LogRetention/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DispatcherServiceDispatcherLambdaLogRetention4E403855"
+    }
+  ],
+  "/swordworld-staging-app/DispatcherService/DispatcherLambda/SqsEventSource:swordworldstagingsharedCommandsQueueD10B49E8/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DispatcherServiceDispatcherLambdaSqsEventSourceswordworldstagingsharedCommandsQueueD10B49E816D3DE59"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/ApiLambda/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceApiLambdaServiceRoleDefaultPolicy249F27E6"
+    }
+  ],
+  "/swordworld-staging-app/DispatcherService/DispatcherLambda/ServiceRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DispatcherServiceDispatcherLambdaServiceRoleDefaultPolicyE547874F"
+    }
+  ]
+}

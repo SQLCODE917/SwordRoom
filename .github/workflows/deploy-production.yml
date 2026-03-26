@@ -1,0 +1,97 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      APP_NAME: ${{ vars.APP_NAME }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      DEPLOY_ENV: production
+      WEB_DOMAIN_NAME: ${{ vars.WEB_DOMAIN_NAME }}
+      COGNITO_DOMAIN_PREFIX: ${{ vars.COGNITO_DOMAIN_PREFIX }}
+      CERTIFICATE_ARN_US_EAST_1: ${{ vars.CERTIFICATE_ARN_US_EAST_1 }}
+      CERTIFICATE_ARN_REGION: ${{ vars.CERTIFICATE_ARN_REGION }}
+      HOSTED_ZONE_NAME: ${{ vars.HOSTED_ZONE_NAME }}
+      API_DOMAIN_NAME: ${{ vars.API_DOMAIN_NAME }}
+      WEB_ASSET_PATH: packages/infra/static/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run deployment safety checks
+        run: |
+          pnpm --filter @starter/services-api test
+          pnpm --filter @starter/services-dispatcher test
+          pnpm --filter @starter/infra type-check
+          pnpm --filter @starter/infra cdk synth
+
+      - name: Configure AWS credentials with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy shared and app stacks
+        run: >-
+          pnpm --filter @starter/infra cdk deploy
+          "$APP_NAME-$DEPLOY_ENV-shared"
+          "$APP_NAME-$DEPLOY_ENV-app"
+          --require-approval never
+          --outputs-file cdk-outputs.json
+
+      - name: Read CDK outputs
+        id: outputs
+        run: |
+          app_stack="$APP_NAME-$DEPLOY_ENV-app"
+          shared_stack="$APP_NAME-$DEPLOY_ENV-shared"
+          echo "api_base=$(jq -r --arg stack "$app_stack" '.[$stack].ApiBaseUrl' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "web_bucket=$(jq -r --arg stack "$app_stack" '.[$stack].WebBucketName' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "web_distribution_id=$(jq -r --arg stack "$app_stack" '.[$stack].WebDistributionId' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "user_pool_issuer=$(jq -r --arg stack "$shared_stack" '.[$stack].UserPoolIssuerUrl' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "user_pool_client_id=$(jq -r --arg stack "$shared_stack" '.[$stack].UserPoolClientId' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Build web with deployed endpoints
+        run: pnpm --filter @starter/web build
+        env:
+          VITE_AUTH_MODE: oidc
+          VITE_API_BASE: ${{ steps.outputs.outputs.api_base }}
+          VITE_OIDC_DISCOVERY_URL: ${{ steps.outputs.outputs.user_pool_issuer }}/.well-known/openid-configuration
+          VITE_OIDC_CLIENT_ID: ${{ steps.outputs.outputs.user_pool_client_id }}
+          VITE_OIDC_REDIRECT_URI: https://${{ env.WEB_DOMAIN_NAME }}/auth/callback
+          VITE_OIDC_SCOPE: openid profile email
+
+      - name: Publish web assets
+        run: aws s3 sync packages/web/dist "s3://${{ steps.outputs.outputs.web_bucket }}" --delete
+
+      - name: Invalidate CloudFront cache
+        run: >-
+          aws cloudfront create-invalidation
+          --distribution-id "${{ steps.outputs.outputs.web_distribution_id }}"
+          --paths '/*'

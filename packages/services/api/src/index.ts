@@ -7,9 +7,9 @@ import {
   type AnyCommandEnvelope,
 } from '@starter/shared';
 import {
-  assertActorHasRole,
   assertCharacterOwnerOrGameMaster,
   assertGameMasterActor,
+  getActorProfileRoles,
   getGameActorContext,
   isConditionalCheckFailed,
   logServiceFlow,
@@ -52,10 +52,12 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
 
   return {
     async postCommands(request: PostCommandRequest): Promise<PostCommandResponse> {
+      const authEnv = resolveApiAuthEnv(deps);
       const actorId = await resolveActorId({
         bypassAllowed: deps.jwtBypass ?? process.env.JWT_BYPASS === '1',
         authorizationHeader: request.authHeader,
         bypassActorId: request.bypassActorId,
+        env: authEnv,
       });
       logServiceFlow({
         enabled: flowLogEnabled,
@@ -63,7 +65,7 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
         event: 'API_ACTOR_RESOLVED',
         data: {
           actorId,
-          authMode: process.env.AUTH_MODE ?? (deps.jwtBypass ? 'dev' : 'oidc'),
+          authMode: authEnv.AUTH_MODE ?? null,
           bypassActorIdProvided: typeof request.bypassActorId === 'string' && request.bypassActorId.length > 0,
         },
       });
@@ -162,7 +164,7 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
           gameId: envelope.gameId,
           actorId: envelope.actorId,
           type: envelope.type,
-          createdAt: envelope.createdAt,
+          createdAt: new Date().toISOString(),
         });
         logServiceFlow({
           enabled: flowLogEnabled,
@@ -266,10 +268,12 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
 
     readApis: {
       async syncMyProfile(input) {
+        const authEnv = resolveApiAuthEnv(deps);
         const identity = await resolveActorIdentity({
           bypassAllowed: deps.jwtBypass ?? process.env.JWT_BYPASS === '1',
           authorizationHeader: input.authHeader,
           bypassActorId: input.bypassActorId,
+          env: authEnv,
         });
         const profile = await deps.db.playerRepository.upsertPlayerProfile({
           playerId: identity.actorId,
@@ -277,9 +281,9 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
           email: identity.email,
           emailNormalized: identity.emailNormalized,
           emailVerified: identity.emailVerified,
-          roles: identity.roles,
           updatedAt: new Date().toISOString(),
         });
+        const response = await withEffectiveProfileRoles(deps.db, profile);
         logServiceFlow({
           enabled: flowLogEnabled,
           service: 'api',
@@ -287,11 +291,11 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
           data: {
             actorId: identity.actorId,
             authMode: identity.authMode,
-            roles: identity.roles,
+            roles: response.roles,
             emailNormalized: identity.emailNormalized,
           },
         });
-        return profile;
+        return response;
       },
 
       async getCommandStatus(commandId: string): Promise<CommandStatusResponse | null> {
@@ -376,7 +380,8 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
       },
 
       async getMyProfile(playerId: string) {
-        return deps.db.playerRepository.getPlayerProfile(playerId);
+        const profile = await deps.db.playerRepository.getPlayerProfile(playerId);
+        return profile ? withEffectiveProfileRoles(deps.db, profile) : null;
       },
 
       async listPublicGames() {
@@ -396,7 +401,8 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
       },
 
       async listUsers() {
-        return deps.db.playerRepository.listUsers();
+        const users = await deps.db.playerRepository.listUsers();
+        return Promise.all(users.map((user) => withEffectiveProfileRoles(deps.db, user)));
       },
 
       async getGameActorContext(gameId: string, actorId: string) {
@@ -414,6 +420,28 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
         return deps.db.inboxRepository.queryGmInbox(gameId);
       },
     },
+  };
+}
+
+async function withEffectiveProfileRoles(
+  db: DbAccess,
+  profile: Awaited<ReturnType<DbAccess['playerRepository']['getPlayerProfile']>> extends infer T ? Exclude<T, null> : never
+) {
+  return {
+    ...profile,
+    roles: await getActorProfileRoles(db, profile.playerId),
+  };
+}
+
+function resolveApiAuthEnv(deps: ApiServiceDependencies): Record<string, string | undefined> {
+  if (!deps.jwtBypass) {
+    return process.env;
+  }
+
+  return {
+    ...process.env,
+    AUTH_MODE: process.env.AUTH_MODE ?? 'dev',
+    ALLOW_DEV_AUTH: process.env.ALLOW_DEV_AUTH ?? '1',
   };
 }
 

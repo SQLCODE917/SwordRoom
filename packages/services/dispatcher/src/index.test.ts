@@ -94,6 +94,20 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
         return [];
       },
     },
+    entitlementRepository: {
+      async getPlatformEntitlement() {
+        return null;
+      },
+      async upsertPlatformEntitlement() {
+        throw new Error("should not be called");
+      },
+      async deletePlatformEntitlement() {
+        throw new Error("should not be called");
+      },
+      async listPlatformEntitlements() {
+        return [];
+      },
+    },
     membershipRepository: {
       async getMembership() {
         return null;

@@ -21,8 +21,6 @@ export function useGameActorContext(gameId: string): {
   const [context, setContext] = useState<GameActorContextResponse>(() => ({
     ...fallbackContext,
     actorId: auth.actorId,
-    roles: auth.mode === 'dev' && auth.actorId === 'gm-zzz' ? ['PLAYER', 'GM'] : [],
-    isGameMaster: auth.mode === 'dev' && auth.actorId === 'gm-zzz',
   }));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

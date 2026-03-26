@@ -1,0 +1,36 @@
+{
+  "version": "52.0.0",
+  "files": {
+    "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6": {
+      "displayName": "swordworld-staging-shared/Custom::S3AutoDeleteObjectsCustomResourceProvider Code",
+      "source": {
+        "path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "111111111111-us-east-1-4ebd1286": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    },
+    "e92c68a7c2eb68932de001b027a79fa451a2cf1ccb02ae0435c99eafdb7883dc": {
+      "displayName": "swordworld-staging-shared Template",
+      "source": {
+        "path": "swordworld-staging-shared.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "111111111111-us-east-1-b136cbbf": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "e92c68a7c2eb68932de001b027a79fa451a2cf1ccb02ae0435c99eafdb7883dc.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

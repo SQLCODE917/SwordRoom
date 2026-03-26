@@ -4,12 +4,22 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "echo 'infra: no build step yet'",
+    "build": "cdk synth",
     "test": "vitest --run",
-    "type-check": "echo 'infra: no type-check step yet'",
-    "dev": "echo 'infra: no dev step yet'"
+    "type-check": "tsc --noEmit",
+    "dev": "cdk synth --watch",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy"
   },
   "devDependencies": {
+    "@types/node": "^24.0.0",
+    "aws-cdk": "^2.220.0",
+    "aws-cdk-lib": "^2.220.0",
+    "constructs": "^10.4.2",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.3.3",
     "vitest": "^1.1.0"
   }
 }

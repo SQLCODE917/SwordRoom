@@ -1,17 +1,23 @@
 import { notifyAuthStateChanged, type AuthProvider } from './AuthProvider';
 
 interface OidcEnv {
-  VITE_OIDC_ISSUER?: string;
+  VITE_OIDC_DISCOVERY_URL?: string;
   VITE_OIDC_CLIENT_ID?: string;
   VITE_OIDC_REDIRECT_URI?: string;
   VITE_OIDC_SCOPE?: string;
 }
 
 interface OidcConfig {
-  issuer: string;
+  discoveryUrl: string;
   clientId: string;
   redirectUri: string;
   scope: string;
+}
+
+interface OidcDiscoveryDocument {
+  authorization_endpoint?: string;
+  token_endpoint?: string;
+  end_session_endpoint?: string;
 }
 
 interface PendingLogin {
@@ -27,28 +33,36 @@ interface TokenResponse {
   error_description?: string;
 }
 
-interface StoredSession {
+interface OidcSession {
   accessToken: string;
+  actorId: string;
   expiresAtEpochMs: number;
 }
 
 const OIDC_PENDING_KEY = 'sw_oidc_pending_login';
-const OIDC_SESSION_KEY = 'sw_oidc_session';
 const DEFAULT_OIDC_SCOPE = 'openid profile email';
 const DEFAULT_CLIENT_ID = 'swordworld-web';
 
+const discoveryCache = new Map<string, Promise<OidcDiscoveryDocument>>();
+let currentSession: OidcSession | null = null;
+let redirectHandler: ((url: string) => void) | null = null;
+
 export function createOidcAuthProvider(env = import.meta.env as OidcEnv): AuthProvider {
-  const config = resolveConfig(env);
+  resolveConfig(env);
 
   return {
     mode: 'oidc',
-    actorId: hasOidcSession() ? 'oidc-user' : '',
-    isAuthenticated: hasOidcSession(),
+    get actorId() {
+      return readValidSession()?.actorId ?? '';
+    },
+    get isAuthenticated() {
+      return readValidSession() !== null;
+    },
     async withAuthHeaders(headers?: HeadersInit): Promise<Headers> {
       const merged = new Headers(headers ?? {});
-      const token = readValidAccessToken();
-      if (token) {
-        merged.set('Authorization', `Bearer ${token}`);
+      const session = readValidSession();
+      if (session) {
+        merged.set('Authorization', `Bearer ${session.accessToken}`);
       }
       return merged;
     },
@@ -59,32 +73,37 @@ export function createOidcAuthProvider(env = import.meta.env as OidcEnv): AuthPr
 }
 
 export function hasOidcSession(): boolean {
-  return readValidAccessToken() !== null;
+  return readValidSession() !== null;
 }
 
 export function clearOidcSession(): void {
-  if (!isBrowser()) {
-    return;
+  currentSession = null;
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.removeItem(OIDC_PENDING_KEY);
   }
-  localStorage.removeItem(OIDC_SESSION_KEY);
-  sessionStorage.removeItem(OIDC_PENDING_KEY);
   notifyAuthStateChanged();
 }
 
 export async function beginOidcLogin(returnToPath = '/', env = import.meta.env as OidcEnv): Promise<void> {
   assertBrowser();
   const config = resolveConfig(env);
+  const discovery = await loadDiscovery(config.discoveryUrl);
+  const authorizationEndpoint = discovery.authorization_endpoint;
+  if (!authorizationEndpoint) {
+    throw new Error('OIDC discovery metadata is missing authorization_endpoint.');
+  }
+
   const state = randomBase64Url(32);
   const codeVerifier = randomBase64Url(48);
   const codeChallenge = await createCodeChallenge(codeVerifier);
 
-  writeJson(sessionStorage, OIDC_PENDING_KEY, {
+  writeJson(window.sessionStorage, OIDC_PENDING_KEY, {
     state,
     codeVerifier,
     returnToPath: returnToPath || '/',
   });
 
-  const authorizeUrl = new URL(`${config.issuer}/protocol/openid-connect/auth`);
+  const authorizeUrl = new URL(authorizationEndpoint);
   authorizeUrl.searchParams.set('response_type', 'code');
   authorizeUrl.searchParams.set('client_id', config.clientId);
   authorizeUrl.searchParams.set('redirect_uri', config.redirectUri);
@@ -93,35 +112,43 @@ export async function beginOidcLogin(returnToPath = '/', env = import.meta.env a
   authorizeUrl.searchParams.set('code_challenge', codeChallenge);
   authorizeUrl.searchParams.set('code_challenge_method', 'S256');
 
-  window.location.assign(authorizeUrl.toString());
+  redirectTo(authorizeUrl.toString());
 }
 
-export function beginOidcRegistration(returnToPath = '/', env = import.meta.env as OidcEnv): void {
-  assertBrowser();
-  const config = resolveConfig(env);
-  const registerUrl = new URL(`${config.issuer}/protocol/openid-connect/registrations`);
-  registerUrl.searchParams.set('client_id', config.clientId);
-  registerUrl.searchParams.set('response_type', 'code');
-  registerUrl.searchParams.set('scope', config.scope);
-  registerUrl.searchParams.set('redirect_uri', config.redirectUri);
-  registerUrl.searchParams.set('kc_action', 'register');
-  registerUrl.searchParams.set('returnToPath', returnToPath || '/');
-  window.location.assign(registerUrl.toString());
+export async function beginOidcRegistration(returnToPath = '/', env = import.meta.env as OidcEnv): Promise<void> {
+  await beginOidcLogin(returnToPath, env);
 }
 
-export function beginOidcLogout(returnToPath = '/', env = import.meta.env as OidcEnv): void {
+export async function beginOidcLogout(returnToPath = '/', env = import.meta.env as OidcEnv): Promise<void> {
   assertBrowser();
   const config = resolveConfig(env);
+  const discovery = await loadDiscovery(config.discoveryUrl);
   clearOidcSession();
-  const logoutUrl = new URL(`${config.issuer}/protocol/openid-connect/logout`);
+
+  const logoutEndpoint = discovery.end_session_endpoint;
+  if (!logoutEndpoint) {
+    redirectTo(resolveAbsoluteReturnToPath(returnToPath));
+    return;
+  }
+
+  const logoutUrl = new URL(logoutEndpoint);
   logoutUrl.searchParams.set('post_logout_redirect_uri', resolveAbsoluteReturnToPath(returnToPath));
   logoutUrl.searchParams.set('client_id', config.clientId);
-  window.location.assign(logoutUrl.toString());
+  redirectTo(logoutUrl.toString());
 }
 
-export async function completeOidcLoginFromCallback(url = window.location.href, env = import.meta.env as OidcEnv): Promise<string> {
+export async function completeOidcLoginFromCallback(
+  url = window.location.href,
+  env = import.meta.env as OidcEnv
+): Promise<string> {
   assertBrowser();
   const config = resolveConfig(env);
+  const discovery = await loadDiscovery(config.discoveryUrl);
+  const tokenEndpoint = discovery.token_endpoint;
+  if (!tokenEndpoint) {
+    throw new Error('OIDC discovery metadata is missing token_endpoint.');
+  }
+
   const callbackUrl = new URL(url);
   const code = callbackUrl.searchParams.get('code');
   const state = callbackUrl.searchParams.get('state');
@@ -134,7 +161,7 @@ export async function completeOidcLoginFromCallback(url = window.location.href, 
     throw new Error('OIDC callback is missing code or state.');
   }
 
-  const pending = readJson<PendingLogin>(sessionStorage, OIDC_PENDING_KEY);
+  const pending = readJson<PendingLogin>(window.sessionStorage, OIDC_PENDING_KEY);
   if (!pending) {
     throw new Error('OIDC login state was not found. Start login again.');
   }
@@ -142,7 +169,6 @@ export async function completeOidcLoginFromCallback(url = window.location.href, 
     throw new Error('OIDC state mismatch. Start login again.');
   }
 
-  const tokenEndpoint = `${config.issuer}/protocol/openid-connect/token`;
   const body = new URLSearchParams();
   body.set('grant_type', 'authorization_code');
   body.set('client_id', config.clientId);
@@ -164,22 +190,30 @@ export async function completeOidcLoginFromCallback(url = window.location.href, 
     throw new Error('OIDC token response missing access_token.');
   }
 
-  const expiresIn = typeof token.expires_in === 'number' && token.expires_in > 0 ? token.expires_in : 3600;
-  const expiresAtEpochMs = Date.now() + expiresIn * 1000;
-  writeJson(localStorage, OIDC_SESSION_KEY, {
-    accessToken: token.access_token,
-    expiresAtEpochMs,
-  });
-  sessionStorage.removeItem(OIDC_PENDING_KEY);
+  currentSession = createSession(token.access_token, token.expires_in);
+  window.sessionStorage.removeItem(OIDC_PENDING_KEY);
   notifyAuthStateChanged();
 
   return pending.returnToPath || '/';
 }
 
+export function setOidcRedirectHandlerForTests(handler: ((url: string) => void) | null): void {
+  redirectHandler = handler;
+}
+
+export function resetOidcAuthTestState(): void {
+  currentSession = null;
+  redirectHandler = null;
+  discoveryCache.clear();
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.removeItem(OIDC_PENDING_KEY);
+  }
+}
+
 function resolveConfig(env: OidcEnv): OidcConfig {
-  const issuer = (env.VITE_OIDC_ISSUER ?? '').trim().replace(/\/$/, '');
-  if (!issuer) {
-    throw new Error('VITE_OIDC_ISSUER is required when AUTH_MODE=oidc.');
+  const discoveryUrl = (env.VITE_OIDC_DISCOVERY_URL ?? '').trim();
+  if (!discoveryUrl) {
+    throw new Error('VITE_OIDC_DISCOVERY_URL is required when AUTH_MODE=oidc.');
   }
 
   const clientId = (env.VITE_OIDC_CLIENT_ID ?? DEFAULT_CLIENT_ID).trim() || DEFAULT_CLIENT_ID;
@@ -190,11 +224,63 @@ function resolveConfig(env: OidcEnv): OidcConfig {
   }
 
   return {
-    issuer,
+    discoveryUrl,
     clientId,
     redirectUri,
     scope,
   };
+}
+
+async function loadDiscovery(discoveryUrl: string): Promise<OidcDiscoveryDocument> {
+  let discovery = discoveryCache.get(discoveryUrl);
+  if (!discovery) {
+    discovery = fetch(discoveryUrl).then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`OIDC discovery request failed: ${response.status} ${response.statusText}`);
+      }
+      return (await response.json()) as OidcDiscoveryDocument;
+    });
+    discoveryCache.set(discoveryUrl, discovery);
+  }
+  return discovery;
+}
+
+function createSession(accessToken: string, expiresIn?: number): OidcSession {
+  const payload = decodeJwtPayload(accessToken);
+  const actorId = typeof payload.sub === 'string' && payload.sub.trim() !== '' ? payload.sub.trim() : 'oidc-user';
+  const expiresAtEpochMs =
+    typeof payload.exp === 'number'
+      ? payload.exp * 1000
+      : Date.now() + (typeof expiresIn === 'number' && expiresIn > 0 ? expiresIn : 3600) * 1000;
+
+  return {
+    accessToken,
+    actorId,
+    expiresAtEpochMs,
+  };
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> {
+  const [, payload] = token.split('.');
+  if (!payload) {
+    return {};
+  }
+
+  try {
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const decoded = atob(normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), '='));
+    return JSON.parse(decoded) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+function redirectTo(url: string): void {
+  if (redirectHandler) {
+    redirectHandler(url);
+    return;
+  }
+  window.location.assign(url);
 }
 
 function defaultRedirectUri(): string {
@@ -211,21 +297,16 @@ function resolveAbsoluteReturnToPath(returnToPath: string): string {
   return new URL(returnToPath || '/', window.location.origin).toString();
 }
 
-function readValidAccessToken(): string | null {
-  if (!isBrowser()) {
+function readValidSession(): OidcSession | null {
+  if (!currentSession) {
     return null;
   }
-
-  const session = readJson<StoredSession>(localStorage, OIDC_SESSION_KEY);
-  if (!session?.accessToken || typeof session.expiresAtEpochMs !== 'number') {
-    return null;
-  }
-  if (Date.now() >= session.expiresAtEpochMs) {
-    localStorage.removeItem(OIDC_SESSION_KEY);
+  if (Date.now() >= currentSession.expiresAtEpochMs) {
+    currentSession = null;
     notifyAuthStateChanged();
     return null;
   }
-  return session.accessToken;
+  return currentSession;
 }
 
 async function createCodeChallenge(codeVerifier: string): Promise<string> {
@@ -250,12 +331,8 @@ function bytesToBase64Url(bytes: Uint8Array): string {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof window.crypto !== 'undefined';
-}
-
 function assertBrowser(): void {
-  if (!isBrowser()) {
+  if (typeof window === 'undefined' || typeof window.sessionStorage === 'undefined' || typeof window.crypto === 'undefined') {
     throw new Error('OIDC auth requires a browser environment.');
   }
 }

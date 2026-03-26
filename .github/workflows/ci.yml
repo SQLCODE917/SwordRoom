@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      APP_NAME: swordworld
+      AWS_ACCOUNT_ID: "111111111111"
+      AWS_REGION: us-east-1
+      DEPLOY_ENV: staging
+      WEB_DOMAIN_NAME: app.example.com
+      COGNITO_DOMAIN_PREFIX: swordworld-staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build API
+        run: pnpm --filter @starter/services-api build
+
+      - name: Test API
+        run: pnpm --filter @starter/services-api test
+
+      - name: Build dispatcher
+        run: pnpm --filter @starter/services-dispatcher build
+
+      - name: Test dispatcher
+        run: pnpm --filter @starter/services-dispatcher test
+
+      - name: Test shared services
+        run: pnpm --filter @starter/services-shared test
+
+      - name: Build web
+        run: pnpm --filter @starter/web build
+
+      - name: Test web
+        run: pnpm --filter @starter/web test
+
+      - name: Build e2e package
+        run: pnpm --filter @starter/test-e2e build
+
+      - name: Test e2e package
+        run: pnpm --filter @starter/test-e2e test
+
+      - name: Type-check infra
+        run: pnpm --filter @starter/infra type-check
+
+      - name: Synth infra
+        run: pnpm --filter @starter/infra cdk synth

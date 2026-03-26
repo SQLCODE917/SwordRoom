@@ -119,7 +119,7 @@ maybeDescribe('e2e.good.human_rune_master_sequence', () => {
       const commandId = deterministicCommandId(index);
       index += 1;
 
-      const actorId = cmd.type === 'GMReviewCharacter' ? 'gm-player-1' : 'player-aaa';
+      const actorId = cmd.type === 'GMReviewCharacter' ? 'gm-zzz' : 'player-aaa';
       const envelope = {
         commandId,
         gameId: 'game-1',
@@ -221,8 +221,8 @@ async function seedGameAndProfiles(): Promise<void> {
           gameId: 'game-1',
           name: 'E2E Demo Game',
           visibility: 'PUBLIC',
-          createdByPlayerId: 'gm-player-1',
-          gmPlayerId: 'gm-player-1',
+          createdByPlayerId: 'gm-zzz',
+          gmPlayerId: 'gm-zzz',
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-01T00:00:00.000Z',
           version: 1,
@@ -240,7 +240,6 @@ async function seedGameAndProfiles(): Promise<void> {
           email: 'player@example.com',
           emailNormalized: 'player@example.com',
           emailVerified: true,
-          roles: ['PLAYER'],
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-01T00:00:00.000Z',
         },
@@ -250,14 +249,13 @@ async function seedGameAndProfiles(): Promise<void> {
       Put: {
         TableName: GAME_STATE_TABLE,
         Item: {
-          ...db.keyBuilders.gameState.playerProfile('gm-player-1'),
+          ...db.keyBuilders.gameState.playerProfile('gm-zzz'),
           type: 'PlayerProfile',
-          playerId: 'gm-player-1',
+          playerId: 'gm-zzz',
           displayName: 'Local GM',
           email: 'gm@example.com',
           emailNormalized: 'gm@example.com',
           emailVerified: true,
-          roles: ['PLAYER', 'GM'],
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-01T00:00:00.000Z',
         },
@@ -267,10 +265,10 @@ async function seedGameAndProfiles(): Promise<void> {
       Put: {
         TableName: GAME_STATE_TABLE,
         Item: {
-          ...db.keyBuilders.gameState.gameMember('game-1', 'gm-player-1'),
+          ...db.keyBuilders.gameState.gameMember('game-1', 'gm-zzz'),
           type: 'GameMember',
           gameId: 'game-1',
-          playerId: 'gm-player-1',
+          playerId: 'gm-zzz',
           roles: ['GM'],
           createdAt: '2026-03-01T00:00:00.000Z',
           updatedAt: '2026-03-01T00:00:00.000Z',

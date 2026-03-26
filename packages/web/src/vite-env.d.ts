@@ -4,7 +4,7 @@ interface ImportMetaEnv {
   readonly VITE_AUTH_MODE?: 'dev' | 'oidc';
   readonly VITE_DEV_ACTOR_ID?: string;
   readonly VITE_OIDC_BEARER_TOKEN?: string;
-  readonly VITE_OIDC_ISSUER?: string;
+  readonly VITE_OIDC_DISCOVERY_URL?: string;
   readonly VITE_OIDC_CLIENT_ID?: string;
   readonly VITE_OIDC_REDIRECT_URI?: string;
   readonly VITE_OIDC_SCOPE?: string;

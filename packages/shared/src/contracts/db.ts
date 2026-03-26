@@ -6,6 +6,7 @@ export const characterRaceSchema = z.enum(['HUMAN', 'DWARF', 'GRASSRUNNER', 'ELF
 export const raisedBySchema = z.enum(['HUMANS', 'ELVES']).nullable();
 export const gameVisibilitySchema = z.enum(['PUBLIC', 'PRIVATE']);
 export const playerRoleSchema = z.enum(['PLAYER', 'GM', 'ADMIN']);
+export const platformRoleSchema = z.enum(['ADMIN']);
 export const gameInviteStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED']);
 
 export type CharacterStatus = z.infer<typeof characterStatusSchema>;
@@ -14,6 +15,7 @@ export type CharacterRace = z.infer<typeof characterRaceSchema>;
 export type RaisedBy = z.infer<typeof raisedBySchema>;
 export type GameVisibility = z.infer<typeof gameVisibilitySchema>;
 export type PlayerRole = z.infer<typeof playerRoleSchema>;
+export type PlatformRole = z.infer<typeof platformRoleSchema>;
 export type GameInviteStatus = z.infer<typeof gameInviteStatusSchema>;
 
 export type PkSk = { pk: string; sk: string };
@@ -53,6 +55,7 @@ export const gameStateKeys = {
     sk: `INBOX#${createdAtIso}#${promptId}`,
   }),
   playerProfile: (playerId: string): PkSk => ({ pk: `PLAYER#${playerId}`, sk: 'PROFILE' }),
+  platformEntitlement: (playerId: string): PkSk => ({ pk: `PLAYER#${playerId}`, sk: 'ENTITLEMENTS#PLATFORM' }),
   playerInboxItem: (playerId: string, createdAtIso: string, promptId: string): PkSk => ({
     pk: `PLAYER#${playerId}`,
     sk: `INBOX#${createdAtIso}#${promptId}`,
@@ -176,7 +179,16 @@ export const playerProfileItemSchema = pkSkSchema.extend({
   email: z.string().email().nullable(),
   emailNormalized: z.string().nullable(),
   emailVerified: z.boolean(),
-  roles: z.array(playerRoleSchema),
+  roles: z.array(playerRoleSchema).optional().default(['PLAYER']),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export const platformEntitlementItemSchema = pkSkSchema.extend({
+  type: z.literal('PlatformEntitlement'),
+  playerId: z.string(),
+  roles: z.array(platformRoleSchema),
+  grantedByPlayerId: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -269,6 +281,7 @@ export const commandLogItemSchema = pkSkSchema.extend({
 export const gameStateItemSchema = z.discriminatedUnion('type', [
   gameMetadataItemSchema,
   playerProfileItemSchema,
+  platformEntitlementItemSchema,
   gameMemberItemSchema,
   gameInviteItemSchema,
   characterItemSchema,
@@ -278,6 +291,7 @@ export const gameStateItemSchema = z.discriminatedUnion('type', [
 
 export type GameMetadataItem = z.infer<typeof gameMetadataItemSchema>;
 export type PlayerProfileItem = z.infer<typeof playerProfileItemSchema>;
+export type PlatformEntitlementItem = z.infer<typeof platformEntitlementItemSchema>;
 export type GameMemberItem = z.infer<typeof gameMemberItemSchema>;
 export type GameInviteItem = z.infer<typeof gameInviteItemSchema>;
 export type SkillLevel = z.infer<typeof skillLevelSchema>;

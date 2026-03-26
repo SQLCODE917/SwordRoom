@@ -3,6 +3,7 @@ import { URL } from 'node:url';
 import { Buffer } from 'node:buffer';
 import { randomUUID } from 'node:crypto';
 import { logServiceFlow, summarizeError } from '@starter/services-shared';
+import { isDevAuthEnabled } from './auth.js';
 import { createApiAwsClients } from './awsClients.js';
 import { createApiService } from './index.js';
 import { dispatchApiRoute } from './httpRoutes.js';
@@ -14,7 +15,7 @@ const service = createApiService({
   uploads: deps.uploads,
   queue: deps.queue,
   queueUrl: deps.queueUrl,
-  jwtBypass: process.env.AUTH_MODE === 'dev',
+  jwtBypass: isDevAuthEnabled(),
 });
 const flowLogEnabled = process.env.FLOW_LOG === '1';
 const maxUploadBytes = 5 * 1024 * 1024;
@@ -45,7 +46,7 @@ const server = createServer(async (req, res) => {
         db: deps.db,
         uploads: deps.uploads,
         service,
-        authBypassAllowed: process.env.AUTH_MODE === 'dev',
+        authBypassAllowed: isDevAuthEnabled(),
         maxUploadBytes,
         allowedContentTypes,
       },

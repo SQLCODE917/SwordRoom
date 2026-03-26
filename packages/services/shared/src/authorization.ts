@@ -1,10 +1,11 @@
+import type { PlayerRole } from '@starter/shared';
 import type { DbAccess } from './db.js';
 
 export interface GameActorContext {
   actorId: string;
   gameId: string;
   displayName: string | null;
-  roles: string[];
+  roles: PlayerRole[];
   gmPlayerId: string | null;
   isGameMaster: boolean;
 }
@@ -13,13 +14,14 @@ export async function getGameActorContext(
   db: DbAccess,
   input: { gameId: string; actorId: string }
 ): Promise<GameActorContext> {
-  const [game, profile, membership] = await Promise.all([
+  const [game, profile, membership, entitlement] = await Promise.all([
     db.gameRepository.getGameMetadata(input.gameId),
     db.playerRepository.getPlayerProfile(input.actorId),
     db.membershipRepository.getMembership(input.gameId, input.actorId),
+    db.entitlementRepository.getPlatformEntitlement(input.actorId),
   ]);
 
-  const roles = Array.from(new Set([...(profile?.roles ?? inferRolesFromActorId(input.actorId)), ...(membership?.roles ?? [])]));
+  const roles = mergeRoles(['PLAYER'], entitlement?.roles ?? [], membership?.roles ?? []);
   const gmPlayerId = game?.gmPlayerId ?? null;
   const isAdmin = roles.includes('ADMIN');
   const isGameMaster = isAdmin || (membership?.roles.includes('GM') ?? false);
@@ -32,6 +34,20 @@ export async function getGameActorContext(
     gmPlayerId,
     isGameMaster,
   };
+}
+
+export async function getActorProfileRoles(db: DbAccess, actorId: string): Promise<PlayerRole[]> {
+  const [entitlement, gmGames] = await Promise.all([
+    db.entitlementRepository.getPlatformEntitlement(actorId),
+    db.gameRepository.listGamesForGm(actorId),
+  ]);
+
+  return mergeRoles(['PLAYER'], entitlement?.roles ?? [], gmGames.length > 0 ? ['GM'] : []);
+}
+
+export async function isActorAdmin(db: DbAccess, actorId: string): Promise<boolean> {
+  const entitlement = await db.entitlementRepository.getPlatformEntitlement(actorId);
+  return entitlement?.roles.includes('ADMIN') ?? false;
 }
 
 export async function assertGameMasterActor(
@@ -57,13 +73,20 @@ export async function assertGameMasterActor(
 
 export async function assertActorHasRole(
   db: DbAccess,
-  input: { actorId: string; role: 'PLAYER' | 'GM' | 'ADMIN' }
+  input: { actorId: string; role: PlayerRole; gameId?: string }
 ): Promise<void> {
-  const profile = await db.playerRepository.getPlayerProfile(input.actorId);
-  const roles = profile?.roles ?? inferRolesFromActorId(input.actorId);
+  if (input.role === 'PLAYER') {
+    return;
+  }
+
+  const roles = input.gameId
+    ? (await getGameActorContext(db, { gameId: input.gameId, actorId: input.actorId })).roles
+    : await getActorProfileRoles(db, input.actorId);
+
   if (roles.includes('ADMIN') || roles.includes(input.role)) {
     return;
   }
+
   throw withCode(
     new Error(`role "${input.role}" required for actor "${input.actorId}"`),
     'ROLE_REQUIRED',
@@ -94,20 +117,24 @@ export async function assertCharacterOwnerOrGameMaster(
   });
 }
 
+function mergeRoles(...groups: ReadonlyArray<ReadonlyArray<string>>): PlayerRole[] {
+  const roles = new Set<PlayerRole>();
+  for (const group of groups) {
+    for (const role of group) {
+      if (role === 'PLAYER' || role === 'GM' || role === 'ADMIN') {
+        roles.add(role);
+      }
+    }
+  }
+  if (!roles.has('PLAYER')) {
+    roles.add('PLAYER');
+  }
+  return Array.from(roles);
+}
+
 function withCode(error: Error, code: string, statusCode: number): Error & { code: string; statusCode: number } {
   const enriched = error as Error & { code: string; statusCode: number };
   enriched.code = code;
   enriched.statusCode = statusCode;
   return enriched;
-}
-
-function inferRolesFromActorId(actorId: string): Array<'PLAYER' | 'GM' | 'ADMIN'> {
-  const roles = new Set<'PLAYER' | 'GM' | 'ADMIN'>(['PLAYER']);
-  if (actorId.startsWith('gm-')) {
-    roles.add('GM');
-  }
-  if (actorId.startsWith('admin-')) {
-    roles.add('ADMIN');
-  }
-  return Array.from(roles);
 }
