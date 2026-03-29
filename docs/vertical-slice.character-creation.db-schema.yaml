@@ -1,0 +1,187 @@
+# file: vertical-slice.character-creation.db-schema.yaml
+doc_type: work_plan
+slice: character_creation_vertical_slice
+deliverable: db_schema
+version: 1
+assumptions:
+  - aws_auth: cognito_user_pool
+  - command_processing: sqs_fifo_single_queue_message_group_by_gameId
+  - state_store: dynamodb
+goals:
+  - Persist character creation state machine: DRAFT -> PENDING -> APPROVED|REJECTED
+  - Support GM approval workflow + inbox prompts
+  - Support idempotent command processing via CommandLog
+
+rulebook_context:
+  - id: race_choice
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Choose a Race... five types... human, dwarf, grassrunner, elf, half-elf."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 1622, end: 1630 }
+  - id: ability_scores_from_subscores
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Roll sub-ability scores A~H... ability scores are totals: DEX=A+B, AGI=B+C, INT=C+D, STR=E+F, LF=F+G, MP=G+H."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 1728, end: 1748 }
+  - id: bonus_formula
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Ability bonus equals ability score divided by 6 (rounded down)."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 1946, end: 1952 }
+  - id: backgrounds_human
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Humans / half-elves raised by humans: roll 2D on Backgrounds table."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 1981, end: 1985 }
+  - id: spend_starting_exp_adventurer_only
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Starting experience points can acquire/increase skills... limited to adventurer skills; general skills cannot be acquired or increased."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 2279, end: 2318 }
+  - id: sorcerer_sage_bundle_rule
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "If neither sorcerer nor sage, can acquire 1 level in both for 2000; against the rules to acquire only sorcerer for 1500 when you have neither."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 2365, end: 2389 }
+  - id: equipment_price_formula
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Price formulas like x20+40; apply required strength to compute price."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 2813, end: 2826 }
+  - id: equipment_skill_restrictions
+    source: Sword World RPG - Complete Edition.pdf
+    excerpt: "Skill-based restrictions (ranger/thief light armor; sorcerer cloth/soft leather, no shield, must buy mage's staff; shaman cloth/soft/hard leather, no shield)."
+    lines_ref: { extracted_text: "sw_1_120.txt", start: 2830, end: 3012 }
+
+data_model:
+  tables:
+    - name: GameState
+      keys: { pk: "string", sk: "string" }
+      notes:
+        - single-table style within this table using typed pk/sk prefixes
+      items:
+        - type: GameMetadata
+          pk: "GAME#{gameId}"
+          sk: "METADATA"
+          attributes:
+            gameId: string
+            gmPlayerId: string
+            createdAt: string
+            updatedAt: string
+            version: number
+        - type: PlayerProfile
+          pk: "PLAYER#{playerId}"
+          sk: "PROFILE"
+          attributes:
+            playerId: string   # Cognito sub
+            displayName: string
+            roles: [ "PLAYER", "GM" ]  # app-level
+            createdAt: string
+            updatedAt: string
+        - type: Character
+          pk: "GAME#{gameId}"
+          sk: "CHAR#{characterId}"
+          gsi1: { pk: "PLAYER#{playerId}", sk: "CHAR#{gameId}#{characterId}" } # for "my characters"
+          attributes:
+            characterId: string
+            gameId: string
+            ownerPlayerId: string
+            status: "DRAFT|PENDING|APPROVED|REJECTED"
+            draft:
+              race: "HUMAN|DWARF|GRASSRUNNER|ELF|HALF_ELF"
+              raisedBy: "HUMANS|ELVES|null"   # only relevant for HALF_ELF
+              subAbility: { A: number, B: number, C: number, D: number, E: number, F: number, G: number, H: number }
+              ability: { dex: number, agi: number, int: number, str: number, lf: number, mp: number }
+              bonus: { dex: number, agi: number, int: number, str: number, lf: number, mp: number }
+              background:
+                kind: "SAVAGE|RUNE_MASTER|VILLAIN|TRAVELER|HUNTER|ORDINARY_CITIZEN|MERCHANT|SCHOLAR|MERCENARY|PRIEST|CURSE_SPECIALIST|NOBLE|null"
+                roll2d: number|null
+              starting:
+                expTotal: number
+                expUnspent: number
+                moneyGamels: number
+                moneyRoll2d: number|null
+                startingSkills: [ { skill: string, level: number } ]
+              skills: [ { skill: string, level: number } ]  # includes starting + purchased
+              purchases:
+                weapons: [ { itemId: string, reqStr: number, costGamels: number } ]
+                armor: [ { itemId: string, reqStr: number, costGamels: number } ]
+                shields: [ { itemId: string, reqStr: number, costGamels: number } ]
+                gear: [ { itemId: string, qty: number, costGamels: number } ]
+              identity: { name: string, age: number|null, gender: string|null }
+              gmNote: string|null
+            createdAt: string
+            updatedAt: string
+            version: number
+        - type: GMInboxItem
+          pk: "GM#{gameId}"
+          sk: "PENDING_CHAR#{submittedAtIso}#{characterId}"
+          attributes:
+            gameId: string
+            characterId: string
+            ownerPlayerId: string
+            status: "PENDING"
+            submittedAt: string
+        - type: PlayerInboxItem
+          pk: "PLAYER#{playerId}"
+          sk: "INBOX#{createdAtIso}#{promptId}"
+          attributes:
+            promptId: string
+            gameId: string
+            kind: "CHAR_SUBMITTED|CHAR_APPROVED|CHAR_REJECTED|ACTION_REQUIRED"
+            ref:
+              characterId: string|null
+              commandId: string|null
+            message: string
+            createdAt: string
+            readAt: string|null
+
+    - name: CommandLog
+      keys: { pk: "string", sk: "string" }
+      items:
+        - type: Command
+          pk: "COMMAND#{commandId}"
+          sk: "METADATA"
+          attributes:
+            commandId: string
+            gameId: string
+            actorId: string
+            type: string
+            status: "ACCEPTED|PROCESSING|PROCESSED|FAILED"
+            errorCode: string|null
+            errorMessage: string|null
+            createdAt: string
+            updatedAt: string
+            idempotencyKey: string # same as commandId
+            resultRef:
+              characterId: string|null
+
+work_units:
+  - id: db-01-create-tables
+    goal: "Provision DynamoDB tables GameState + CommandLog with TTL enabled for inbox if desired."
+    done_when:
+      - "IaC creates both tables in dev env"
+      - "GameState has pk/sk (S) and optional GSI1 for player->characters"
+      - "CommandLog supports point-lookup by commandId"
+    non_goals:
+      - "No engine logic, no lambdas"
+  - id: db-02-character-item-shape
+    goal: "Define and document Character item JSON schema (versioned) with status transitions."
+    done_when:
+      - "Schema file exists (json-schema or zod) and matches data_model.Character"
+      - "Includes version field for optimistic concurrency"
+  - id: db-03-inbox-items
+    goal: "Define GMInboxItem + PlayerInboxItem shapes and access patterns."
+    done_when:
+      - "GM can query pk=GM#{gameId} begins_with PENDING_CHAR#"
+      - "Player can query pk=PLAYER#{playerId} begins_with INBOX#"
+  - id: db-04-commandlog-contract
+    goal: "Define CommandLog record + statuses; include resultRef for characterId."
+    done_when:
+      - "Status enum documented"
+      - "Idempotency behavior described: if PROCESSED -> drop duplicates"
+
+testing:
+  fixtures:
+    - name: sample_character_draft_minimal
+      record:
+        pk: "GAME#game-1"
+        sk: "CHAR#char-1"
+        status: "DRAFT"
+        draft: { race: "HUMAN", subAbility: {A: 8, B: 6, C: 7, D: 5, E: 6, F: 8, G: 7, H: 7} }
+  checks:
+    - "Query patterns validated with local dynamodb or moto tests"
+    - "Conditional update pattern tested: version increment required"1

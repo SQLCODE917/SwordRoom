@@ -1,0 +1,69 @@
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --muted: #666666;
+  --panel: #f7f7f7;
+  --line: #d0d0d0;
+  --focus: #1a73e8;
+  --error: #b00020;
+  --ok: #0b6b3a;
+  --warn: #8a5a00;
+
+  --btn-bg: var(--fg);
+  --btn-fg: var(--bg);
+  --btn-bg-disabled: var(--line);
+  --btn-fg-disabled: var(--muted);
+  --input-bg: var(--bg);
+  --input-fg: var(--fg);
+  --input-line: var(--line);
+  --input-line-error: var(--error);
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --r-0: 0px;
+  --touch-h: 44px;
+  --touch-pad-x: 12px;
+
+  --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  --fs-0: 12px;
+  --fs-1: 14px;
+  --fs-2: 16px;
+  --fs-3: 18px;
+  --fs-4: 22px;
+  --lh: 1.25;
+
+  --page-pad: 16px;
+  --panel-pad: 12px;
+  --gap: 12px;
+  --max-content: 1600px;
+
+  --c-dex: #1f5fbf;
+  --c-agi: #2b7a2b;
+  --c-int: #7a4bb3;
+  --c-str: #b33b3b;
+  --c-lf: #b36b00;
+  --c-mp: #006c8a;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+}

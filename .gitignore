@@ -1,5 +1,8 @@
 node_modules
 dist
 coverage
+*.tsbuildinfo
 *.swp
 .pnpm-store
+.local
+packages/web/public/dev-admin.local.json

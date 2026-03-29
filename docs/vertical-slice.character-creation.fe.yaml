@@ -1,0 +1,161 @@
+# file: vertical-slice.character-creation.fe.yaml
+doc_type: work_plan
+slice: character_creation_vertical_slice
+deliverable: frontend
+version: 1
+
+goals:
+  - Provide a usable human UI for the existing async character-creation + GM approval loop.
+  - Render a Sword World–style character sheet (modeled on rulebook pages 27–28) as the read-only view.
+  - Support character appearance/features as a user image upload (stored in S3; referenced from DynamoDB character record).
+  - Responsive layouts using Flexbox:
+      - phone: one task at a time, no wasted space
+      - tablet: touch-optimized, more columns
+      - desktop: use real estate, avoid phone-like whitespace
+  - UX stability: avoid layout jumps; use visible disabled/enabled/active/error states rather than hide/show.
+
+non_goals:
+  - Real-time updates (no websockets)
+  - Full rules coverage beyond the current vertical slice
+  - Styling embellishments (rounded, shadows, gradients, etc.)
+
+tech_stack:
+  framework: "React + TypeScript"
+  bundler: "Vite"
+  routing: "react-router"
+  data: "fetch + minimal custom hooks (no heavy state libs)"
+  css: "plain CSS with CSS variables + semantic component classes"
+  layout: "Flexbox (grid allowed only if needed, but prefer flex)"
+  testing:
+    - "Playwright for e2e UI flows"
+    - "Vitest for small UI unit tests (optional)"
+
+auth:
+  local_dev:
+    - "AUTH_MODE=dev supported (no login UI required)"
+    - "AUTH_MODE=oidc supported (Keycloak local), then Cognito later"
+  prod:
+    - "Cognito Hosted UI / OIDC client; FE obtains access token and calls API with Authorization header"
+  requirement:
+    - "AuthProvider interface with two implementations: DevAuthProvider, OidcAuthProvider"
+
+api_contract_dependencies:
+  required_endpoints:
+    - { method: POST, path: "/commands" }
+    - { method: GET, path: "/commands/{commandId}" }
+    - { method: GET, path: "/me/inbox" }
+    - { method: GET, path: "/gm/{gameId}/inbox" }
+    - { method: GET, path: "/games/{gameId}/characters/{characterId}" }
+  added_for_image_upload:
+    - {
+        method: POST,
+        path: "/games/{gameId}/characters/{characterId}/appearance/upload-url",
+      }
+  note:
+    - "Upload is two-step: presigned upload bootstrap plus async command confirmation."
+
+routes:
+  - id: route-home
+    path: "/"
+    page: "HomePage"
+    purpose: "Choose game, choose role (player/GM), entry points"
+  - id: route-player-wizard
+    path: "/games/:gameId/character/new"
+    page: "CharacterWizardPage"
+    purpose: "Hyper-focused step-by-step creation; uses commands; never hides step content, only disables."
+  - id: route-player-inbox
+    path: "/me/inbox"
+    page: "PlayerInboxPage"
+    purpose: "Show prompts: submitted/approved/rejected"
+  - id: route-character-sheet
+    path: "/games/:gameId/characters/:characterId"
+    page: "CharacterSheetPage"
+    purpose: "Read-only sheet view (modeled after rulebook pages 27–28)"
+  - id: route-gm-inbox
+    path: "/gm/:gameId/inbox"
+    page: "GMInboxPage"
+    purpose: "List pending characters + approve/reject"
+  - id: route-login
+    path: "/login"
+    page: "LoginPage"
+    purpose: "OIDC login entry (only in oidc/cognito mode)"
+
+ui_behavior_patterns:
+  command_submission:
+    - "Every action sends exactly one POST /commands."
+    - "Immediately show command status panel (queued/processing/failed/ok) in a fixed region (no jump)."
+    - "Poll GET /commands/{commandId} until terminal."
+    - "On PROCESSED: refetch character state/inbox."
+    - "On FAILED: display errorCode/errorMessage and keep the form intact; do not collapse UI."
+  no_jump_rule:
+    - "Reserve space for: step help text, validation errors, and command status panel."
+    - "Disable controls when not applicable instead of conditional rendering."
+  input_validation:
+    - "Client validates obvious stuff (required fields, numeric ranges)."
+    - "Source of truth remains engine errors from backend; display them verbatim."
+  accessibility:
+    - "Touch targets >= 44px height"
+    - "Keyboard nav works on desktop"
+    - "Error states have visible text (not only color)"
+
+work_units:
+  - id: fe-01-app-shell
+    deliverables:
+      - "Vite+React+TS app scaffold"
+      - "Router + LayoutShell"
+      - "AuthProvider interface + DevAuthProvider"
+    done_when:
+      - "App runs locally"
+      - "Dev auth injects actorId and API calls succeed"
+  - id: fe-02-api-client
+    deliverables:
+      - "ApiClient with typed methods for required endpoints"
+      - "useSubmitCommand() + useCommandStatus() hooks"
+      - "Global CommandStatusPanel component (fixed height)"
+    done_when:
+      - "Manual POST /commands from UI triggers CommandLog transitions"
+      - "Panel shows queued -> processed or failed"
+  - id: fe-03-character-wizard
+    deliverables:
+      - "CharacterWizardPage with stepper (race -> dice -> background -> name -> exp -> equipment -> submit)"
+      - "Each step uses commands; steps remain visible but disabled until prerequisites satisfied"
+    done_when:
+      - "Can complete the good fixture flow without leaving UI"
+  - id: fe-04-gm-inbox
+    deliverables:
+      - "GMInboxPage lists pending characters"
+      - "Approve/reject with note"
+    done_when:
+      - "Approve transitions status to APPROVED and player sees inbox item"
+  - id: fe-05-character-sheet-view
+    deliverables:
+      - "CharacterSheetPage read-only display modeled after rulebook sheet"
+      - "Two-page layout tabs: Sheet(1) and Sheet(2), with stable layout"
+    done_when:
+      - "Displays derived ability/bonus/skills/equipment correctly"
+  - id: fe-06-appearance-upload
+    deliverables:
+      - "Upload UI (image preview box) on sheet page and wizard"
+      - "Presigned upload flow + confirm call"
+    done_when:
+      - "Image stored in S3 and appears on sheet after refresh"
+  - id: fe-07-oidc-auth
+    deliverables:
+      - "OidcAuthProvider (Keycloak local + later Cognito) using Authorization Code + PKCE"
+      - "LoginPage and callback handling"
+    done_when:
+      - "OIDC login works end-to-end locally and tokens call API"
+
+playwright:
+  suites:
+    - id: pw-01-player-creates-and-submits
+      asserts:
+        - "Character ends in PENDING"
+        - "GM inbox shows character"
+    - id: pw-02-gm-approves
+      asserts:
+        - "Character ends APPROVED"
+        - "Player inbox shows CHAR_APPROVED"
+    - id: pw-03-upload-appearance
+      asserts:
+        - "Uploaded image visible on CharacterSheetPage"

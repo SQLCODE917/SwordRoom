@@ -1,0 +1,126 @@
+{
+  "version": "52.0.0",
+  "files": {
+    "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6": {
+      "displayName": "swordworld-staging-app/Custom::S3AutoDeleteObjectsCustomResourceProvider Code",
+      "source": {
+        "path": "asset.faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "111111111111-us-east-1-4ebd1286": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    },
+    "0cfdecad2260a3a84ad0c2d08a77e03c9d25e26c7b52f26b1e1faf97aef92f18": {
+      "displayName": "WebSite/BootstrapWebAssets/AwsCliLayer/Code",
+      "source": {
+        "path": "asset.0cfdecad2260a3a84ad0c2d08a77e03c9d25e26c7b52f26b1e1faf97aef92f18.zip",
+        "packaging": "file"
+      },
+      "destinations": {
+        "111111111111-us-east-1-266276c9": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "0cfdecad2260a3a84ad0c2d08a77e03c9d25e26c7b52f26b1e1faf97aef92f18.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    },
+    "3423a042b818e31c1e34a19d6689ab2e5f9b70fcbe9e71df66f241b20a200bd9": {
+      "displayName": "Custom::CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C512MiB512MiB/Code",
+      "source": {
+        "path": "asset.3423a042b818e31c1e34a19d6689ab2e5f9b70fcbe9e71df66f241b20a200bd9",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "111111111111-us-east-1-896bc067": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "3423a042b818e31c1e34a19d6689ab2e5f9b70fcbe9e71df66f241b20a200bd9.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    },
+    "cfb598d72544c344c9df648604115ada70519d460d3f060d42b0b5fbe7b7006b": {
+      "displayName": "WebSite/BootstrapWebAssets/Asset1",
+      "source": {
+        "path": "asset.cfb598d72544c344c9df648604115ada70519d460d3f060d42b0b5fbe7b7006b",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "111111111111-us-east-1-7ed2aaa2": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "cfb598d72544c344c9df648604115ada70519d460d3f060d42b0b5fbe7b7006b.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    },
+    "b57cd1da54d1b455363413d4b335eca44e1f03627fe2e769745f559be0db35d6": {
+      "displayName": "ApiService/ApiLambda/Code",
+      "source": {
+        "path": "asset.b57cd1da54d1b455363413d4b335eca44e1f03627fe2e769745f559be0db35d6",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "111111111111-us-east-1-a57f5f30": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "b57cd1da54d1b455363413d4b335eca44e1f03627fe2e769745f559be0db35d6.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    },
+    "2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d": {
+      "displayName": "LogRetentionaae0aa3c5b4d4f87b02d85b201efdd8a/Code",
+      "source": {
+        "path": "asset.2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "111111111111-us-east-1-b889f19d": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    },
+    "8edf88c0862c4339552439cec55cd4ffe1fa5924a3a3603d3bf024b1a88d9088": {
+      "displayName": "DispatcherService/DispatcherLambda/Code",
+      "source": {
+        "path": "asset.8edf88c0862c4339552439cec55cd4ffe1fa5924a3a3603d3bf024b1a88d9088",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "111111111111-us-east-1-8b5742b5": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "8edf88c0862c4339552439cec55cd4ffe1fa5924a3a3603d3bf024b1a88d9088.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    },
+    "a177ed8b7de1ee51050dd227b44a02553085da614f2026489e661d07f5ee5956": {
+      "displayName": "swordworld-staging-app Template",
+      "source": {
+        "path": "swordworld-staging-app.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "111111111111-us-east-1-286b679e": {
+          "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
+          "objectKey": "a177ed8b7de1ee51050dd227b44a02553085da614f2026489e661d07f5ee5956.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

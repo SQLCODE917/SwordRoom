@@ -1,0 +1,269 @@
+{
+  "/swordworld-staging-shared": [
+    {
+      "type": "aws:cdk:stack-tags",
+      "data": [
+        {
+          "key": "Application",
+          "value": "swordworld"
+        },
+        {
+          "key": "Environment",
+          "value": "staging"
+        },
+        {
+          "key": "ManagedBy",
+          "value": "aws-cdk"
+        },
+        {
+          "key": "SecurityBoundary",
+          "value": "idm-secure-aws"
+        }
+      ]
+    }
+  ],
+  "/swordworld-staging-shared/GameStateTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "GameStateTableF546600E"
+      }
+    }
+  ],
+  "/swordworld-staging-shared/CommandLogTable": [
+    {
+      "type": "aws:cdk:hasPhysicalName",
+      "data": {
+        "Ref": "CommandLogTable1F662907"
+      }
+    }
+  ],
+  "/swordworld-staging-shared/Custom::S3AutoDeleteObjectsCustomResourceProvider": [
+    {
+      "type": "aws:cdk:is-custom-resource-handler-customResourceProvider",
+      "data": true
+    }
+  ],
+  "/swordworld-staging-shared/GameStateTableName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "GameStateTableName"
+    }
+  ],
+  "/swordworld-staging-shared/CommandLogTableName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CommandLogTableName"
+    }
+  ],
+  "/swordworld-staging-shared/CommandsQueueUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CommandsQueueUrl"
+    }
+  ],
+  "/swordworld-staging-shared/CommandsDlqUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CommandsDlqUrl"
+    }
+  ],
+  "/swordworld-staging-shared/UploadsBucketName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UploadsBucketName"
+    }
+  ],
+  "/swordworld-staging-shared/UserPoolId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolId"
+    }
+  ],
+  "/swordworld-staging-shared/UserPoolClientId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolClientId"
+    }
+  ],
+  "/swordworld-staging-shared/UserPoolIssuerUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolIssuerUrl"
+    }
+  ],
+  "/swordworld-staging-shared/HostedUiDomainUrl": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HostedUiDomainUrl"
+    }
+  ],
+  "/swordworld-staging-shared/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    }
+  ],
+  "/swordworld-staging-shared/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    }
+  ],
+  "/swordworld-staging-shared/GameStateTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "GameStateTableF546600E"
+    }
+  ],
+  "/swordworld-staging-shared/CommandLogTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CommandLogTable1F662907"
+    }
+  ],
+  "/swordworld-staging-shared/CommandsDlq/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CommandsDlqD7973C55"
+    }
+  ],
+  "/swordworld-staging-shared/CommandsQueue/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CommandsQueue4780AE0D"
+    }
+  ],
+  "/swordworld-staging-shared/UploadsBucket/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UploadsBucket5E5E9B64"
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketAutoDeleteObjects"
+      }
+    }
+  ],
+  "/swordworld-staging-shared/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092"
+    }
+  ],
+  "/swordworld-staging-shared/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomS3AutoDeleteObjectsCustomResourceProviderHandler9D90184F"
+    }
+  ],
+  "/swordworld-staging-shared/UserPool/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPool6BA7E5F2"
+    }
+  ],
+  "/swordworld-staging-shared/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Fn::GetAtt\":[\"GameStateTableF546600E\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttGameStateTableF546600EArnB39D49BA"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Fn::GetAtt\":[\"CommandLogTable1F662907\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttCommandLogTable1F662907ArnC174665D"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Fn::GetAtt\":[\"CommandsQueue4780AE0D\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttCommandsQueue4780AE0DArn3DC3ADB1"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Fn::GetAtt\":[\"UploadsBucket5E5E9B64\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttUploadsBucket5E5E9B64Arn8603C131"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Ref\":\"GameStateTableF546600E\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefGameStateTableF546600E747BC087"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Ref\":\"CommandLogTable1F662907\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefCommandLogTable1F662907D43BD406"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Ref\":\"CommandsQueue4780AE0D\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefCommandsQueue4780AE0DAA029A41"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Ref\":\"UploadsBucket5E5E9B64\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefUploadsBucket5E5E9B64F2F56CC2"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Fn::GetAtt\":[\"UserPool6BA7E5F2\",\"ProviderURL\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttUserPool6BA7E5F2ProviderURL1DC61701"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Ref\":\"UserPoolUserPoolClient40176907\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputRefUserPoolUserPoolClient40176907044A36CF"
+    }
+  ],
+  "/swordworld-staging-shared/Exports/Output{\"Fn::GetAtt\":[\"CommandsDlqD7973C55\",\"QueueName\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ExportsOutputFnGetAttCommandsDlqD7973C55QueueName110C2C13"
+    }
+  ],
+  "/swordworld-staging-shared/UploadsBucket/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UploadsBucketPolicy34A32B0B"
+    },
+    {
+      "type": "aws:cdk:analytics:mixin",
+      "data": {
+        "mixin": "aws-cdk-lib.aws_s3.mixins.BucketPolicyStatements"
+      }
+    }
+  ],
+  "/swordworld-staging-shared/UploadsBucket/AutoDeleteObjectsCustomResource/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UploadsBucketAutoDeleteObjectsCustomResourceFFD11C72"
+    }
+  ],
+  "/swordworld-staging-shared/UserPool/UserPoolClient/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolUserPoolClient40176907"
+    }
+  ],
+  "/swordworld-staging-shared/UserPool/HostedUiDomain/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "UserPoolHostedUiDomainE021B0B6"
+    }
+  ]
+}

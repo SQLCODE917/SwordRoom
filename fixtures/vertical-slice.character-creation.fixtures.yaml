@@ -1,0 +1,636 @@
+# file: vertical-slice.character-creation.fixtures.yaml
+doc_type: fixtures
+slice: character_creation_vertical_slice
+version: 1
+purpose:
+  - "Single source of truth for engine unit tests, dispatcher integration tests, and UI mock data."
+  - "All randomness is made explicit (dice inputs recorded)."
+  - "Each fixture defines: inputs -> expected derived stats -> expected validation outcomes."
+
+rulebook_context_refs:
+  determining_sub_ability_scores_table_1_3:
+    page_index_0_based: 16
+    extracted_table:
+      # "D" means dice. "1/2D" means half of 1 die rounded up.
+      # Entries are roll formulas for sub-ability scores A..H by race.
+      A:
+        {
+          HUMAN: "2D",
+          DWARF: "2D+6",
+          GRASSRUNNER: "1D+6",
+          ELF: "1D+6",
+          HALF_ELF: "1D+4",
+        }
+      B:
+        {
+          HUMAN: "2D",
+          DWARF: "1/2D",
+          GRASSRUNNER: "2D+4",
+          ELF: "1D+6",
+          HALF_ELF: "1D+6",
+        }
+      C:
+        {
+          HUMAN: "2D",
+          DWARF: "1D+4",
+          GRASSRUNNER: "1D+6",
+          ELF: "1D+6",
+          HALF_ELF: "1D+4",
+        }
+      D:
+        {
+          HUMAN: "2D",
+          DWARF: "1D",
+          GRASSRUNNER: "1D",
+          ELF: "1D+6",
+          HALF_ELF: "1D+6",
+        }
+      E:
+        {
+          HUMAN: "2D",
+          DWARF: "1D+4",
+          GRASSRUNNER: "1/2D",
+          ELF: "1D",
+          HALF_ELF: "1D+2",
+        }
+      F:
+        {
+          HUMAN: "2D",
+          DWARF: "1D+6",
+          GRASSRUNNER: "1/2D",
+          ELF: "1/2D",
+          HALF_ELF: "1D+2",
+        }
+      G:
+        {
+          HUMAN: "2D",
+          DWARF: "2D+4",
+          GRASSRUNNER: "2D+6",
+          ELF: "1D+4",
+          HALF_ELF: "1D+4",
+        }
+      H:
+        {
+          HUMAN: "2D",
+          DWARF: "2D+4",
+          GRASSRUNNER: "2D+4",
+          ELF: "1D+6",
+          HALF_ELF: "2D",
+        }
+
+  ability_score_formulas:
+    page_index_0_based: 16
+    formulas:
+      DEX: "A+B"
+      AGI: "B+C"
+      INT: "C+D"
+      STR: "E+F"
+      LF: "F+G"
+      MP: "G+H"
+
+  ability_bonus_formula:
+    page_index_0_based: 17
+    formula: "bonus = floor(ability_score / 6)"
+
+  backgrounds_table_1_5:
+    page_index_0_based: 17
+    # Applies to: HUMAN and HALF_ELF raised by HUMANS
+    rows:
+      2:
+        {
+          name: "Savage",
+          starting_skills:
+            [{ skill: "Fighter", level: 1 }, { skill: "Ranger", level: 1 }],
+          starting_exp: 2000,
+          money: "2D*100",
+        }
+      3:
+        {
+          name: "Rune Master",
+          starting_skills:
+            [{ skill: "Sorcerer", level: 1 }, { skill: "Sage", level: 1 }],
+          starting_exp: 2000,
+          money: "2D*200",
+        }
+      4:
+        {
+          name: "Villain",
+          starting_skills: [{ skill: "Thief", level: 1 }],
+          starting_exp: 2500,
+          money: "2D*200",
+        }
+      5:
+        {
+          name: "Traveler",
+          starting_skills: [{ skill: "Bard", level: 1 }],
+          starting_exp: 3000,
+          money: "2D*200",
+        }
+      6:
+        {
+          name: "Hunter",
+          starting_skills: [{ skill: "Ranger", level: 1 }],
+          starting_exp: 3000,
+          money: "2D*200",
+        }
+      7:
+        {
+          name: "Ordinary citizen",
+          starting_skills: [{ skill: "GeneralSkill_CHOSEN_BY_GM", level: 3 }],
+          starting_exp: 3000,
+          money: "2D*200",
+        }
+      8:
+        {
+          name: "Merchant/Scholar",
+          starting_skills: [{ skill: "Merchant_3_OR_Sage_1", level: 0 }],
+          starting_exp: 3000,
+          money: "2D*200",
+        }
+      9:
+        {
+          name: "Mercenary",
+          starting_skills: [{ skill: "Fighter", level: 1 }],
+          starting_exp: 2500,
+          money: "2D*200",
+        }
+      10:
+        {
+          name: "Priest",
+          starting_skills: [{ skill: "Priest", level: 1 }],
+          starting_exp: 2500,
+          money: "2D*200",
+        }
+      11:
+        {
+          name: "Curse Specialist",
+          starting_skills: [{ skill: "Shaman", level: 1 }],
+          starting_exp: 2000,
+          money: "2D*200",
+        }
+      12:
+        {
+          name: "Noble",
+          starting_skills:
+            [{ skill: "Fighter", level: 1 }, { skill: "Sage", level: 1 }],
+          starting_exp: 2000,
+          money: "2D*500",
+        }
+
+  starting_experience_by_race_table_1_6:
+    page_index_0_based: 18
+    rows:
+      HUMAN:
+        pre_adventure_exp: "Same as backgrounds (Table 1-5)"
+        money: "Same as backgrounds"
+        restrictions: []
+        starting_skills: []
+      DWARF:
+        pre_adventure_exp: 3000
+        money: "2D*300"
+        starting_skills:
+          - { skill: "CraftsmanSkill_CHOSEN", level: 5 }
+        restrictions:
+          - "Can see in the dark"
+          - "Cannot acquire Shaman or Sorcerer"
+      GRASSRUNNER:
+        pre_adventure_exp: 3000
+        money: "2D*200"
+        starting_skills:
+          - { skill: "Ranger", level: 1 }
+          - { skill: "Thief", level: 1 }
+        restrictions:
+          - "Can communicate with plants and insects"
+          - "Cannot acquire any Rune Master skills"
+      ELF:
+        pre_adventure_exp: 2000
+        money: "2D*200"
+        starting_skills:
+          - { skill: "Shaman", level: 1 }
+        restrictions:
+          - "Cannot acquire Priest"
+      HALF_ELF:
+        pre_adventure_exp:
+          raised_by_elves: "Same as ELF"
+          raised_by_humans: "Same as HUMAN (Table 1-5)"
+        money:
+          raised_by_elves: "Same as ELF"
+          raised_by_humans: "Same as backgrounds (Table 1-5)"
+        restrictions:
+          raised_by_elves: ["Cannot acquire Priest"]
+          raised_by_humans: []
+
+engine_contract:
+  required_error_codes:
+    - "MISSING_RACE"
+    - "MISSING_RAISED_BY_FOR_HALF_ELF"
+    - "MISSING_SUBABILITY"
+    - "MISSING_BACKGROUND_ROLL"
+    - "MISSING_STARTING_PACKAGE_CHOICE"
+    - "GENERAL_SKILL_REQUIRES_GM_CHOICE"
+    - "EXP_INSUFFICIENT"
+    - "GENERAL_SKILL_NOT_ALLOWED_WITH_STARTING_EXP"
+    - "SORCERER_SAGE_BUNDLE_REQUIRED"
+    - "EQUIPMENT_RESTRICTED_BY_SKILL"
+    - "EQUIPMENT_REQ_STR_TOO_HIGH"
+    - "INSUFFICIENT_STARTING_MONEY"
+    - "MISSING_REQUIRED_EQUIPMENT"
+    - "CHARACTER_NOT_COMPLETE"
+  minimal_item_catalog_rules_for_slice:
+    # Keep this tiny for tests. Expand later with full tables.
+    items:
+      mage_staff:
+        {
+          category: "weapon",
+          cost_g: 200,
+          req_str: 0,
+          tags: ["SORCERER_REQUIRED"],
+        }
+      cloth_armor:
+        { category: "armor", cost_g: 30, req_str: 0, tags: ["LIGHT"] }
+      soft_leather_armor:
+        { category: "armor", cost_g: 80, req_str: 4, tags: ["LIGHT"] }
+      ring_mail:
+        {
+          category: "armor",
+          cost_g: 160,
+          req_str: 10,
+          tags: ["METAL_EXCEPTION_FOR_RANGER_THIEF"],
+        }
+      small_shield: { category: "shield", cost_g: 60, req_str: 6, tags: [] }
+      broadsword: { category: "weapon", cost_g: 200, req_str: 8, tags: [] }
+    skill_equipment_restrictions:
+      sorcerer:
+        allowed_armor_tags: ["CLOTH", "SOFT_LEATHER", "LIGHT"]
+        forbid_categories: ["shield"]
+        require_items: ["mage_staff"]
+      shaman:
+        forbid_categories: ["shield"]
+      ranger_or_thief:
+        # Simplified: limit armor by "light-only" unless ring_mail exception explicitly allowed.
+        forbid_armor_tags: ["HEAVY", "METAL"] # ring_mail is allowed by explicit exception tag
+
+fixtures:
+  # ---------------------------------------------------------------------------
+  # GOOD PATH: Human (Background Rune Master) -> Sorcerer + Sage -> requires mage staff
+  # This fixture touches: background table, sorcerer+sage, equipment restriction, money roll.
+  # ---------------------------------------------------------------------------
+  - id: good.human_rune_master_sorcerer_starter
+    title: "Human Rune Master: deterministic rolls, compute abilities, apply starting package, validate sorcerer equipment rules"
+    gameId: "game-1"
+    actorId: "player-aaa"
+    characterId: "char-human-1"
+    inputs:
+      race: { code: "HUMAN" }
+      dice:
+        # Human sub-abilities are 2D each. Provide raw dice pairs to make it auditable.
+        subAbility_rolls:
+          A: [2, 4] # 6
+          B: [2, 2] # 4
+          C: [2, 3] # 5
+          D: [2, 2] # 4
+          E: [2, 2] # 4
+          F: [3, 3] # 6
+          G: [2, 2] # 4
+          H: [2, 3] # 5
+        background_roll_2d: [1, 2] # 3 => Rune Master
+        starting_money_roll_2d: [4, 5] # 9; money=9*200=1800
+      identity:
+        name: "Ducard Sample II"
+        age: 24
+        gender: "M"
+      exp_spend:
+        purchases:
+          # keep it minimal; already starts with Sorcerer 1 + Sage 1.
+          # buy Fighter 1 to test multi-skill characters.
+          - { skill: "Fighter", targetLevel: 1, costExpExpected: 1000 }
+      equipment_cart:
+        weapons: ["mage_staff"]
+        armor: []
+        shields: []
+        gear: []
+    expected:
+      derived_subAbility:
+        A: 6
+        B: 4
+        C: 5
+        D: 4
+        E: 4
+        F: 6
+        G: 4
+        H: 5
+      derived_ability:
+        # DEX=A+B, AGI=B+C, INT=C+D, STR=E+F, LF=F+G, MP=G+H
+        dex: 10
+        agi: 9
+        int: 9
+        str: 10
+        lf: 10
+        mp: 9
+      derived_bonus:
+        # floor(score/6)
+        dex: 1
+        agi: 1
+        int: 1
+        str: 1
+        lf: 1
+        mp: 1
+      starting_package:
+        background:
+          roll2d_total: 3
+          name: "Rune Master"
+        starting_skills:
+          - { skill: "Sorcerer", level: 1 }
+          - { skill: "Sage", level: 1 }
+        starting_exp_total: 2000
+        starting_money_gamels: 1800
+      exp_after_spend:
+        spentExpExpected: 1000
+        unspentExpExpected: 1000
+        skillsExpected:
+          - { skill: "Sorcerer", level: 1 }
+          - { skill: "Sage", level: 1 }
+          - { skill: "Fighter", level: 1 }
+
+  # Engine error codes referenced in unit tests:
+  # "SKILL_RESTRICTED_BY_RACE"
+      equipment_validation:
+        shouldPass: true
+        requiredItemsSatisfied:
+          - "mage_staff"
+      lifecycle:
+        status_before_submit: "DRAFT"
+        status_after_submit: "PENDING"
+
+  # ---------------------------------------------------------------------------
+  # GOOD PATH: Dwarf -> race-based starting package (Table 1-6)
+  # This fixture touches: non-human starting rules, 1/2D not used here (dwarf has 1/2D in B, but we use explicit raw die).
+  # ---------------------------------------------------------------------------
+  - id: good.dwarf_race_starting_package
+    title: "Dwarf: deterministic sub-ability rolls + starting package from race table"
+    gameId: "game-1"
+    actorId: "player-bbb"
+    characterId: "char-dwarf-1"
+    inputs:
+      race: { code: "DWARF" }
+      dice:
+        # Use the roll formula from Table 1-3 but provide raw dice so we can recompute.
+        # A: 2D+6, B: 1/2D, C: 1D+4, D: 1D, E: 1D+4, F: 1D+6, G: 2D+4, H: 2D+4
+        raw:
+          A_2d: [6, 3] # 9 + 6 = 15
+          B_1d: [5] # ceil(5/2) = 3
+          C_1d: [4] # 4 + 4 = 8
+          D_1d: [2] # 2
+          E_1d: [6] # 6 + 4 = 10
+          F_1d: [1] # 1 + 6 = 7
+          G_2d: [2, 5] # 7 + 4 = 11
+          H_2d: [3, 4] # 7 + 4 = 11
+        starting_money_roll_2d: [2, 6] # 8; money=8*300=2400
+      starting_choices:
+        craftsman_skill: "Blacksmith"
+      identity:
+        name: "Brann"
+        age: 45
+        gender: "F"
+    expected:
+      derived_subAbility:
+        A: 15
+        B: 3
+        C: 8
+        D: 2
+        E: 10
+        F: 7
+        G: 11
+        H: 11
+      derived_ability:
+        dex: 18 # 15+3
+        agi: 11 # 3+8
+        int: 10 # 8+2
+        str: 17 # 10+7
+        lf: 18 # 7+11
+        mp: 22 # 11+11
+      derived_bonus:
+        dex: 3
+        agi: 1
+        int: 1
+        str: 2
+        lf: 3
+        mp: 3
+      starting_package:
+        source: "Table 1-6"
+        starting_skills:
+          - { skill: "Blacksmith", level: 5 }
+        starting_exp_total: 3000
+        starting_money_gamels: 2400
+        restrictionsExpected:
+          - "Cannot acquire Shaman or Sorcerer"
+          - "Can see in the dark"
+
+  # ---------------------------------------------------------------------------
+  # GOOD PATH: Half-elf raised by humans -> uses Backgrounds Table 1-5
+  # This fixture forces raisedBy handling and background selection.
+  # ---------------------------------------------------------------------------
+  - id: good.half_elf_raised_by_humans_background_noble
+    title: "Half-elf raised by humans: background Noble -> Fighter 1 + Sage 1, money 2D*500"
+    gameId: "game-1"
+    actorId: "player-ccc"
+    characterId: "char-halfelf-1"
+    inputs:
+      race: { code: "HALF_ELF", raisedBy: "HUMANS" }
+      dice:
+        # Half-elf A:1D+4, B:1D+6, C:1D+4, D:1D+6, E:1D+2, F:1D+2, G:1D+4, H:2D
+        raw:
+          A_1d: [3] # 3+4=7
+          B_1d: [4] # 4+6=10
+          C_1d: [2] # 2+4=6
+          D_1d: [6] # 6+6=12
+          E_1d: [5] # 5+2=7
+          F_1d: [2] # 2+2=4
+          G_1d: [4] # 4+4=8
+          H_2d: [6, 1] # 7
+        background_roll_2d: [6, 6] # 12 => Noble
+        starting_money_roll_2d: [3, 5] # 8; money=8*500=4000
+      identity:
+        name: "Lina"
+        age: 22
+        gender: "F"
+    expected:
+      derived_subAbility:
+        A: 7
+        B: 10
+        C: 6
+        D: 12
+        E: 7
+        F: 4
+        G: 8
+        H: 7
+      derived_ability:
+        dex: 17 # 7+10
+        agi: 16 # 10+6
+        int: 18 # 6+12
+        str: 11 # 7+4
+        lf: 12 # 4+8
+        mp: 15 # 8+7
+      derived_bonus:
+        dex: 2
+        agi: 2
+        int: 3
+        str: 1
+        lf: 2
+        mp: 2
+      starting_package:
+        background:
+          roll2d_total: 12
+          name: "Noble"
+        starting_skills:
+          - { skill: "Fighter", level: 1 }
+          - { skill: "Sage", level: 1 }
+        starting_exp_total: 2000
+        starting_money_gamels: 4000
+
+  # ---------------------------------------------------------------------------
+  # NEGATIVE: Missing background roll for Human / Half-elf raised by humans
+  # ---------------------------------------------------------------------------
+  - id: bad.human_missing_background_roll
+    title: "Human must provide background roll (or explicit shortcut flag) before starting package is applied"
+    gameId: "game-1"
+    actorId: "player-aaa"
+    characterId: "char-human-missing-bg"
+    inputs:
+      race: { code: "HUMAN" }
+      subAbility_direct:
+        A: 7
+        B: 7
+        C: 7
+        D: 7
+        E: 7
+        F: 7
+        G: 7
+        H: 7
+      apply_starting_package: {} # missing backgroundRoll2d and no shortcut
+    expected:
+      error:
+        code: "MISSING_BACKGROUND_ROLL"
+
+  # ---------------------------------------------------------------------------
+  # NEGATIVE: Sorcerer/Sage bundle rule (special case from rulebook text)
+  # If neither skill is present, you cannot buy "Sorcerer only" at 1500; must buy bundle 2000 for both.
+  # ---------------------------------------------------------------------------
+  - id: bad.sorcerer_only_discount_when_neither
+    title: "Sorcerer-only discounted purchase forbidden when character has neither Sorcerer nor Sage"
+    gameId: "game-1"
+    actorId: "player-ddd"
+    characterId: "char-invalid-sorc"
+    inputs:
+      starting_state:
+        race: { code: "HUMAN" }
+        starting_package_override:
+          # Pretend background gave Fighter 1 only; so neither Sorcerer nor Sage exists.
+          starting_skills: [{ skill: "Fighter", level: 1 }]
+          starting_exp_total: 2500
+          exp_unspent: 2500
+      exp_spend:
+        purchases:
+          - { skill: "Sorcerer", targetLevel: 1, costExpOffered: 1500 }
+    expected:
+      error:
+        code: "SORCERER_SAGE_BUNDLE_REQUIRED"
+
+  # ---------------------------------------------------------------------------
+  # NEGATIVE: Sorcerer equipment restriction (no shields, mage staff required)
+  # ---------------------------------------------------------------------------
+  - id: bad.sorcerer_cannot_buy_shield_and_requires_staff
+    title: "Sorcerer cannot purchase shield and must include mage staff"
+    gameId: "game-1"
+    actorId: "player-aaa"
+    characterId: "char-sorc-equip-bad"
+    inputs:
+      state_minimal:
+        race: { code: "HUMAN" }
+        skills: [{ skill: "Sorcerer", level: 1 }]
+        ability: { str: 12 } # enough for shield; should still fail due to restriction
+      equipment_cart:
+        weapons: [] # missing mage staff
+        armor: ["cloth_armor"]
+        shields: ["small_shield"]
+        gear: []
+    expected:
+      errors:
+        - {
+            code: "EQUIPMENT_RESTRICTED_BY_SKILL",
+            details: { reason: "SORCERER_FORBIDS_SHIELD" },
+          }
+        - {
+            code: "MISSING_REQUIRED_EQUIPMENT",
+            details: { required: ["mage_staff"] },
+          }
+
+  # ---------------------------------------------------------------------------
+  # NEGATIVE: Required strength too high
+  # ---------------------------------------------------------------------------
+  - id: bad_req_str_too_high
+    title: "Cannot purchase/equip item with req_str > character STR"
+    gameId: "game-1"
+    actorId: "player-eee"
+    characterId: "char-weak"
+    inputs:
+      state_minimal:
+        race: { code: "HUMAN" }
+        ability: { str: 6 }
+      equipment_cart:
+        weapons: ["broadsword"] # req_str 8
+        armor: []
+        shields: []
+        gear: []
+    expected:
+      error:
+        code: "EQUIPMENT_REQ_STR_TOO_HIGH"
+        details: { itemId: "broadsword", reqStr: 8, charStr: 6 }
+
+command_sequences_for_integration:
+  # These sequences are meant for dispatcher e2e tests:
+  # send commands in order -> assert CommandLog + GameState items.
+  - id: e2e.good.human_rune_master_sequence
+    description: "End-to-end: save full draft snapshot -> submit saved draft -> GM approve"
+    commands:
+      - type: "SaveCharacterDraft"
+        payload:
+          characterId: "char-human-1"
+          expectedVersion: null
+          race: "HUMAN"
+          raisedBy: null
+          subAbility: { A: 6, B: 4, C: 5, D: 4, E: 4, F: 6, G: 4, H: 5 }
+          backgroundRoll2dTotal: 3
+          startingMoneyRoll2dTotal: 9
+          identity: { name: "Ducard Sample II", age: 24, gender: "M" }
+          purchases: [{ skill: "Fighter", targetLevel: 1 }]
+          cart:
+            {
+              weapons: ["mage_staff"],
+              armor: [],
+              shields: [],
+              gear: [],
+            }
+          noteToGm: "Ready for review"
+      - type: "SubmitCharacterForApproval"
+        payload: { characterId: "char-human-1", expectedVersion: 1 }
+      - type: "GMReviewCharacter"
+        payload:
+          {
+            characterId: "char-human-1",
+            decision: "APPROVE",
+            gmNote: "Approved",
+          }
+    asserts:
+      - "Character.status transitions DRAFT -> PENDING -> APPROVED"
+      - "GM inbox item created on submit"
+      - "Player inbox item CHAR_APPROVED created on approval"
+      - "CommandLog status PROCESSED for all commandIds"
+
+ui_mock_sets:
+  - id: ui.demo.character_creation_form_prefill
+    use_fixture: "good.human_rune_master_sorcerer_starter"
+    fields:
+      displayRaceName: "Human"
+      backgroundName: "Rune Master"
+      showWarnings: false

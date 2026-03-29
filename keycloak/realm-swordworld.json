@@ -1,0 +1,89 @@
+{
+  "realm": "swordworld",
+  "enabled": true,
+  "displayName": "SwordWorld Local",
+  "registrationAllowed": true,
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "verifyEmail": false,
+  "sslRequired": "external",
+  "accessTokenLifespan": 3600,
+  "ssoSessionIdleTimeout": 28800,
+  "clients": [
+    {
+      "clientId": "swordworld-web",
+      "name": "SwordWorld Web (Local)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:5173/*",
+        "http://localhost:4173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:4173"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5173/*##http://localhost:4173/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "id": "player-aaa",
+      "username": "player-aaa",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Player",
+      "email": "player@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "player1234",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "gm-zzz",
+      "username": "gm-zzz",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "GM",
+      "email": "gm@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "gm1234",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "admin-001",
+      "username": "admin-001",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Local",
+      "lastName": "Admin",
+      "email": "admin@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin1234",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

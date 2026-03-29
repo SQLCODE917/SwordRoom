@@ -1,0 +1,191 @@
+# file: vertical-slice.character-sheet.layout.yaml
+doc_type: ui_spec
+name: swordworld_character_sheet_ui
+version: 1
+source_reference:
+  pdf: "/mnt/data/Sword World RPG - Complete Edition.pdf"
+  pages:
+    - {
+        page_number_1_based: 27,
+        image_render: "/mnt/data/sw_charsheet_p27.png",
+      }
+    - {
+        page_number_1_based: 28,
+        image_render: "/mnt/data/sw_charsheet_p28.png",
+      }
+
+principles:
+  - "Modeled after the official sheet’s information architecture, not a pixel-perfect copy."
+  - "Minimal markup: semantic wrappers, reuse components."
+  - "Square corners, simple lines, no decoration."
+  - "Stable layout: placeholders + disabled states instead of conditional layout changes."
+  - "Flexbox for responsiveness: phone/tablet/desktop."
+
+semantic_components:
+  atoms:
+    - id: Button
+      states: ["enabled", "disabled", "active", "error"]
+      touch_height_px: 44
+    - id: TextField
+      states: ["enabled", "disabled", "error"]
+    - id: SelectField
+      states: ["enabled", "disabled", "error"]
+    - id: NumberField
+      states: ["enabled", "disabled", "error"]
+    - id: Notice
+      kinds: ["info", "error", "success"]
+    - id: Panel
+      variants: ["plain", "lined"]
+  molecules:
+    - id: FieldRow
+      purpose: "label + control + reserved error space"
+    - id: StatBox
+      purpose: "value + label + optional bonus"
+    - id: TableLite
+      purpose: "minimal table for skills/equipment; consistent padding"
+    - id: ImageBox
+      purpose: "appearance preview + upload button; fixed aspect ratio"
+    - id: CommandStatusPanel
+      purpose: "shows command progress; fixed height"
+  organisms:
+    - id: CharacterHeader
+      fields:
+        - characterName
+        - playerName
+        - race
+        - gender
+        - age
+        - origin
+    - id: AbilityBlock
+      fields:
+        - subAbilityA_to_H
+        - derivedAbilities
+        - bonuses
+    - id: SkillsBlock
+      fields:
+        - experiencePoints
+        - adventurerLevel
+        - skillList
+    - id: AppearanceBlock
+      fields:
+        - imageUpload
+        - notes (optional)
+    - id: LanguagesBlock
+      fields:
+        - languageRows (speak/read)
+    - id: MagicBlock
+      fields:
+        - runes (name, level, magicPower)
+        - commonRunes (with MP consumed)
+    - id: EquipmentBlock
+      fields:
+        - money (cash/jewelry/deposit/debt)
+        - equipmentCarried
+        - generalEquipment
+        - packHorsesEtc
+        - magicItems
+    - id: CombatSummaryBlock
+      fields:
+        - weapon/shield/armor
+        - derived combat stats (attack, strike, critical, bonus damage, evasion, defense, damage reduction)
+        - ratingTableMini
+
+page_models:
+  page1:
+    title: "Character Sheet (1)"
+    sections_in_order:
+      - CharacterHeader
+      - mainRow:
+          left:
+            - AbilityBlock
+            - SkillsBlock
+          right:
+            - AppearanceBlock
+            - LanguagesBlock
+            - MagicBlock
+  page2:
+    title: "Character Sheet (2)"
+    sections_in_order:
+      - EquipmentBlock
+      - CombatSummaryBlock
+
+responsive_layout:
+  breakpoints_px:
+    phone_max: 639
+    tablet_max: 1023
+    desktop_min: 1024
+
+  phone:
+    layout:
+      - "Single column"
+      - "Wizard: one step focus (others visible but disabled and collapsed-height fixed via Panels)"
+      - "CharacterSheet: tabs Page1/Page2; within page: stacked panels"
+    rules:
+      - "No side-by-side columns"
+      - "Tables become vertical list rows (TableLite with row wrapping)"
+      - "ImageBox full width, fixed aspect ratio 16:9"
+
+  tablet:
+    layout:
+      - "Two columns where helpful (AbilityBlock + AppearanceBlock side-by-side)"
+      - "Keep touch spacing"
+    rules:
+      - "CharacterHeader in one row, wraps cleanly"
+      - "Skills + Languages can sit side-by-side"
+
+  desktop:
+    layout:
+      - "True multi-column: Page1 uses 2–3 columns similar to sheet"
+      - "Use available width: panels stretch, no max-width clamp unless ultra-wide"
+    rules:
+      - "AbilityBlock and derived bonuses always visible"
+      - "Skills table and MagicBlock share row"
+
+theme_tokens:
+  css_variables:
+    - "--bg"
+    - "--fg"
+    - "--muted"
+    - "--line"
+    - "--focus"
+    - "--error"
+    - "--ok"
+    - "--panel"
+  domain_colors:
+    # Keep pragmatic mapping: base stat and its bonus/modifier share same color family.
+    abilities:
+      dex: { var: "--c-dex" }
+      agi: { var: "--c-agi" }
+      int: { var: "--c-int" }
+      str: { var: "--c-str" }
+      lf: { var: "--c-lf" }
+      mp: { var: "--c-mp" }
+    usage:
+      - "Ability score StatBox border uses ability color"
+      - "Bonus StatBox uses same ability color"
+      - "Any derived checks that use that bonus also use the same color"
+
+data_binding:
+  source: "GET /games/{gameId}/characters/{characterId}"
+  field_map:
+    header:
+      characterName: "draft.identity.name"
+      playerName: "PlayerProfile.displayName (optional) OR actorId"
+      race: "draft.race"
+      gender: "draft.identity.gender"
+      age: "draft.identity.age"
+      origin: "draft.background.kind OR race package origin"
+    abilities:
+      subAbility: "draft.subAbility"
+      derived: "draft.ability"
+      bonuses: "draft.bonus"
+    skills:
+      expUnspent: "draft.starting.expUnspent"
+      expTotal: "draft.starting.expTotal"
+      skillList: "draft.skills"
+    appearance:
+      imageUrl: "draft.appearance.imageUrl (new field; see upload spec)"
+      notes: "draft.gmNote or draft.identity notes"
+    equipment:
+      money: "draft.starting.moneyGamels"
+      purchases: "draft.purchases.*"

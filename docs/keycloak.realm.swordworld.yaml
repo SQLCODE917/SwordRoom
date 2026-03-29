@@ -1,0 +1,177 @@
+doc_type: keycloak_realm_export_plan
+name: keycloak.realm.swordworld
+version: 1
+goal:
+  - Provide an importable Keycloak realm configuration for an "everything local" environment.
+  - Realm: swordworld
+  - Client: swordworld-web (public), Authorization Code + PKCE
+  - Users:
+      - player@example.com (password: player1234)
+      - gm@example.com (password: gm1234)
+  - Keep authorization (GM vs Player) in your app DB, not in Keycloak roles.
+  - Ensure JWTs include stable sub and email.
+
+output_files:
+  - path: "keycloak/realm-swordworld.json"
+    purpose: "Keycloak realm import file"
+  - path: "scripts/local/keycloak-import.sh"
+    purpose: "Automated realm import via Keycloak admin CLI inside container"
+  - path: "scripts/local/keycloak-wait.sh"
+    purpose: "Wait for Keycloak readiness before import"
+
+realm_json:
+  file_path: "keycloak/realm-swordworld.json"
+  content: |
+    {
+      "realm": "swordworld",
+      "enabled": true,
+      "displayName": "SwordWorld Local",
+      "registrationAllowed": true,
+      "resetPasswordAllowed": true,
+      "loginWithEmailAllowed": true,
+      "duplicateEmailsAllowed": false,
+      "verifyEmail": false,
+
+      "sslRequired": "external",
+      "accessTokenLifespan": 3600,
+      "ssoSessionIdleTimeout": 28800,
+
+      "clients": [
+        {
+          "clientId": "swordworld-web",
+          "name": "SwordWorld Web (Local)",
+          "enabled": true,
+          "publicClient": true,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "directAccessGrantsEnabled": false,
+          "serviceAccountsEnabled": false,
+
+          "redirectUris": [
+            "http://localhost:3000/*",
+            "http://localhost:5173/*",
+            "http://localhost:4173/*"
+          ],
+          "webOrigins": [
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:4173"
+          ],
+
+          "attributes": {
+            "pkce.code.challenge.method": "S256",
+            "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5173/*##http://localhost:4173/*"
+          }
+        }
+      ],
+
+      "users": [
+        {
+          "username": "player@example.com",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "Local",
+          "lastName": "Player",
+          "email": "player@example.com",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "player1234",
+              "temporary": false
+            }
+          ]
+        },
+        {
+          "username": "gm@example.com",
+          "enabled": true,
+          "emailVerified": true,
+          "firstName": "Local",
+          "lastName": "GM",
+          "email": "gm@example.com",
+          "credentials": [
+            {
+              "type": "password",
+              "value": "gm1234",
+              "temporary": false
+            }
+          ]
+        }
+      ]
+    }
+
+scripts:
+  - file_path: "scripts/local/keycloak-wait.sh"
+    executable: true
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      # Wait until Keycloak is serving HTTP
+      URL="${1:-http://localhost:8080}"
+      echo "Waiting for Keycloak at $URL ..."
+      for i in {1..120}; do
+        if curl -fsS "$URL/realms/master" >/dev/null 2>&1; then
+          echo "Keycloak is up."
+          exit 0
+        fi
+        sleep 1
+      done
+      echo "Keycloak did not become ready in time."
+      exit 1
+
+  - file_path: "scripts/local/keycloak-import.sh"
+    executable: true
+    content: |
+      #!/usr/bin/env bash
+      set -euo pipefail
+
+      # Imports realm JSON into Keycloak running in docker-compose.local.yml
+      # Assumes:
+      # - keycloak container name: "keycloak"
+      # - admin credentials: admin/admin
+      # - realm file mounted at /opt/keycloak/data/import/realm-swordworld.json
+
+      bash scripts/local/keycloak-wait.sh http://localhost:8080
+
+      echo "Importing realm 'swordworld'..."
+      docker exec -i keycloak /opt/keycloak/bin/kcadm.sh config credentials \
+        --server http://localhost:8080 \
+        --realm master \
+        --user admin \
+        --password admin
+
+      # Create or update realm by deleting if exists (simple + deterministic for local)
+      if docker exec -i keycloak /opt/keycloak/bin/kcadm.sh get realms/swordworld >/dev/null 2>&1; then
+        echo "Realm exists; deleting for clean import..."
+        docker exec -i keycloak /opt/keycloak/bin/kcadm.sh delete realms/swordworld
+      fi
+
+      # Create realm from JSON
+      docker exec -i keycloak /opt/keycloak/bin/kcadm.sh create realms -f /opt/keycloak/data/import/realm-swordworld.json
+      echo "Realm imported."
+
+compose_mount_instructions:
+  required_changes_to_docker_compose_local_yml:
+    - "Create ./keycloak directory in repo root."
+    - "Place realm-swordworld.json at ./keycloak/realm-swordworld.json."
+    - "Mount it into the keycloak container under /opt/keycloak/data/import/realm-swordworld.json."
+  patch_example:
+    file: "docker-compose.local.yml"
+    add_under_service_keycloak:
+      volumes:
+        - "./keycloak:/opt/keycloak/data/import"
+
+post_import_runbook:
+  steps:
+    - "make up"
+    - "bash scripts/local/keycloak-import.sh"
+    - "Set AUTH_MODE=oidc in .env.local"
+    - "Set KEYCLOAK_ISSUER=http://localhost:8080/realms/swordworld"
+    - "Set OIDC_AUDIENCE=swordworld-web"
+    - "Start API + dispatcher"
+    - "Login via OIDC from FE (or obtain token manually via browser)"
+    - "Run make e2e (if e2e runner supports passing Authorization header; otherwise run with AUTH_MODE=dev)"
+
+security_notes:
+  - "Passwords are hardcoded for local only. Never use this in shared environments."
+  - "Do not store GM role in Keycloak; keep it in your app DB to match production Cognito design."

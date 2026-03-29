@@ -1,0 +1,659 @@
+doc_type: implementation_contract
+topic: normative_secure_idm_on_aws
+deliverable: secure_idm_and_access_control_for_swordworld_on_aws
+version: 1
+
+intent:
+  summary: >
+    Implement a normative and secure identity and access management architecture for the Sword World monorepo on AWS
+    using Cognito Hosted UI, CloudFront and private S3 for the SPA, HTTP API JWT authorizer, API Lambda, SQS FIFO,
+    dispatcher Lambda, DynamoDB and S3, app-db entitlements for GM and ADMIN, GitHub OIDC for CI/CD, and IAM Identity
+    Center for human operator access.
+  source_of_truth_scope:
+    - end_user_authentication_architecture
+    - application_authorization_architecture
+    - operator_and_ci_cd_identity_boundaries
+    - repository_file_layout_for_auth_infra_and_deploy_code
+    - step_by_step_work_units_with_deterministic_machine_verification
+    - minimal_human_in_the_loop_steps_that_cannot_be_safely_automated
+  non_goals:
+    - enterprise_b2b_federation_beyond_cognito_defaults
+    - break_glass_production_incident_runbooks
+    - blue_green_deployments
+    - multi_region_failover
+    - custom_waf_rules
+    - fine_grained_field_level_authorization_beyond_the_current_slice
+
+decision_record:
+  runtime_shape:
+    web:
+      choice: cloudfront_plus_private_s3_spa
+      rationale:
+        - aligns_with_the_existing_vite_spa
+        - keeps_operational_overhead_low
+        - works_cleanly_with_cognito_hosted_ui_redirects
+    api:
+      choice: lambda_plus_http_api
+      rationale:
+        - matches_the_existing_thin_http_service_shape
+        - works_well_with_jwt_authorizers
+    dispatcher:
+      choice: lambda_plus_sqs_event_source_mapping
+      rationale:
+        - matches_the_existing_async_command_pipeline
+        - removes_the_need_for_a_permanently_running_poller_in_aws
+  end_user_authentication:
+    choice: cognito_hosted_ui_authorization_code_pkce
+    rationale:
+      - normative_for_browser_based_authentication_on_aws
+      - avoids_password_handling_in_the_application
+      - keeps_identity_provider_responsibility_separate_from_application_authorization
+  browser_oidc_client:
+    choice: provider_neutral_oidc_discovery_backed_client
+    allowed_storage:
+      - sessionStorage_for_transient_pkce_state
+      - in_memory_or_library_managed_transient_token_state
+    prohibited_storage:
+      - localStorage_for_access_tokens
+      - hardcoded_provider_specific_endpoint_paths
+    rationale:
+      - discovery_backed_configuration_supports_keycloak_locally_and_cognito_on_aws
+      - avoiding_localStorage_reduces_xss_blast_radius
+  api_authentication:
+    choice: http_api_jwt_authorizer_plus_lambda_claim_mapping
+    required_claims:
+      - sub
+      - email
+      - email_verified
+      - name
+    forbidden_authorization_sources:
+      - realm_access.roles
+      - resource_access.any.roles
+      - cognito_groups_unless_explicitly_mapped_through_app_db_entitlements
+    rationale:
+      - api_gateway_performs_coarse_jwt_validation
+      - lambda_maps_authenticated_claims_into_application_identity_without_granting_privilege_from_raw_token_roles
+  application_authorization:
+    choice: app_db_entitlements_plus_game_membership
+    global_roles:
+      - ADMIN
+    game_scoped_roles:
+      - GM
+    identity_records:
+      - PlayerProfile_is_identity_metadata_only
+      - PlatformEntitlement_is_server_managed_global_authorization
+      - GameMember_is_source_of_truth_for_game_scoped_roles
+    rationale:
+      - keeps_authentication_and_authorization_separate
+      - matches_the_existing_domain_model_for_game_membership
+      - avoids_privilege_drift_between_identity_provider_claims_and_application_data
+  local_parity:
+    choice: keycloak_for_local_authentication_only
+    requirements:
+      - keycloak_realm_must_not_assign_GM_or_ADMIN_as_authoritative_application_roles
+      - local_seed_data_must_create_platform_entitlements_and_game_membership_in_dynamodb
+      - local_oidc_flow_must_use_discovery_backed_configuration_not_keycloak_specific_paths
+    rationale:
+      - local_should_simulate_authentication_not_replace_application_authorization
+      - the_same_application_security_model_should_hold_locally_and_in_aws
+  operator_access:
+    choice: aws_iam_identity_center_with_mfa
+    rationale:
+      - keeps_human_operator_access_outside_the_end_user_identity_provider
+      - is_the_normative_aws_pattern_for_console_and_cli_access
+  deployment_identity:
+    choice: github_actions_oidc_to_scoped_iam_roles
+    requirements:
+      - no_long_lived_aws_keys_in_github
+      - separate_staging_and_production_roles_or_accounts
+      - production_gated_by_github_environment_approval
+    rationale:
+      - minimizes_secret_management
+      - creates_a_clear_trust_boundary_for_ci_cd
+  security_invariants:
+    - AUTH_MODE_must_be_explicit_and_must_fail_closed_when_missing
+    - dev_auth_must_never_be_enabled_in_AWS_runtimes
+    - canonical_player_identifier_is_oidc_sub
+    - PlayerProfile_must_not_be_used_as_the_write_path_for_token_derived_roles
+    - no_admin_or_gm_access_may_be_granted_from_raw_jwt_role_claims
+    - API_and_dispatcher_must_use_the_default_aws_credential_provider_chain_in_AWS
+    - web_bucket_and_uploads_bucket_must_remain_private
+    - uploads_must_use_short_lived_presigned_urls
+    - all_privileged_changes_must_be_auditable_in_application_or_cloud_logs
+
+architecture:
+  aws_services:
+    - cloudfront
+    - s3
+    - cognito_user_pools
+    - api_gateway_http_api
+    - lambda
+    - sqs_fifo
+    - dynamodb
+    - cloudwatch_logs
+    - iam
+    - iam_identity_center
+  request_flow:
+    - browser_redirects_to_cognito_hosted_ui
+    - browser_completes_pkce_callback_using_oidc_discovery_metadata
+    - browser_calls_http_api_with_bearer_token
+    - http_api_jwt_authorizer_accepts_or_rejects_token
+    - api_lambda_maps_claims_to_application_identity
+    - api_lambda_reads_platform_entitlements_and_game_membership_from_dynamodb
+    - api_lambda_writes_command_log_and_sends_sqs_fifo_message
+    - dispatcher_lambda_applies_command_effects_and_updates_dynamodb
+  authority_boundaries:
+    authentication_system_of_record:
+      - cognito_for_aws
+      - keycloak_for_local_only
+    application_authorization_system_of_record:
+      - PlatformEntitlement_item_for_global_roles
+      - GameMember_item_for_game_scoped_roles
+      - Character_ownerPlayerId_for_ownership
+    operator_access_system_of_record:
+      - iam_identity_center
+    ci_deploy_access_system_of_record:
+      - github_oidc_assume_role
+  data_model_requirements:
+    - PlayerProfile_must_store_identity_attributes_only
+    - PlatformEntitlement_item_must_store_server_managed_global_roles
+    - GameMember_item_must_store_GM_membership_per_game
+    - CommandLog_must_store_server_authored_acceptance_and_processing_timestamps
+  local_development_shape:
+    - docker_compose_local_must_continue_to_run_localstack_dynamodb_keycloak_and_postgres
+    - make_dev_up_must_continue_to_support_dev_and_oidc_modes
+    - local_keycloak_must_be_kept_only_as_an_authentication_simulator
+
+repository_contract:
+  required_files:
+    - path: docs/idm.aws-secure-architecture.yaml
+      purpose: implementation_source_of_truth_for_secure_idm_work
+    - path: packages/shared/src/contracts/db.ts
+      purpose: platform_entitlement_contract_and_player_profile_identity_only_contract
+    - path: packages/services/shared/src/db.ts
+      purpose: repositories_for_platform_entitlements_and_server_authored_audit_writes
+    - path: packages/services/shared/src/authorization.ts
+      purpose: authorization_using_platform_entitlements_game_membership_and_ownership
+    - path: packages/services/api/src/auth.ts
+      purpose: fail_closed_provider_neutral_auth_resolution
+    - path: packages/services/api/src/httpRoutes.ts
+      purpose: route_authorization_without_raw_token_role_trust
+    - path: packages/services/api/src/lambda.ts
+      purpose: api_lambda_adapter_for_http_api
+    - path: packages/services/api/src/awsClients.ts
+      purpose: dual_mode_aws_clients_without_static_test_credentials_in_aws
+    - path: packages/services/dispatcher/src/lambda.ts
+      purpose: dispatcher_lambda_adapter_for_sqs
+    - path: packages/services/dispatcher/src/awsClients.ts
+      purpose: dispatcher_dual_mode_aws_clients_without_static_test_credentials_in_aws
+    - path: packages/web/src/auth/OidcAuthProvider.ts
+      purpose: browser_oidc_flow_using_discovery_and_non_localStorage_session_handling
+    - path: keycloak/realm-swordworld.json
+      purpose: local_oidc_realm_without_authoritative_app_roles
+    - path: scripts/local/seed.sh
+      purpose: local_platform_entitlements_and_game_membership_seed_data
+    - path: packages/infra/package.json
+      purpose: infra_scripts_and_dependencies
+    - path: packages/infra/cdk.json
+      purpose: cdk_app_configuration
+    - path: packages/infra/tsconfig.json
+      purpose: infra_typescript_configuration
+    - path: packages/infra/src/app.ts
+      purpose: cdk_app_entrypoint
+    - path: packages/infra/src/config.ts
+      purpose: typed_env_and_stack_config
+    - path: packages/infra/src/stacks/shared-stack.ts
+      purpose: stateful_resources_and_auth
+    - path: packages/infra/src/stacks/app-stack.ts
+      purpose: compute_and_edge_resources
+    - path: packages/infra/src/constructs/web-site.ts
+      purpose: cloudfront_and_web_bucket_construct
+    - path: packages/infra/src/constructs/api-service.ts
+      purpose: api_lambda_and_http_api_construct
+    - path: packages/infra/src/constructs/dispatcher-service.ts
+      purpose: dispatcher_lambda_and_sqs_construct
+    - path: .github/workflows/ci.yml
+      purpose: blocking_ci_checks
+    - path: .github/workflows/deploy-staging.yml
+      purpose: staging_deploy_with_oidc
+    - path: .github/workflows/deploy-production.yml
+      purpose: production_deploy_with_approval_gate
+  files_allowed_to_remain_local_only:
+    - packages/services/api/src/server.ts
+    - packages/services/dispatcher/src/worker.ts
+  files_not_allowed_as_primary_source_of_truth:
+    - packages/infra/templates/character-creation-vertical-slice.yaml
+  prohibited_patterns:
+    - raw_trust_of_realm_access_or_resource_access_roles_for_admin_or_gm
+    - default_AUTH_MODE_of_dev_when_env_is_missing
+    - localStorage_access_token_persistence
+    - static_AWS_ACCESS_KEY_ID_or_AWS_SECRET_ACCESS_KEY_in_Lambda_runtime_configuration
+
+configuration_contract:
+  api_runtime_env_required:
+    - AUTH_MODE=oidc
+    - OIDC_ISSUER
+    - OIDC_AUDIENCE
+    - GAMESTATE_TABLE
+    - COMMANDLOG_TABLE
+    - COMMANDS_QUEUE_URL
+    - UPLOADS_BUCKET
+  api_runtime_env_prohibited_in_aws:
+    - KEYCLOAK_ISSUER
+    - JWT_BYPASS
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - DDB_ENDPOINT
+    - SQS_ENDPOINT
+    - S3_ENDPOINT
+  web_build_env_required:
+    - VITE_AUTH_MODE=oidc
+    - VITE_API_BASE
+    - VITE_OIDC_DISCOVERY_URL
+    - VITE_OIDC_CLIENT_ID
+    - VITE_OIDC_REDIRECT_URI
+    - VITE_OIDC_SCOPE=openid profile email
+  local_only_envs_allowed:
+    - AUTH_MODE=dev
+    - DEV_ACTOR_ID
+    - DDB_ENDPOINT
+    - SQS_ENDPOINT
+    - S3_ENDPOINT
+    - KEYCLOAK_ISSUER
+    - OIDC_AUDIENCE
+  deploy_identity_rules:
+    - github_workflows_must_use_oidc_assume_role_only
+    - human_aws_access_must_use_iam_identity_center_only
+  storage_security_rules:
+    - web_bucket_must_have_block_public_access
+    - web_delivery_must_use_cloudfront_origin_access_control
+    - uploads_bucket_must_have_block_public_access
+    - uploads_cors_must_be_scoped_to_web_origin_in_aws
+    - dynamodb_tables_must_have_point_in_time_recovery_enabled
+    - sqs_commands_queue_and_dlq_must_both_be_fifo
+
+implementation_rules:
+  - This document must be treated as the implementation source of truth for IDM and access-control work.
+  - End-user authentication and AWS operator access must remain separate identity systems.
+  - Application authorization must be data-driven from DynamoDB, not inferred from IdP group or role claims.
+  - sub must be the canonical application principal id in AWS and local OIDC modes.
+  - All work units must be completed with their listed machine verification before they are considered done.
+  - Human validation is allowed only when the step cannot be safely or meaningfully machine-verified.
+  - Existing local development workflows must remain supported while AWS deployment capability is added.
+
+manual_steps:
+  - id: manual-01-bootstrap_aws_accounts_or_roles_for_first_deploy
+    actor: human
+    required_once_per_account_or_role: true
+    outcome: an_administrator_can_run_cdk_bootstrap_and_create_github_oidc_roles
+    verification:
+      type: command
+      command: aws sts get-caller-identity
+  - id: manual-02-configure_iam_identity_center_permission_sets_and_assignments
+    actor: human
+    required_once_per_account_set: true
+    outcome: human_operator_access_uses_iam_identity_center_with_mfa
+    verification:
+      type: human
+      check: approved_operator_can_sign_in_via_identity_center_and_assume_expected_permission_set
+  - id: manual-03-create_cognito_domain_and_any_required_dns_or_certificates
+    actor: human
+    required_once_per_environment: true
+    outcome: browser_oidc_redirect_domain_is_live_and_tls_valid
+    verification:
+      type: human
+      check: oidc_login_redirect_resolves_and_certificate_is_valid
+  - id: manual-04-create_github_environments_and_required_reviewers
+    actor: human
+    required_once_per_repo: true
+    outcome: production_deploys_require_explicit_approval
+    verification:
+      type: human
+      check: github_production_environment_blocks_until_reviewed
+  - id: manual-05-approve_initial_platform_admin_subjects
+    actor: human
+    required_once_per_environment: true
+    outcome: initial_ADMIN_entitlements_are_assigned_only_to_approved_principals
+    verification:
+      type: human
+      check: approved_subject_list_matches_change_ticket_or_runbook
+
+deliverables:
+  - id: deliverable-01-auth_contract_and_fail_closed_config
+    files:
+      - docs/idm.aws-secure-architecture.yaml
+      - packages/services/api/src/auth.ts
+      - packages/services/api/src/auth.test.ts
+      - packages/web/src/auth/OidcAuthProvider.ts
+  - id: deliverable-02-application_entitlements_and_authorization
+    files:
+      - packages/shared/src/contracts/db.ts
+      - packages/services/shared/src/db.ts
+      - packages/services/shared/src/authorization.ts
+      - packages/services/shared/src/db.test.ts
+      - packages/services/api/src/httpRoutes.ts
+      - packages/services/api/src/routeAuth.test.ts
+  - id: deliverable-03-local_oidc_parity_and_seed_data
+    files:
+      - keycloak/realm-swordworld.json
+      - scripts/local/seed.sh
+      - scripts/local/create-resources.sh
+      - packages/test-e2e/src/runFixtureSequence.ts
+  - id: deliverable-04-aws_runtime_adapters_and_client_hardening
+    files:
+      - packages/services/api/src/lambda.ts
+      - packages/services/api/src/awsClients.ts
+      - packages/services/dispatcher/src/lambda.ts
+      - packages/services/dispatcher/src/awsClients.ts
+  - id: deliverable-05-secure_cdk_infrastructure
+    files:
+      - packages/infra/package.json
+      - packages/infra/cdk.json
+      - packages/infra/tsconfig.json
+      - packages/infra/src/app.ts
+      - packages/infra/src/config.ts
+      - packages/infra/src/stacks/shared-stack.ts
+      - packages/infra/src/stacks/app-stack.ts
+      - packages/infra/src/constructs/web-site.ts
+      - packages/infra/src/constructs/api-service.ts
+      - packages/infra/src/constructs/dispatcher-service.ts
+  - id: deliverable-06-ci_cd_and_operator_access_docs
+    files:
+      - .github/workflows/ci.yml
+      - .github/workflows/deploy-staging.yml
+      - .github/workflows/deploy-production.yml
+      - packages/infra/AGENTS.md
+
+work_units:
+  - id: idm-01-make_auth_configuration_fail_closed_and_provider_neutral
+    goal: remove_fail_open_auth_behavior_and_keycloak_specific_runtime_assumptions
+    delivers:
+      - deliverable-01-auth_contract_and_fail_closed_config
+    prerequisites: []
+    implementation_requirements:
+      - AUTH_MODE_must_be_explicit_and_startup_must_fail_when_it_is_missing
+      - dev_auth_must_require_explicit_local_only_opt_in_and_must_never_activate_in_aws_runtime
+      - API_auth_configuration_must_use_OIDC_ISSUER_and_OIDC_AUDIENCE_not_KEYCLOAK_ISSUER
+      - API_token_verification_must_use_provider_neutral_discovery_or_metadata_not_a_hardcoded_keycloak_jwks_path
+      - browser_oidc_config_must_use_discovery_backed_metadata_and_must_not_hardcode_protocol_openid_connect_paths
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/services-api build
+        - pnpm --filter @starter/services-api test
+        - pnpm --filter @starter/web build
+        - pnpm --filter @starter/web test
+        - rg -n "KEYCLOAK_ISSUER|protocol/openid-connect" packages/services/api packages/web
+      expected_artifacts:
+        - packages/services/api/src/auth.ts
+        - packages/web/src/auth/OidcAuthProvider.ts
+      expected_results:
+        - services_api_build_exit_code_0
+        - services_api_test_exit_code_0
+        - web_build_exit_code_0
+        - web_test_exit_code_0
+        - rg_exit_code_1_no_provider_specific_leftovers
+    human_verification: []
+    done_when:
+      - auth_defaults_fail_closed
+      - provider_specific_keycloak_paths_are_removed_from_runtime_code
+      - browser_and_api_can_be_configured_from_oidc_metadata
+
+  - id: idm-02-separate_identity_from_application_authorization
+    goal: make_app_db_entitlements_and_game_membership_the_only_authorization_sources
+    delivers:
+      - deliverable-02-application_entitlements_and_authorization
+    prerequisites:
+      - idm-01-make_auth_configuration_fail_closed_and_provider_neutral
+    implementation_requirements:
+      - PlayerProfile_must_contain_identity_metadata_only
+      - a_PlatformEntitlement_item_or_equivalent_repository_must_exist_for_global_app_roles
+      - GameMember_must_remain_the_source_of_truth_for_per_game_gm_authorization
+      - admin_and_gm_route_authorization_must_load_from_app_data_not_raw_jwt_roles
+      - syncMyProfile_must_persist_identity_attributes_only_and_must_not_persist_token_derived_roles
+      - authorization_tests_must_cover_denial_when_token_roles_are_present_but_app_entitlements_are_absent
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/services-shared test
+        - pnpm --filter @starter/services-api test
+        - rg -n "roles: identity.roles|realm_access|resource_access" packages/services/api/src packages/services/shared/src
+      expected_artifacts:
+        - packages/services/shared/src/authorization.ts
+        - packages/services/shared/src/db.ts
+        - packages/services/api/src/httpRoutes.ts
+      expected_results:
+        - services_shared_test_exit_code_0
+        - services_api_test_exit_code_0
+        - rg_exit_code_1_no_raw_token_role_trust
+    human_verification: []
+    done_when:
+      - ADMIN_requires_platform_entitlement_record
+      - GM_requires_game_membership_or_character_ownership_rules
+      - token_roles_alone_cannot_unlock_privileged_routes
+
+  - id: idm-03-align_local_oidc_with_production_authorization_boundaries
+    goal: keep_local_oidc_useful_without_letting_keycloak_act_as_the_app_authorization_source
+    delivers:
+      - deliverable-03-local_oidc_parity_and_seed_data
+    prerequisites:
+      - idm-02-separate_identity_from_application_authorization
+    implementation_requirements:
+      - keycloak_realm_must_not_define_or_assign_authoritative_GM_or_ADMIN_app_roles
+      - local_seed_data_must_create_PlatformEntitlement_records_and_GameMember_records_needed_for_player_gm_and_admin_test_flows
+      - local_e2e_and_manual_testing_must_still_support_player_gm_and_admin_scenarios
+      - local_scripts_must_preserve_current_make_dev_up_and_make_e2e_ergonomics
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/test-e2e build
+        - pnpm --filter @starter/test-e2e test
+        - rg -n "\"realmRoles\"|\"name\": \"GM\"|\"name\": \"ADMIN\"" keycloak/realm-swordworld.json
+      expected_artifacts:
+        - keycloak/realm-swordworld.json
+        - scripts/local/seed.sh
+      expected_results:
+        - test_e2e_build_exit_code_0
+        - test_e2e_test_exit_code_0
+        - rg_exit_code_1_no_authoritative_app_roles_in_keycloak
+    human_verification: []
+    done_when:
+      - local_keycloak_behaves_as_authentication_only
+      - local_player_gm_and_admin_paths_are_backed_by_app_data
+
+  - id: idm-04-harden_browser_session_handling
+    goal: remove_production_insecure_token_persistence_from_the_browser_auth_implementation
+    delivers:
+      - deliverable-01-auth_contract_and_fail_closed_config
+    prerequisites:
+      - idm-01-make_auth_configuration_fail_closed_and_provider_neutral
+    implementation_requirements:
+      - browser_auth_must_not_persist_access_tokens_in_localStorage
+      - session_state_may_use_sessionStorage_for_transient_pkce_state_only
+      - auth_tests_must_cover_token_expiry_login_callback_and_logout_behavior
+      - callback_sync_must_not_elevate_authorization_from_idp_claims
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/web test
+        - rg -n "localStorage" packages/web/src/auth/OidcAuthProvider.ts packages/web/src/pages/AuthCallbackPage.tsx
+      expected_artifacts:
+        - packages/web/src/auth/OidcAuthProvider.ts
+      expected_results:
+        - web_test_exit_code_0
+        - rg_exit_code_1_no_localStorage_token_usage
+    human_verification: []
+    done_when:
+      - browser_auth_does_not_store_bearer_tokens_in_localStorage
+      - browser_auth_is_safe_to_front_with_cloudfront_and_s3
+
+  - id: idm-05-add_aws_runtime_adapters_and_remove_static_aws_credentials
+    goal: make_api_and_dispatcher_deployable_to_lambda_with_correct_aws_identity_handling
+    delivers:
+      - deliverable-04-aws_runtime_adapters_and_client_hardening
+    prerequisites:
+      - idm-01-make_auth_configuration_fail_closed_and_provider_neutral
+    implementation_requirements:
+      - add_packages_services_api_src_lambda_ts_that_reuses_the_existing_route_dispatch_layer
+      - add_packages_services_dispatcher_src_lambda_ts_that_reuses_the_existing_dispatcher_core
+      - aws_client_factories_must_only_inject_endpoints_and_test_credentials_in_local_mode
+      - aws_runtimes_must_rely_on_the_default_aws_credential_provider_chain
+      - local_server_ts_and_worker_ts_must_remain_supported
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/services-api build
+        - pnpm --filter @starter/services-api test
+        - pnpm --filter @starter/services-dispatcher build
+        - pnpm --filter @starter/services-dispatcher test
+        - rg -n "accessKeyId: env\\('AWS_ACCESS_KEY_ID', 'test'\\)|secretAccessKey: env\\('AWS_SECRET_ACCESS_KEY', 'test'\\)" packages/services/api/src/awsClients.ts packages/services/dispatcher/src/awsClients.ts
+      expected_artifacts:
+        - packages/services/api/src/lambda.ts
+        - packages/services/dispatcher/src/lambda.ts
+      expected_results:
+        - services_api_build_exit_code_0
+        - services_api_test_exit_code_0
+        - services_dispatcher_build_exit_code_0
+        - services_dispatcher_test_exit_code_0
+        - rg_exit_code_1_no_static_test_credentials_in_aws_clients
+    human_verification: []
+    done_when:
+      - api_and_dispatcher_support_lambda_without_business_logic_forks
+      - aws_credential_handling_is_correct_in_local_and_aws_modes
+
+  - id: idm-06-model_secure_cdk_stacks_for_end_user_and_workload_identity
+    goal: implement_the_aws_infrastructure_that_enforces_the_target_idm_architecture
+    delivers:
+      - deliverable-05-secure_cdk_infrastructure
+    prerequisites:
+      - idm-05-add_aws_runtime_adapters_and_remove_static_aws_credentials
+    implementation_requirements:
+      - SharedStack_must_create_Cognito_user_pool_client_and_hosted_ui_domain
+      - SharedStack_must_create_DynamoDB_tables_with_point_in_time_recovery_and_encryption
+      - SharedStack_must_create_a_FIFO_commands_queue_and_a_FIFO_DLQ
+      - SharedStack_must_create_a_private_uploads_bucket_with_scoped_CORS_and_encryption
+      - AppStack_must_create_a_private_web_bucket_a_CloudFront_distribution_and_origin_access_control
+      - AppStack_must_create_an_HTTP_API_with_JWT_authorizer_and_Lambda_integrations
+      - AppStack_must_create_an_SQS_event_source_mapping_for_the_dispatcher_Lambda
+      - Lambda_IAM_policies_must_be_least_privilege_and_limited_to_required_resources
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/infra type-check
+        - pnpm --filter @starter/infra cdk synth
+      expected_artifacts:
+        - packages/infra/src/stacks/shared-stack.ts
+        - packages/infra/src/stacks/app-stack.ts
+      expected_template_assertions:
+        - contains_AWS::Cognito::UserPool
+        - contains_AWS::ApiGatewayV2::Authorizer_of_type_JWT
+        - contains_AWS::DynamoDB::Table_with_PITR
+        - contains_AWS::SQS::Queue_for_commands_fifo
+        - contains_AWS::SQS::Queue_for_commands_dlq_fifo
+        - contains_AWS::Lambda::EventSourceMapping
+        - contains_private_AWS::S3::Bucket_for_web
+        - contains_private_AWS::S3::Bucket_for_uploads
+        - contains_AWS::CloudFront::Distribution
+      expected_results:
+        - infra_type_check_exit_code_0
+        - infra_synth_exit_code_0
+    human_verification: []
+    done_when:
+      - cdk_synth_describes_the_secure_target_architecture_without_placeholders
+      - no_legacy_cloudformation_template_is_required_for_deploys
+
+  - id: idm-07-add_ci_cd_identity_and_deploy_workflows
+    goal: deploy_through_github_oidc_with_clear_staging_and_production_controls
+    delivers:
+      - deliverable-06-ci_cd_and_operator_access_docs
+    prerequisites:
+      - idm-06-model_secure_cdk_stacks_for_end_user_and_workload_identity
+      - manual-01-bootstrap_aws_accounts_or_roles_for_first_deploy
+      - manual-04-create_github_environments_and_required_reviewers
+    implementation_requirements:
+      - ci_workflow_must_block_deploys_on_build_type_check_and_tests
+      - staging_deploy_must_assume_AWS_via_GitHub_OIDC_and_run_automatically_from_main
+      - production_deploy_must_use_a_GitHub_production_environment_with_approval
+      - workflows_must_not_use_static_AWS_keys
+      - packages_infra_AGENTS_md_must_point_implementers_at_this_IDM_contract_in_addition_to_the_deployment_contract
+    machine_verification:
+      commands:
+        - test -f .github/workflows/ci.yml
+        - test -f .github/workflows/deploy-staging.yml
+        - test -f .github/workflows/deploy-production.yml
+        - rg -n "aws-access-key-id|aws-secret-access-key" .github/workflows
+      expected_artifacts:
+        - .github/workflows/ci.yml
+        - .github/workflows/deploy-staging.yml
+        - .github/workflows/deploy-production.yml
+      expected_results:
+        - ci_workflow_exists
+        - staging_workflow_exists
+        - production_workflow_exists
+        - rg_exit_code_1_no_static_aws_keys_in_workflows
+    human_verification:
+      - merge_to_main_and_confirm_staging_workflow_assumes_expected_role
+      - trigger_production_workflow_and_confirm_environment_approval_gate
+    done_when:
+      - deployments_use_github_oidc_only
+      - production_has_a_clear_approval_boundary
+
+  - id: idm-08-bootstrap_operator_access_and_initial_admin_entitlements
+    goal: finish_the_non_automatable_trust_setup_while_keeping_authorization_data_driven
+    delivers:
+      - deliverable-02-application_entitlements_and_authorization
+      - deliverable-06-ci_cd_and_operator_access_docs
+    prerequisites:
+      - idm-02-separate_identity_from_application_authorization
+      - manual-02-configure_iam_identity_center_permission_sets_and_assignments
+      - manual-05-approve_initial_platform_admin_subjects
+    implementation_requirements:
+      - there_must_be_a_documented_or_scripted_path_to_create_initial_PlatformEntitlement_ADMIN_records
+      - the_bootstrap_path_must_require_explicit_principal_identifiers_and_must_be_auditable
+      - admin_access_tests_must_prove_that_raw_jwt_roles_without_entitlement_records_are_denied
+      - operator_access_documentation_must_clearly_distinguish_IAM_Identity_Center_from_Cognito
+    machine_verification:
+      commands:
+        - pnpm --filter @starter/services-api test
+        - pnpm --filter @starter/services-shared test
+      expected_results:
+        - services_api_test_exit_code_0
+        - services_shared_test_exit_code_0
+    human_verification:
+      - confirm_approved_admin_subjects_can_access_admin_routes_only_after_entitlement_bootstrap
+      - confirm_non_entitled_subject_with_valid_oidc_token_is_denied_admin_routes
+    done_when:
+      - initial_ADMIN_access_is_bootstrapped_without_reintroducing_token_role_trust
+      - operator_access_and_application_access_are_clearly_separated
+
+  - id: idm-09-complete_end_to_end_validation_for_local_and_aws_paths
+    goal: prove_the_secure_idm_architecture_works_locally_and_is_ready_for_staged_aws_rollout
+    delivers:
+      - deliverable-01-auth_contract_and_fail_closed_config
+      - deliverable-02-application_entitlements_and_authorization
+      - deliverable-03-local_oidc_parity_and_seed_data
+      - deliverable-04-aws_runtime_adapters_and_client_hardening
+      - deliverable-05-secure_cdk_infrastructure
+      - deliverable-06-ci_cd_and_operator_access_docs
+    prerequisites:
+      - idm-03-align_local_oidc_with_production_authorization_boundaries
+      - idm-04-harden_browser_session_handling
+      - idm-06-model_secure_cdk_stacks_for_end_user_and_workload_identity
+      - idm-07-add_ci_cd_identity_and_deploy_workflows
+    implementation_requirements:
+      - local_dev_mode_must_still_work_for_rapid_iteration
+      - local_oidc_mode_must_still_work_with_app_db_entitlements
+      - staging_deploy_must_synth_and_deploy_from_the_GitHub_OIDC_path
+      - end_to_end_tests_must_cover_player_gm_admin_and_unauthorized_access_paths
+      - audit_timestamps_must_be_server_authored_in_command_acceptance_and_processing_flows
+    machine_verification:
+      commands:
+        - pnpm build
+        - pnpm type-check
+        - pnpm test
+        - pnpm --filter @starter/test-e2e build
+      expected_results:
+        - monorepo_build_exit_code_0
+        - monorepo_type_check_exit_code_0
+        - monorepo_test_exit_code_0
+        - test_e2e_build_exit_code_0
+    human_verification:
+      - run_local_oidc_login_and_confirm_player_gm_admin_behavior_matches_app_entitlements
+      - confirm_staging_login_flow_reaches_cognito_and_returns_to_cloudfront_hosted_spa
+    done_when:
+      - local_and_staging_paths_match_the_security_model
+      - the_monorepo_is_ready_for_secure_incremental_aws_rollout

@@ -1,0 +1,32 @@
+{
+  "name": "@starter/services-dispatcher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest --run",
+    "type-check": "tsc --noEmit",
+    "dev": "pnpm run build && node dist/worker.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1000.0",
+    "@starter/engine": "workspace:*",
+    "@starter/services-shared": "workspace:*",
+    "@starter/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "@starter/test-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest --run",
+    "type-check": "tsc --noEmit",
+    "dev": "tsc --watch"
+  },
+  "dependencies": {
+    "@starter/services-api": "workspace:*",
+    "@starter/services-dispatcher": "workspace:*",
+    "@starter/services-shared": "workspace:*",
+    "@starter/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@aws-sdk/client-dynamodb": "^3.1000.0",
+    "dynalite": "^4.0.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  }
+}

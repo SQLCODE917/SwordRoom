@@ -1,5 +1,5 @@
 {
-  "name": "universal-hello-world-monorepo",
+  "name": "character-creation-vertical-slice-monorepo",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -8,13 +8,14 @@
     "pnpm": ">=8.0.0"
   },
   "scripts": {
-    "dev": "pnpm --recursive --parallel run dev",
-    "build": "pnpm --recursive run build",
-    "test": "pnpm --recursive run test",
-    "type-check": "pnpm --recursive run type-check",
-    "clean": "pnpm --recursive exec rm -rf dist"
+    "dev": "pnpm --recursive --if-present --parallel run dev",
+    "build": "pnpm --recursive --if-present run build",
+    "test": "RUN_LOCAL_DDB_TESTS=1 pnpm --recursive --if-present run test",
+    "type-check": "pnpm --recursive --if-present run type-check",
+    "clean": "pnpm --recursive --if-present exec rm -rf dist"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.0",
     "typescript": "^5.3.3",
     "vitest": "^1.1.0"
   }
