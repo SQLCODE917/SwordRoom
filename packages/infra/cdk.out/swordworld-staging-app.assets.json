@@ -61,16 +61,16 @@
         }
       }
     },
-    "4335076e42860167788ebdd257040ee5b9ad3a95e08519214db0266f73993c40": {
+    "b57cd1da54d1b455363413d4b335eca44e1f03627fe2e769745f559be0db35d6": {
       "displayName": "ApiService/ApiLambda/Code",
       "source": {
-        "path": "/workspaces/hello-world-monorepo",
+        "path": "asset.b57cd1da54d1b455363413d4b335eca44e1f03627fe2e769745f559be0db35d6",
         "packaging": "zip"
       },
       "destinations": {
-        "111111111111-us-east-1-d7667186": {
+        "111111111111-us-east-1-a57f5f30": {
           "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
-          "objectKey": "4335076e42860167788ebdd257040ee5b9ad3a95e08519214db0266f73993c40.zip",
+          "objectKey": "b57cd1da54d1b455363413d4b335eca44e1f03627fe2e769745f559be0db35d6.zip",
           "region": "us-east-1",
           "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
         }
@@ -91,31 +91,31 @@
         }
       }
     },
-    "698d09c9bb8e4a12949db7ba33cc90e0a61f3b3c549f8df7031f47456f394360": {
+    "8edf88c0862c4339552439cec55cd4ffe1fa5924a3a3603d3bf024b1a88d9088": {
       "displayName": "DispatcherService/DispatcherLambda/Code",
       "source": {
-        "path": "/workspaces/hello-world-monorepo",
+        "path": "asset.8edf88c0862c4339552439cec55cd4ffe1fa5924a3a3603d3bf024b1a88d9088",
         "packaging": "zip"
       },
       "destinations": {
-        "111111111111-us-east-1-8a8bc68e": {
+        "111111111111-us-east-1-8b5742b5": {
           "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
-          "objectKey": "698d09c9bb8e4a12949db7ba33cc90e0a61f3b3c549f8df7031f47456f394360.zip",
+          "objectKey": "8edf88c0862c4339552439cec55cd4ffe1fa5924a3a3603d3bf024b1a88d9088.zip",
           "region": "us-east-1",
           "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
         }
       }
     },
-    "57f49b348d2db439c3fed8369dfa94d57aa8a1c5c3f4c4e2ee17b4f08803eb3e": {
+    "a177ed8b7de1ee51050dd227b44a02553085da614f2026489e661d07f5ee5956": {
       "displayName": "swordworld-staging-app Template",
       "source": {
         "path": "swordworld-staging-app.template.json",
         "packaging": "file"
       },
       "destinations": {
-        "111111111111-us-east-1-b229f9f0": {
+        "111111111111-us-east-1-286b679e": {
           "bucketName": "cdk-hnb659fds-assets-111111111111-us-east-1",
-          "objectKey": "57f49b348d2db439c3fed8369dfa94d57aa8a1c5c3f4c4e2ee17b4f08803eb3e.json",
+          "objectKey": "a177ed8b7de1ee51050dd227b44a02553085da614f2026489e661d07f5ee5956.json",
           "region": "us-east-1",
           "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-file-publishing-role-111111111111-us-east-1"
         }

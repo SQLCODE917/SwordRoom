@@ -110,12 +110,15 @@ importers:
         specifier: workspace:*
         version: link:../../shared
     devDependencies:
+      '@types/node':
+        specifier: ^20.10.6
+        version: 20.19.33
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
       vitest:
         specifier: ^1.1.0
-        version: 1.6.1(@types/node@24.12.0)(jsdom@24.1.3)
+        version: 1.6.1(@types/node@20.19.33)(jsdom@24.1.3)
 
   packages/services/shared:
     dependencies:
@@ -151,12 +154,15 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@types/node':
+        specifier: ^20.10.6
+        version: 20.19.33
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
       vitest:
         specifier: ^1.1.0
-        version: 1.6.1(@types/node@24.12.0)(jsdom@24.1.3)
+        version: 1.6.1(@types/node@20.19.33)(jsdom@24.1.3)
 
   packages/test-e2e:
     dependencies:
@@ -176,6 +182,9 @@ importers:
       '@aws-sdk/client-dynamodb':
         specifier: ^3.1000.0
         version: 3.1000.0
+      '@types/node':
+        specifier: ^20.10.6
+        version: 20.19.33
       dynalite:
         specifier: ^4.0.0
         version: 4.0.0
@@ -184,7 +193,7 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^1.1.0
-        version: 1.6.1(@types/node@24.12.0)(jsdom@24.1.3)
+        version: 1.6.1(@types/node@20.19.33)(jsdom@24.1.3)
 
   packages/web:
     dependencies:

@@ -10,6 +10,6 @@
     "sourceMap": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
+  "exclude": ["src/**/*.test.ts", "node_modules", "dist"],
   "references": [{ "path": "../../engine" }, { "path": "../../shared" }, { "path": "../shared" }]
 }

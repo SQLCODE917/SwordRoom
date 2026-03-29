@@ -49,6 +49,7 @@
     "dev": "tsc --watch"
   },
   "devDependencies": {
+    "@types/node": "^20.10.6",
     "typescript": "^5.3.3",
     "vitest": "^1.1.0"
   },
