@@ -15,6 +15,7 @@ Rules:
 - Keep AWS human operator access on IAM Identity Center with MFA, not Cognito.
 - Keep CI/CD access on GitHub OIDC assume-role flows, not human credentials or long-lived AWS keys.
 - Use stack outputs to build and publish the SPA after infrastructure deploys instead of hardcoding API or OIDC endpoints in workflows.
+- Use [scripts/aws/bootstrap-first-deploy.sh](/workspaces/hello-world-monorepo/scripts/aws/bootstrap-first-deploy.sh) for idempotent first-time AWS-side bootstrap of the GitHub OIDC provider, deploy roles, CDK bootstrap stack, and GitHub environment manifest.
 
 Bootstrap path for initial platform admins:
 - Create initial 'ADMIN' entitlements directly in DynamoDB only after the approved subject list exists and a change record is open.
