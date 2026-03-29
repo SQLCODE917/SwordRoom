@@ -330,6 +330,53 @@ ensure_role() {
   rm -f "$trust_doc"
 }
 
+write_web_publish_policy_document() {
+  local env_name="$1"
+  local output_file="$2"
+  local bucket_prefix="${APP_NAME}-${env_name}-app-websitewebbucket"
+
+  jq -n \
+    --arg bucket_arn "arn:aws:s3:::${bucket_prefix}*" \
+    --arg object_arn "arn:aws:s3:::${bucket_prefix}*/*" \
+    --arg distribution_arn "arn:aws:cloudfront::${AWS_ACCOUNT_ID}:distribution/*" \
+    '{
+      Version: "2012-10-17",
+      Statement: [
+        {
+          Sid: "PublishWebBucket",
+          Effect: "Allow",
+          Action: [
+            "s3:ListBucket",
+            "s3:GetBucketLocation",
+            "s3:ListBucketMultipartUploads"
+          ],
+          Resource: $bucket_arn
+        },
+        {
+          Sid: "ManageWebBucketObjects",
+          Effect: "Allow",
+          Action: [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject",
+            "s3:AbortMultipartUpload",
+            "s3:ListMultipartUploadParts"
+          ],
+          Resource: $object_arn
+        },
+        {
+          Sid: "InvalidateWebDistribution",
+          Effect: "Allow",
+          Action: [
+            "cloudfront:CreateInvalidation",
+            "cloudfront:GetDistribution"
+          ],
+          Resource: $distribution_arn
+        }
+      ]
+    }' > "$output_file"
+}
+
 write_shared_policy_document() {
   local output_file="$1"
   jq -n \
@@ -449,6 +496,18 @@ ensure_role_policy_attachment() {
 
   log "Attaching ${policy_arn} to ${role_name}"
   run aws iam attach-role-policy --role-name "$role_name" --policy-arn "$policy_arn" >/dev/null
+}
+
+ensure_inline_role_policy() {
+  local role_name="$1"
+  local policy_name="$2"
+  local policy_doc="$3"
+
+  log "Ensuring inline role policy ${policy_name} on ${role_name}"
+  run aws iam put-role-policy \
+    --role-name "$role_name" \
+    --policy-name "$policy_name" \
+    --policy-document "file://${policy_doc}" >/dev/null
 }
 
 run_cdk_bootstrap() {
@@ -578,11 +637,25 @@ main() {
   fi
 
   if (( SKIP_ROLES == 0 )); then
+    local staging_web_publish_doc
+    local production_web_publish_doc
+    staging_web_publish_doc="$(mktemp)"
+    production_web_publish_doc="$(mktemp)"
+    trap 'rm -f "$staging_web_publish_doc" "$production_web_publish_doc"' RETURN
+
     ensure_role "$STAGING_ROLE_NAME" "$STAGING_ENVIRONMENT" "$oidc_provider_arn"
     ensure_role "$PRODUCTION_ROLE_NAME" "$PRODUCTION_ENVIRONMENT" "$oidc_provider_arn"
     shared_policy_arn="$(ensure_shared_policy)"
     ensure_role_policy_attachment "$STAGING_ROLE_NAME" "$shared_policy_arn"
     ensure_role_policy_attachment "$PRODUCTION_ROLE_NAME" "$shared_policy_arn"
+
+    write_web_publish_policy_document "$STAGING_ENVIRONMENT" "$staging_web_publish_doc"
+    write_web_publish_policy_document "$PRODUCTION_ENVIRONMENT" "$production_web_publish_doc"
+    ensure_inline_role_policy "$STAGING_ROLE_NAME" "${APP_NAME}-github-web-publish" "$staging_web_publish_doc"
+    ensure_inline_role_policy "$PRODUCTION_ROLE_NAME" "${APP_NAME}-github-web-publish" "$production_web_publish_doc"
+
+    trap - RETURN
+    rm -f "$staging_web_publish_doc" "$production_web_publish_doc"
   fi
 
   if (( SKIP_CDK_BOOTSTRAP == 0 )); then
