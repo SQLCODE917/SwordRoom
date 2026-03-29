@@ -22,6 +22,7 @@ jobs:
       AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       AWS_REGION: ${{ vars.AWS_REGION }}
       DEPLOY_ENV: staging
+      CDK_OUTPUTS_FILE: ${{ github.workspace }}/cdk-outputs.json
       WEB_DOMAIN_NAME: ${{ vars.WEB_DOMAIN_NAME }}
       COGNITO_DOMAIN_PREFIX: ${{ vars.COGNITO_DOMAIN_PREFIX }}
       CERTIFICATE_ARN_US_EAST_1: ${{ vars.CERTIFICATE_ARN_US_EAST_1 }}
@@ -66,18 +67,19 @@ jobs:
           "$APP_NAME-$DEPLOY_ENV-shared"
           "$APP_NAME-$DEPLOY_ENV-app"
           --require-approval never
-          --outputs-file cdk-outputs.json
+          --outputs-file "$CDK_OUTPUTS_FILE"
 
       - name: Read CDK outputs
         id: outputs
         run: |
+          test -f "$CDK_OUTPUTS_FILE"
           app_stack="$APP_NAME-$DEPLOY_ENV-app"
           shared_stack="$APP_NAME-$DEPLOY_ENV-shared"
-          echo "api_base=$(jq -r --arg stack "$app_stack" '.[$stack].ApiBaseUrl' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
-          echo "web_bucket=$(jq -r --arg stack "$app_stack" '.[$stack].WebBucketName' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
-          echo "web_distribution_id=$(jq -r --arg stack "$app_stack" '.[$stack].WebDistributionId' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
-          echo "user_pool_issuer=$(jq -r --arg stack "$shared_stack" '.[$stack].UserPoolIssuerUrl' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
-          echo "user_pool_client_id=$(jq -r --arg stack "$shared_stack" '.[$stack].UserPoolClientId' cdk-outputs.json)" >> "$GITHUB_OUTPUT"
+          echo "api_base=$(jq -r --arg stack "$app_stack" '.[$stack].ApiBaseUrl' "$CDK_OUTPUTS_FILE")" >> "$GITHUB_OUTPUT"
+          echo "web_bucket=$(jq -r --arg stack "$app_stack" '.[$stack].WebBucketName' "$CDK_OUTPUTS_FILE")" >> "$GITHUB_OUTPUT"
+          echo "web_distribution_id=$(jq -r --arg stack "$app_stack" '.[$stack].WebDistributionId' "$CDK_OUTPUTS_FILE")" >> "$GITHUB_OUTPUT"
+          echo "user_pool_issuer=$(jq -r --arg stack "$shared_stack" '.[$stack].UserPoolIssuerUrl' "$CDK_OUTPUTS_FILE")" >> "$GITHUB_OUTPUT"
+          echo "user_pool_client_id=$(jq -r --arg stack "$shared_stack" '.[$stack].UserPoolClientId' "$CDK_OUTPUTS_FILE")" >> "$GITHUB_OUTPUT"
 
       - name: Build web with deployed endpoints
         run: pnpm --filter @starter/web build
