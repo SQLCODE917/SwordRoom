@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createApiClient, type CommandEnvelopeInput, type GameItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
@@ -77,7 +78,7 @@ export function GMGamesPage() {
                   </div>
                   <div className="c-table__cell t-small">
                     <div className="l-col">
-                      <Link to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</Link>
+                      <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</ButtonLink>
                       <Link to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</Link>
                     </div>
                   </div>

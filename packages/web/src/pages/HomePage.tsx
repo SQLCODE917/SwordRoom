@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { isPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient, type CharacterItem, type GameItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { useMyProfile } from '../hooks/useMyProfile';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
@@ -106,9 +107,7 @@ export function HomePage() {
 
             <SectionTitle title="My Characters" />
             <div className="l-row">
-              <Link className="c-btn" to={`/player/${encodeURIComponent(auth.actorId)}/character/new`}>
-                New Character
-              </Link>
+              <ButtonLink to={`/player/${encodeURIComponent(auth.actorId)}/character/new`}>New Character</ButtonLink>
             </div>
             <div className="c-table" role="table" aria-label="My characters">
               <div className="c-table__head c-table__row" role="row">
@@ -130,9 +129,7 @@ export function HomePage() {
                         <Link to={getCharacterSheetPath(character)}>
                           Sheet
                         </Link>
-                        <Link to={getCharacterEditPath(character)}>
-                          Edit
-                        </Link>
+                        <ButtonLink to={getCharacterEditPath(character)}>Edit</ButtonLink>
                       </div>
                     </div>
                   </div>
@@ -186,7 +183,7 @@ function MyGamesTable(input: { games: GameItem[]; loading: boolean; emptyText: s
             <div className="c-table__cell t-small">{game.visibility}</div>
             <div className="c-table__cell t-small">
               <div className="l-row">
-                <Link to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</Link>
+                <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</ButtonLink>
                 <Link to="/me/inbox">Player Inbox</Link>
                 {input.gmGameIds.has(game.gameId) ? (
                   <Link to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</Link>
@@ -233,7 +230,7 @@ export function PublicGamesTable(input: {
                   <Link to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</Link>
                 ) : null}
                 {!input.joinedGameIds.has(game.gameId) ? (
-                  <Link to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>Apply to Join</Link>
+                  <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>Apply to Join</ButtonLink>
                 ) : null}
               </div>
             </div>

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { createApiClient } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { completeOidcLoginFromCallback } from '../auth/OidcAuthProvider';
+import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
@@ -67,12 +68,8 @@ export function AuthCallbackPage() {
         </div>
 
         <div className="l-row">
-          <Link className="c-btn" to="/login">
-            Back to Login
-          </Link>
-          <Link className="c-btn" to="/">
-            Home
-          </Link>
+          <ButtonLink to="/login">Back to Login</ButtonLink>
+          <ButtonLink to="/">Home</ButtonLink>
         </div>
       </Panel>
     </div>

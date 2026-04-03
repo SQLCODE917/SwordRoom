@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { loginOrRegisterDevAccount, logoutDevSession, registerDevAccount } from '../auth/DevAuthProvider';
 import {
@@ -7,6 +7,7 @@ import {
   beginOidcLogout,
   beginOidcRegistration,
 } from '../auth/OidcAuthProvider';
+import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
@@ -48,9 +49,7 @@ export function LoginPage() {
               </button>
             </div>
             <div className="l-row">
-              <Link className="c-btn" to="/">
-                Home
-              </Link>
+              <ButtonLink to="/">Home</ButtonLink>
             </div>
           </div>
         ) : (
@@ -89,9 +88,7 @@ export function LoginPage() {
             </div>
             {auth.isAuthenticated ? (
               <div className="l-row">
-                <Link className="c-btn" to="/">
-                  Home
-                </Link>
+                <ButtonLink to="/">Home</ButtonLink>
               </div>
             ) : null}
           </div>

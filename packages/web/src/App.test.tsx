@@ -11,14 +11,14 @@ describe('App shell routes', () => {
 
   it('redirects unauthenticated users to the account page', () => {
     render(<App />);
-    expect(screen.getByRole('heading', { name: 'Character Creation Vertical Slice' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Sword Room Online' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Account' })).toBeTruthy();
   });
 
-  it('renders home page when a dev session exists', () => {
+  it('renders home page when a dev session exists', async () => {
     writeDevSession({ username: 'player-aaa', actorId: 'player-aaa' });
     window.history.pushState({}, '', '/');
     render(<App />);
-    expect(screen.getByRole('heading', { name: 'Home' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
   });
 });
