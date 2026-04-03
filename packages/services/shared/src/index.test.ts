@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { commandLogKeys, gameStateKeys, loadVerticalSliceFixturesText } from './index.js';
+import { loadVerticalSliceFixturesYamlText } from '@starter/shared/fixtures';
+import { commandLogKeys, gameStateKeys } from './index.js';
 
 describe('services/shared', () => {
   it('re-exports deterministic db key helpers from @starter/shared', () => {
@@ -12,7 +13,7 @@ describe('services/shared', () => {
   });
 
   it('loads source-of-truth fixtures', () => {
-    const text = loadVerticalSliceFixturesText();
+    const text = loadVerticalSliceFixturesYamlText();
     expect(text).toContain('command_sequences_for_integration:');
     expect(text).toContain('e2e.good.human_rune_master_sequence');
   });

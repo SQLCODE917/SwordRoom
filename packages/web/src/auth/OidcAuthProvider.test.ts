@@ -31,6 +31,23 @@ const accessToken = [
   'signature',
 ].join('.');
 
+const idToken = [
+  'header',
+  btoa(
+    JSON.stringify({
+      sub: 'player-oidc',
+      email: 'player@example.com',
+      email_verified: true,
+      name: 'Player Oidc',
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    })
+  )
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, ''),
+  'signature',
+].join('.');
+
 describe('OidcAuthProvider', () => {
   beforeEach(() => {
     resetOidcAuthTestState();
@@ -48,7 +65,7 @@ describe('OidcAuthProvider', () => {
         }
         if (url === discoveryDocument.token_endpoint) {
           expect(init?.method).toBe('POST');
-          return new Response(JSON.stringify({ access_token: accessToken, expires_in: 3600 }), {
+          return new Response(JSON.stringify({ access_token: accessToken, id_token: idToken, expires_in: 3600 }), {
             status: 200,
             headers: { 'content-type': 'application/json' },
           });
@@ -90,12 +107,12 @@ describe('OidcAuthProvider', () => {
     expect(returnToPath).toBe('/gm/games');
     expect(auth.isAuthenticated).toBe(true);
     expect(auth.actorId).toBe('player-oidc');
-    expect((await auth.withAuthHeaders()).get('Authorization')).toBe(`Bearer ${accessToken}`);
+    expect((await auth.withAuthHeaders()).get('Authorization')).toBe(`Bearer ${idToken}`);
   });
 
   it('drops expired in-memory sessions without using localStorage', async () => {
     const auth = createOidcAuthProvider(env);
-    const expiredToken = [
+    const expiredIdToken = [
       'header',
       btoa(JSON.stringify({ sub: 'player-oidc', exp: Math.floor(Date.now() / 1000) - 5 }))
         .replace(/\+/g, '-')
@@ -116,7 +133,7 @@ describe('OidcAuthProvider', () => {
         if (url === env.VITE_OIDC_DISCOVERY_URL) {
           return new Response(JSON.stringify(discoveryDocument), { status: 200, headers: { 'content-type': 'application/json' } });
         }
-        return new Response(JSON.stringify({ access_token: expiredToken, expires_in: 1 }), {
+        return new Response(JSON.stringify({ access_token: accessToken, id_token: expiredIdToken, expires_in: 1 }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         });
@@ -127,6 +144,31 @@ describe('OidcAuthProvider', () => {
 
     expect(auth.isAuthenticated).toBe(false);
     expect((await auth.withAuthHeaders()).get('Authorization')).toBeNull();
+  });
+
+  it('fails the callback when the token response omits id_token', async () => {
+    window.sessionStorage.setItem(
+      'sw_oidc_pending_login',
+      JSON.stringify({ state: 'state-3', codeVerifier: 'verifier', returnToPath: '/' })
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        if (url === env.VITE_OIDC_DISCOVERY_URL) {
+          return new Response(JSON.stringify(discoveryDocument), { status: 200, headers: { 'content-type': 'application/json' } });
+        }
+        return new Response(JSON.stringify({ access_token: accessToken, expires_in: 3600 }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      })
+    );
+
+    await expect(
+      completeOidcLoginFromCallback('https://app.example/auth/callback?code=abc123&state=state-3', env)
+    ).rejects.toThrow(/missing id_token/);
   });
 
   it('clears session and redirects through the discovered logout endpoint', async () => {

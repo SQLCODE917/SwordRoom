@@ -28,13 +28,14 @@ interface PendingLogin {
 
 interface TokenResponse {
   access_token?: string;
+  id_token?: string;
   expires_in?: number;
   error?: string;
   error_description?: string;
 }
 
 interface OidcSession {
-  accessToken: string;
+  idToken: string;
   actorId: string;
   expiresAtEpochMs: number;
 }
@@ -62,7 +63,7 @@ export function createOidcAuthProvider(env = import.meta.env as OidcEnv): AuthPr
       const merged = new Headers(headers ?? {});
       const session = readValidSession();
       if (session) {
-        merged.set('Authorization', `Bearer ${session.accessToken}`);
+        merged.set('Authorization', `Bearer ${session.idToken}`);
       }
       return merged;
     },
@@ -186,11 +187,11 @@ export async function completeOidcLoginFromCallback(
   }
 
   const token = (await response.json()) as TokenResponse;
-  if (!token.access_token) {
-    throw new Error('OIDC token response missing access_token.');
+  if (!token.id_token) {
+    throw new Error('OIDC token response missing id_token.');
   }
 
-  currentSession = createSession(token.access_token, token.expires_in);
+  currentSession = createSession(token.id_token, token.expires_in);
   window.sessionStorage.removeItem(OIDC_PENDING_KEY);
   notifyAuthStateChanged();
 
@@ -245,8 +246,8 @@ async function loadDiscovery(discoveryUrl: string): Promise<OidcDiscoveryDocumen
   return discovery;
 }
 
-function createSession(accessToken: string, expiresIn?: number): OidcSession {
-  const payload = decodeJwtPayload(accessToken);
+function createSession(idToken: string, expiresIn?: number): OidcSession {
+  const payload = decodeJwtPayload(idToken);
   const actorId = typeof payload.sub === 'string' && payload.sub.trim() !== '' ? payload.sub.trim() : 'oidc-user';
   const expiresAtEpochMs =
     typeof payload.exp === 'number'
@@ -254,7 +255,7 @@ function createSession(accessToken: string, expiresIn?: number): OidcSession {
       : Date.now() + (typeof expiresIn === 'number' && expiresIn > 0 ? expiresIn : 3600) * 1000;
 
   return {
-    accessToken,
+    idToken,
     actorId,
     expiresAtEpochMs,
   };

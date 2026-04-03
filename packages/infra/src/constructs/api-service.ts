@@ -69,6 +69,7 @@ export class ApiService extends Construct {
       integrationMethod: "POST",
       payloadFormatVersion: "2.0",
     });
+    const integrationTarget = `integrations/${integration.ref}`;
 
     const authorizer = new apigwv2.CfnAuthorizer(this, "JwtAuthorizer", {
       apiId: this.httpApi.ref,
@@ -81,10 +82,24 @@ export class ApiService extends Construct {
       },
     });
 
+    const preflightRootRoute = new apigwv2.CfnRoute(this, "PreflightRootRoute", {
+      apiId: this.httpApi.ref,
+      routeKey: "OPTIONS /",
+      authorizationType: "NONE",
+      target: integrationTarget,
+    });
+
+    const preflightProxyRoute = new apigwv2.CfnRoute(this, "PreflightProxyRoute", {
+      apiId: this.httpApi.ref,
+      routeKey: "OPTIONS /{proxy+}",
+      authorizationType: "NONE",
+      target: integrationTarget,
+    });
+
     const rootRoute = new apigwv2.CfnRoute(this, "RootRoute", {
       apiId: this.httpApi.ref,
       routeKey: "ANY /",
-      target: `integrations/${integration.ref}`,
+      target: integrationTarget,
       authorizationType: "JWT",
       authorizerId: authorizer.ref,
     });
@@ -92,7 +107,7 @@ export class ApiService extends Construct {
     const proxyRoute = new apigwv2.CfnRoute(this, "ProxyRoute", {
       apiId: this.httpApi.ref,
       routeKey: "ANY /{proxy+}",
-      target: `integrations/${integration.ref}`,
+      target: integrationTarget,
       authorizationType: "JWT",
       authorizerId: authorizer.ref,
     });
@@ -102,6 +117,8 @@ export class ApiService extends Construct {
       stageName: "$default",
       autoDeploy: true,
     });
+    defaultStage.addDependency(preflightRootRoute);
+    defaultStage.addDependency(preflightProxyRoute);
     defaultStage.addDependency(rootRoute);
     defaultStage.addDependency(proxyRoute);
 

@@ -128,6 +128,18 @@
       "data": "ApiServiceJwtAuthorizerC52AEDBB"
     }
   ],
+  "/swordworld-staging-app/ApiService/PreflightRootRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServicePreflightRootRouteF651C2A0"
+    }
+  ],
+  "/swordworld-staging-app/ApiService/PreflightProxyRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServicePreflightProxyRoute517B3D19"
+    }
+  ],
   "/swordworld-staging-app/ApiService/RootRoute": [
     {
       "type": "aws:cdk:logicalId",

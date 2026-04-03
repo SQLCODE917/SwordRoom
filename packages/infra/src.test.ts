@@ -7,6 +7,7 @@ const HERE = fileURLToPath(new URL('.', import.meta.url));
 const TEMPLATE_PATH = resolve(HERE, 'templates/character-creation-vertical-slice.yaml');
 const DEPLOYMENT_CONTRACT_PATH = resolve(HERE, '../../docs/deployment.aws-cdk.github-actions.yaml');
 const AGENTS_PATH = resolve(HERE, 'AGENTS.md');
+const SYNTH_TEMPLATE_PATH = resolve(HERE, 'cdk.out/swordworld-staging-app.template.json');
 
 describe('infra scaffold', () => {
   it('declares core async-layer resources from contract', () => {
@@ -44,5 +45,36 @@ describe('infra scaffold', () => {
     expect(agents).toContain('GitHub Actions with AWS OIDC');
     expect(agents).toContain('server.ts');
     expect(agents).toContain('worker.ts');
+  });
+
+  it('synthesizes explicit unauthenticated preflight routes for the HTTP API', () => {
+    const template = JSON.parse(readFileSync(SYNTH_TEMPLATE_PATH, 'utf8')) as {
+      Resources?: Record<string, { Type?: string; Properties?: Record<string, unknown> }>;
+    };
+
+    const routeProperties = Object.values(template.Resources ?? {})
+      .filter((resource) => resource.Type === 'AWS::ApiGatewayV2::Route')
+      .map((resource) => resource.Properties ?? {});
+
+    expect(routeProperties).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          RouteKey: 'OPTIONS /',
+          AuthorizationType: 'NONE',
+        }),
+        expect.objectContaining({
+          RouteKey: 'OPTIONS /{proxy+}',
+          AuthorizationType: 'NONE',
+        }),
+        expect.objectContaining({
+          RouteKey: 'ANY /',
+          AuthorizationType: 'JWT',
+        }),
+        expect.objectContaining({
+          RouteKey: 'ANY /{proxy+}',
+          AuthorizationType: 'JWT',
+        }),
+      ])
+    );
   });
 });

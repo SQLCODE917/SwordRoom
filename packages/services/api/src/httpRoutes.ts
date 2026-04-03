@@ -72,7 +72,7 @@ const routeDefinitions: ApiRouteDefinition[] = [
       const response = await context.runtime.service.postCommands({
         envelope: payload.envelope as any,
         authHeader: context.req.headers.authorization,
-        bypassActorId: context.identity.actorId,
+        bypassActorId: toServiceBypassActorId(context.identity),
       });
       context.logFlow('API_POST_COMMAND_ACCEPTED', {
         requestId: context.requestId,
@@ -90,7 +90,7 @@ const routeDefinitions: ApiRouteDefinition[] = [
     handler: async (context) => {
       const profile = await context.runtime.service.readApis.syncMyProfile({
         authHeader: context.req.headers.authorization,
-        bypassActorId: context.identity.actorId,
+        bypassActorId: toServiceBypassActorId(context.identity),
       });
       context.logFlow('API_POST_ME_PROFILE_SYNC', {
         requestId: context.requestId,
@@ -142,7 +142,7 @@ const routeDefinitions: ApiRouteDefinition[] = [
         existingProfile ??
         (await context.runtime.service.readApis.syncMyProfile({
           authHeader: context.req.headers.authorization,
-          bypassActorId: context.identity.actorId,
+          bypassActorId: toServiceBypassActorId(context.identity),
         }));
       context.logFlow('API_GET_ME', {
         requestId: context.requestId,
@@ -468,6 +468,16 @@ export function listContractRoutes(): ApiRoute[] {
 }
 
 export async function dispatchApiRoute(input: ApiRouteDispatchInput): Promise<boolean> {
+  if (input.req.method === 'OPTIONS') {
+    input.logFlow('API_OPTIONS_PREFLIGHT', {
+      requestId: input.requestId,
+      path: input.url.pathname,
+    });
+    input.res.statusCode = 204;
+    input.res.end();
+    return true;
+  }
+
   const matched = matchApiRoute(input.req.method, input.url.pathname);
   if (!matched) {
     return false;
@@ -577,4 +587,8 @@ function contentTypeToExtension(contentType: string): string {
     return 'webp';
   }
   return 'jpg';
+}
+
+function toServiceBypassActorId(identity: ResolvedActorIdentity): string | undefined {
+  return identity.authMode === 'dev' ? identity.actorId : undefined;
 }

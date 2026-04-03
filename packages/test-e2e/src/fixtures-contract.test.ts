@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadVerticalSliceFixturesYamlText } from '@starter/shared';
+import { loadVerticalSliceFixturesYamlText } from '@starter/shared/fixtures';
 
 describe('e2e fixture contract checks', () => {
   it('contains integration command sequence for approval flow', () => {

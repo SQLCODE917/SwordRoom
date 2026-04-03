@@ -154,7 +154,7 @@
             {
              "Ref": "AWS::Partition"
             },
-            ":cloudfront::111111111111:distribution/",
+            ":cloudfront::922630391388:distribution/",
             {
              "Ref": "WebSiteWebDistributionCB101E38"
             }
@@ -231,6 +231,9 @@
    "Type": "AWS::CloudFront::Distribution",
    "Properties": {
     "DistributionConfig": {
+     "Aliases": [
+      "staging.swordroom.online"
+     ],
      "CustomErrorResponses": [
       {
        "ErrorCachingMinTTL": 0,
@@ -284,7 +287,12 @@
        }
       }
      ],
-     "PriceClass": "PriceClass_100"
+     "PriceClass": "PriceClass_100",
+     "ViewerCertificate": {
+      "AcmCertificateArn": "arn:aws:acm:us-east-1:922630391388:certificate/bac105a7-a7c6-4c59-b076-03fb7ef379fc",
+      "MinimumProtocolVersion": "TLSv1.2_2021",
+      "SslSupportMethod": "sni-only"
+     }
     },
     "Tags": [
      {
@@ -313,7 +321,7 @@
    "Type": "AWS::Lambda::LayerVersion",
    "Properties": {
     "Content": {
-     "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
+     "S3Bucket": "cdk-hnb659fds-assets-922630391388-us-east-1",
      "S3Key": "0cfdecad2260a3a84ad0c2d08a77e03c9d25e26c7b52f26b1e1faf97aef92f18.zip"
     },
     "Description": "/opt/awscli/aws"
@@ -335,10 +343,10 @@
      ]
     },
     "SourceBucketNames": [
-     "cdk-hnb659fds-assets-111111111111-us-east-1"
+     "cdk-hnb659fds-assets-922630391388-us-east-1"
     ],
     "SourceObjectKeys": [
-     "cfb598d72544c344c9df648604115ada70519d460d3f060d42b0b5fbe7b7006b.zip"
+     "1043bdb4c45b3c749d4d4768071dfc646e83478365899d2dd6a7300925b14cd9.zip"
     ],
     "DestinationBucketName": {
      "Ref": "WebSiteWebBucket3BA7112F"
@@ -383,7 +391,7 @@
    "Type": "AWS::Lambda::Function",
    "Properties": {
     "Code": {
-     "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
+     "S3Bucket": "cdk-hnb659fds-assets-922630391388-us-east-1",
      "S3Key": "faa95a81ae7d7373f3e1f242268f904eb748d8d0fdd306e8a6fe515a1905a7d6.zip"
     },
     "Timeout": 900,
@@ -491,7 +499,7 @@
            {
             "Ref": "AWS::Partition"
            },
-           ":s3:::cdk-hnb659fds-assets-111111111111-us-east-1"
+           ":s3:::cdk-hnb659fds-assets-922630391388-us-east-1"
           ]
          ]
         },
@@ -503,7 +511,7 @@
            {
             "Ref": "AWS::Partition"
            },
-           ":s3:::cdk-hnb659fds-assets-111111111111-us-east-1/*"
+           ":s3:::cdk-hnb659fds-assets-922630391388-us-east-1/*"
           ]
          ]
         }
@@ -564,7 +572,7 @@
    "Type": "AWS::Lambda::Function",
    "Properties": {
     "Code": {
-     "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
+     "S3Bucket": "cdk-hnb659fds-assets-922630391388-us-east-1",
      "S3Key": "3423a042b818e31c1e34a19d6689ab2e5f9b70fcbe9e71df66f241b20a200bd9.zip"
     },
     "Environment": {
@@ -804,8 +812,8 @@
      "arm64"
     ],
     "Code": {
-     "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
-     "S3Key": "b57cd1da54d1b455363413d4b335eca44e1f03627fe2e769745f559be0db35d6.zip"
+     "S3Bucket": "cdk-hnb659fds-assets-922630391388-us-east-1",
+     "S3Key": "b5d50b84a61d01815666f832789cbcf8e0d35a86c2f242189985ed4837228729.zip"
     },
     "Environment": {
      "Variables": {
@@ -865,7 +873,7 @@
    ],
    "Metadata": {
     "aws:cdk:path": "swordworld-staging-app/ApiService/ApiLambda/Resource",
-    "aws:asset:path": "asset.b57cd1da54d1b455363413d4b335eca44e1f03627fe2e769745f559be0db35d6",
+    "aws:asset:path": "asset.b5d50b84a61d01815666f832789cbcf8e0d35a86c2f242189985ed4837228729",
     "aws:asset:is-bundled": true,
     "aws:asset:property": "Code"
    }
@@ -915,7 +923,7 @@
        {
         "Ref": "AWS::Partition"
        },
-       ":execute-api:us-east-1:111111111111:",
+       ":execute-api:us-east-1:922630391388:",
        {
         "Ref": "ApiServiceHttpApi59435BF9"
        },
@@ -943,7 +951,7 @@
       "OPTIONS"
      ],
      "AllowOrigins": [
-      "https://swordworld-staging.example.com"
+      "https://staging.swordroom.online"
      ],
      "MaxAge": 3600
     },
@@ -1004,6 +1012,54 @@
    },
    "Metadata": {
     "aws:cdk:path": "swordworld-staging-app/ApiService/JwtAuthorizer"
+   }
+  },
+  "ApiServicePreflightRootRouteF651C2A0": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "ApiServiceHttpApi59435BF9"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "OPTIONS /",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "ApiServiceLambdaIntegration96FA2BAC"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "swordworld-staging-app/ApiService/PreflightRootRoute"
+   }
+  },
+  "ApiServicePreflightProxyRoute517B3D19": {
+   "Type": "AWS::ApiGatewayV2::Route",
+   "Properties": {
+    "ApiId": {
+     "Ref": "ApiServiceHttpApi59435BF9"
+    },
+    "AuthorizationType": "NONE",
+    "RouteKey": "OPTIONS /{proxy+}",
+    "Target": {
+     "Fn::Join": [
+      "",
+      [
+       "integrations/",
+       {
+        "Ref": "ApiServiceLambdaIntegration96FA2BAC"
+       }
+      ]
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "swordworld-staging-app/ApiService/PreflightProxyRoute"
    }
   },
   "ApiServiceRootRoute7D3AFC17": {
@@ -1076,6 +1132,8 @@
     }
    },
    "DependsOn": [
+    "ApiServicePreflightProxyRoute517B3D19",
+    "ApiServicePreflightRootRouteF651C2A0",
     "ApiServiceProxyRouteC20F1F2E",
     "ApiServiceRootRoute7D3AFC17"
    ],
@@ -1169,7 +1227,7 @@
     "Runtime": "nodejs22.x",
     "Timeout": 900,
     "Code": {
-     "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
+     "S3Bucket": "cdk-hnb659fds-assets-922630391388-us-east-1",
      "S3Key": "2819175352ad1ce0dae768e83fc328fb70fb5f10b4a8ff0ccbcb791f02b0716d.zip"
     },
     "Role": {
@@ -1363,8 +1421,8 @@
      "arm64"
     ],
     "Code": {
-     "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
-     "S3Key": "8edf88c0862c4339552439cec55cd4ffe1fa5924a3a3603d3bf024b1a88d9088.zip"
+     "S3Bucket": "cdk-hnb659fds-assets-922630391388-us-east-1",
+     "S3Key": "846d2e2b4cd264584951f68254bc95021909cf61e54f1499bcdb97280b54fa73.zip"
     },
     "Environment": {
      "Variables": {
@@ -1414,7 +1472,7 @@
    ],
    "Metadata": {
     "aws:cdk:path": "swordworld-staging-app/DispatcherService/DispatcherLambda/Resource",
-    "aws:asset:path": "asset.8edf88c0862c4339552439cec55cd4ffe1fa5924a3a3603d3bf024b1a88d9088",
+    "aws:asset:path": "asset.846d2e2b4cd264584951f68254bc95021909cf61e54f1499bcdb97280b54fa73",
     "aws:asset:is-bundled": true,
     "aws:asset:property": "Code"
    }
@@ -1651,20 +1709,7 @@
    }
   },
   "WebUrl": {
-   "Value": {
-    "Fn::Join": [
-     "",
-     [
-      "https://",
-      {
-       "Fn::GetAtt": [
-        "WebSiteWebDistributionCB101E38",
-        "DomainName"
-       ]
-      }
-     ]
-    ]
-   }
+   "Value": "https://staging.swordroom.online"
   }
  },
  "Parameters": {

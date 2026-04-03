@@ -11,7 +11,7 @@
     },
     "swordworld-staging-shared": {
       "type": "aws:cloudformation:stack",
-      "environment": "aws://111111111111/us-east-1",
+      "environment": "aws://922630391388/us-east-1",
       "properties": {
         "templateFile": "swordworld-staging-shared.template.json",
         "terminationProtection": false,
@@ -22,16 +22,16 @@
           "SecurityBoundary": "idm-secure-aws"
         },
         "validateOnSynth": false,
-        "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-deploy-role-111111111111-us-east-1",
-        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-cfn-exec-role-111111111111-us-east-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-111111111111-us-east-1/e92c68a7c2eb68932de001b027a79fa451a2cf1ccb02ae0435c99eafdb7883dc.json",
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-deploy-role-922630391388-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-cfn-exec-role-922630391388-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-922630391388-us-east-1/3154e17776807e57d9cc9ad49b85b9473b88281bdd5a95168dba896bace0db0e.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
           "swordworld-staging-shared.assets"
         ],
         "lookupRole": {
-          "arn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-lookup-role-111111111111-us-east-1",
+          "arn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-lookup-role-922630391388-us-east-1",
           "requiresBootstrapStackVersion": 8,
           "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
         }
@@ -52,7 +52,7 @@
     },
     "swordworld-staging-app": {
       "type": "aws:cloudformation:stack",
-      "environment": "aws://111111111111/us-east-1",
+      "environment": "aws://922630391388/us-east-1",
       "properties": {
         "templateFile": "swordworld-staging-app.template.json",
         "terminationProtection": false,
@@ -63,16 +63,16 @@
           "SecurityBoundary": "idm-secure-aws"
         },
         "validateOnSynth": false,
-        "assumeRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-deploy-role-111111111111-us-east-1",
-        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-cfn-exec-role-111111111111-us-east-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-111111111111-us-east-1/a177ed8b7de1ee51050dd227b44a02553085da614f2026489e661d07f5ee5956.json",
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-deploy-role-922630391388-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-cfn-exec-role-922630391388-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-922630391388-us-east-1/19bf4ce2d195d47cfeef53b2164425fa4f45b578125c5e0ad2c74dabfb530b57.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
           "swordworld-staging-app.assets"
         ],
         "lookupRole": {
-          "arn": "arn:${AWS::Partition}:iam::111111111111:role/cdk-hnb659fds-lookup-role-111111111111-us-east-1",
+          "arn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-lookup-role-922630391388-us-east-1",
           "requiresBootstrapStackVersion": 8,
           "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
         }

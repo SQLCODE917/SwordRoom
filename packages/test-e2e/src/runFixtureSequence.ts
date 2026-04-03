@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { loadVerticalSliceFixtures } from '@starter/shared';
+import { loadVerticalSliceFixtures } from '@starter/shared/fixtures';
 
 const sequenceId = process.argv[2];
 if (!sequenceId) {

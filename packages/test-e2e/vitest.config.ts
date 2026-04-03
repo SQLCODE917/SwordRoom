@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
+      '@starter/shared/fixtures': resolve(__dirname, '../shared/src/fixtures/index.ts'),
       '@starter/shared/rules/characterCreation': resolve(__dirname, '../shared/src/rules/characterCreation.ts'),
       '@starter/shared/rules/equipmentRoster': resolve(__dirname, '../shared/src/rules/equipmentRoster.ts'),
       '@starter/shared': resolve(__dirname, '../shared/src/index.ts'),

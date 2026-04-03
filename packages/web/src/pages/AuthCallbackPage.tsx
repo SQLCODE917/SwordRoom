@@ -8,7 +8,7 @@ import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 export function AuthCallbackPage() {
   const auth = useAuthProvider();
-  const api = useMemo(() => createApiClient({ auth }), [auth]);
+  const authMode = auth.mode;
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isCompleting, setIsCompleting] = useState(true);
@@ -16,16 +16,17 @@ export function AuthCallbackPage() {
 
   useEffect(() => {
     let cancelled = false;
+    const api = createApiClient({ auth });
 
     const complete = async () => {
-      if (auth.mode !== 'oidc') {
+      if (authMode !== 'oidc') {
         setIsCompleting(false);
         navigate('/', { replace: true });
         return;
       }
 
       logWebFlow('WEB_AUTH_CALLBACK_START', {
-        authMode: auth.mode,
+        authMode,
       });
       try {
         const returnToPath = await completeOidcLoginFromCallback(window.location.href);
@@ -34,7 +35,7 @@ export function AuthCallbackPage() {
           return;
         }
         logWebFlow('WEB_AUTH_CALLBACK_OK', {
-          authMode: auth.mode,
+          authMode,
           returnToPath,
         });
         navigate(returnToPath, { replace: true });
@@ -45,7 +46,7 @@ export function AuthCallbackPage() {
         setError(callbackError instanceof Error ? callbackError.message : String(callbackError));
         setIsCompleting(false);
         logWebFlow('WEB_AUTH_CALLBACK_FAILED', {
-          authMode: auth.mode,
+          authMode,
           ...summarizeError(callbackError),
         });
       }
@@ -56,7 +57,7 @@ export function AuthCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [api, auth.mode, navigate]);
+  }, [authMode, navigate]);
 
   return (
     <div className="l-page">

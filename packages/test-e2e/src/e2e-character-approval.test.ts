@@ -14,7 +14,7 @@ import {
 import { createApiService } from '@starter/services-api';
 import { createDispatcher } from '@starter/services-dispatcher';
 import { createDbAccess, createDynamoDbDocumentClient, InMemoryFifoQueue } from '@starter/services-shared';
-import { loadVerticalSliceFixtures } from '@starter/shared';
+import { loadVerticalSliceFixtures } from '@starter/shared/fixtures';
 
 const RUN_LOCAL_DDB_TESTS = process.env.RUN_LOCAL_DDB_TESTS === '1';
 const maybeDescribe = RUN_LOCAL_DDB_TESTS ? describe : describe.skip;
