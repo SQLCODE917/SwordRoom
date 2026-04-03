@@ -96,6 +96,8 @@ export function useCommandWorkflow(): {
   const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     return () => {
       mountedRef.current = false;
       runIdRef.current += 1;

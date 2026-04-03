@@ -1,4 +1,4 @@
-import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand, S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createDbAccess, createDynamoDbDocumentClient, type CommandQueue } from '@starter/services-shared';
@@ -38,18 +38,17 @@ function awsConfigForEndpoint(endpoint: string | undefined) {
 }
 
 function s3ClientConfig(endpoint: string | undefined) {
-  const config: {
-    region: string;
-    endpoint?: string;
-    forcePathStyle?: boolean;
-    credentials?: { accessKeyId: string; secretAccessKey: string };
-  } = {
+  const config: S3ClientConfig = {
     region: region(),
   };
   if (hasEndpointOverride(endpoint)) {
     config.endpoint = endpoint;
     config.forcePathStyle = true;
     config.credentials = localCredentials();
+    // Local S3-compatible endpoints such as LocalStack can reject presigned PUT URLs
+    // that include optional flexible checksum query params.
+    config.requestChecksumCalculation = 'WHEN_REQUIRED';
+    config.responseChecksumValidation = 'WHEN_REQUIRED';
   }
   return config;
 }
