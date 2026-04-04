@@ -16,7 +16,7 @@ vi.mock('../hooks/useMyProfile', () => ({
 }));
 
 describe('AppShell', () => {
-  it('disables GM nav when the actor has no GM games', () => {
+  it('keeps GM Games available for players and disables GM Inbox when they have no GM games', () => {
     useMyProfileMock.mockReturnValue({
       profile: { playerId: 'player-aaa', roles: ['PLAYER'] },
       loading: false,
@@ -33,7 +33,7 @@ describe('AppShell', () => {
       isAuthenticated: true,
     });
 
-    expect(screen.getByText('GM Games').getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
     expect(screen.getByText('GM Inbox').getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByText('Admin').getAttribute('aria-disabled')).toBe('true');
   });

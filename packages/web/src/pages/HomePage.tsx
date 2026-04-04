@@ -140,6 +140,9 @@ export function HomePage() {
 
           <div className="l-col l-grow">
             <SectionTitle title="My Games" />
+            <div className="l-row">
+              <ButtonLink to="/gm/games">Create Game</ButtonLink>
+            </div>
             <MyGamesTable games={dashboard.myGames} loading={loading} emptyText="You are not in any games yet." gmGameIds={gmGameIds} />
 
             <SectionTitle title="Public Games" />

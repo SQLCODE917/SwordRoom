@@ -51,7 +51,7 @@ export default function App() {
             <Route path="/me/inbox" element={<RequireAuthRoute><PlayerInboxPage /></RequireAuthRoute>} />
             <Route
               path="/gm/games"
-              element={<RequireAuthRoute><RequireRoleRoute allowedRoles={['GM', 'ADMIN']}><GMGamesPage /></RequireRoleRoute></RequireAuthRoute>}
+              element={<RequireAuthRoute><GMGamesPage /></RequireAuthRoute>}
             />
             <Route
               path="/admin"

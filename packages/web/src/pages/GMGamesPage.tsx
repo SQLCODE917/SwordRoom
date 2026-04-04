@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createApiClient, type CommandEnvelopeInput, type GameItem } from '../api/ApiClient';
-import { useAuthProvider } from '../auth/AuthProvider';
+import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
@@ -150,6 +150,8 @@ export function GMGamesPage() {
         },
       } satisfies CommandEnvelopeInput<'CreateGame'>);
       setCreateName('');
+      // Creating a first game changes the actor's effective GM capabilities.
+      notifyAuthStateChanged();
       await refreshGames();
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));

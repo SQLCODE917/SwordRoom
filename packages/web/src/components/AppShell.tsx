@@ -9,14 +9,11 @@ export function AppShell({ children }: PropsWithChildren) {
   const { profile, loading: profileLoading } = useMyProfile();
   const { games: gmGames, loading: gmGamesLoading } = useGmGames();
   const roles = new Set(profile?.roles ?? []);
-  const canOpenGmPages =
-    auth.isAuthenticated &&
-    !profileLoading &&
-    (roles.has('GM') || roles.has('ADMIN'));
+  const canOpenGmGames = auth.isAuthenticated;
   const canOpenAdmin =
     auth.isAuthenticated && !profileLoading && roles.has('ADMIN');
   const firstGmGameId = gmGames[0]?.gameId ?? null;
-  const gmInboxDisabled = !canOpenGmPages || gmGamesLoading || !firstGmGameId;
+  const gmInboxDisabled = !auth.isAuthenticated || gmGamesLoading || !firstGmGameId;
 
   return (
     <div className="c-shell l-shell">
@@ -28,7 +25,7 @@ export function AppShell({ children }: PropsWithChildren) {
         <nav className="l-row" aria-label="Primary">
           <AppShellNavButton label="Home" to="/" end />
           <AppShellNavButton label="Player Inbox" to="/me/inbox" />
-          <AppShellNavButton label="GM Games" to="/gm/games" disabled={!canOpenGmPages} />
+          <AppShellNavButton label="GM Games" to="/gm/games" disabled={!canOpenGmGames} />
           <AppShellNavButton
             label="GM Inbox"
             to={firstGmGameId ? `/gm/${encodeURIComponent(firstGmGameId)}/inbox` : undefined}
