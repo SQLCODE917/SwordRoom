@@ -783,9 +783,9 @@ function CharacterWizardPageContent({
             <span className="t-small">Autofill uses fixture good.human_rune_master_sorcerer_starter.</span>
           </div>
           <button
-            className={`c-btn ${isExecutingCommand || !import.meta.env.DEV ? 'is-disabled' : ''}`.trim()}
+            className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
             type="button"
-            disabled={isExecutingCommand || !import.meta.env.DEV}
+            disabled={isExecutingCommand}
             onClick={() => {
               logWebFlow('WEB_CHARACTER_WIZARD_AUTOFILL_APPLIED', {
                 gameId: state.gameId,
