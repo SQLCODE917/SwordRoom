@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { computeAbilityBonuses, computeAbilityScores } from '@starter/shared/rules/characterCreation';
 import { toPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient, type CharacterItem, type CommandEnvelopeInput } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { ImageBox } from '../components/ImageBox';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { Panel } from '../components/Panel';
 import { SheetTabs, type SheetTabItem } from '../components/SheetTabs';
 import { StatBox } from '../components/StatBox';
 import { TableLite, type TableLiteColumn } from '../components/TableLite';
+import { useGameActorContext } from '../hooks/useGameActorContext';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 
 type StatKey = 'dex' | 'agi' | 'int' | 'str' | 'lf' | 'mp';
@@ -146,10 +148,12 @@ const emptyCombatRows = [
 export function CharacterSheetPage() {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
+  const navigate = useNavigate();
   const params = useParams<{ gameId?: string; playerId?: string; characterId: string }>();
   const playerId = params.playerId ?? null;
   const gameId = params.gameId ?? (playerId ? toPlayerCharacterLibraryGameId(playerId) : 'game-1');
   const characterId = params.characterId ?? 'char-human-1';
+  const { context: gameActorContext } = useGameActorContext(gameId);
 
   const [activeTabId, setActiveTabId] = useState('sheet-page-1');
   const [character, setCharacter] = useState<CharacterItem | null>(null);
@@ -157,7 +161,7 @@ export function CharacterSheetPage() {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(' ');
-  const { submitEnvelopeAndAwait } = useCommandWorkflow();
+  const { status: commandStatus, isRunning: isExecutingCommand, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   const refreshCharacter = useCallback(async () => {
     logWebFlow('WEB_CHARACTER_SHEET_REFRESH_START', { gameId, characterId });
@@ -216,6 +220,13 @@ export function CharacterSheetPage() {
 
   const view = useMemo(() => normalizeCharacter(character), [character]);
   const noticeClassName = useMemo(() => `c-note ${error ? 'c-note--error' : 'c-note--info'}`, [error]);
+  const canDeleteCharacter = Boolean(
+    !playerId &&
+      character &&
+      (character.ownerPlayerId === auth.actorId || gameActorContext.isGameMaster)
+  );
+  const deleteButtonLabel =
+    character?.ownerPlayerId === auth.actorId ? 'Leave Game' : 'Remove from Game';
 
   const subAbilityRows = useMemo(
     () =>
@@ -346,11 +357,24 @@ export function CharacterSheetPage() {
         subtitle={`Game ${gameId} / Character ${characterId}`}
         footer={<span className="t-small">Status: {view.status}</span>}
       >
+        <CommandStatusPanel status={commandStatus} />
         <div className={noticeClassName} role="note" aria-live="polite">
           <span className="t-small">
             {error ?? (loading ? 'Loading character...' : 'Read-only sheet bound to GET /games/{gameId}/characters/{characterId}.')}
           </span>
         </div>
+        {canDeleteCharacter ? (
+          <div className="l-row">
+            <button
+              className={`c-btn ${isExecutingCommand ? 'is-disabled' : ''}`.trim()}
+              type="button"
+              disabled={isExecutingCommand}
+              onClick={() => void handleDeleteCharacter()}
+            >
+              {deleteButtonLabel}
+            </button>
+          </div>
+        ) : null}
         <SheetTabs tabs={tabs} activeTabId={activeTabId} onTabChange={setActiveTabId} />
       </Panel>
     </div>
@@ -427,6 +451,29 @@ export function CharacterSheetPage() {
       });
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function handleDeleteCharacter() {
+    if (!character) {
+      return;
+    }
+
+    setError(null);
+    try {
+      await submitEnvelopeAndAwait('Delete character', {
+        commandId: createCommandId(),
+        gameId: character.gameId,
+        type: 'DeleteCharacter',
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        payload: {
+          characterId: character.characterId,
+        },
+      } satisfies CommandEnvelopeInput<'DeleteCharacter'>);
+      navigate('/', { replace: true });
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : String(deleteError));
     }
   }
 }

@@ -192,6 +192,14 @@ function toTransactWriteItem(
         },
       };
     }
+    case 'DELETE_CHARACTER': {
+      return {
+        Delete: {
+          TableName: db.tables.gameStateTableName,
+          Key: db.keyBuilders.gameState.character(effect.input.gameId, effect.input.characterId),
+        },
+      };
+    }
     case 'PUT_GAME_METADATA': {
       const key = db.keyBuilders.gameState.gameMetadata(effect.input.gameId);
       return {

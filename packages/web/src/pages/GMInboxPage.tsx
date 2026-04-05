@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { createApiClient, type CommandEnvelopeInput, type GMInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { Panel } from '../components/Panel';
@@ -74,6 +75,9 @@ export function GMInboxPage() {
                   <div className="c-table__cell t-small">{row.submittedAt}</div>
                   <div className="c-table__cell">
                     <div className="l-col">
+                      <ButtonLink to={`/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(row.characterId)}`}>
+                        Sheet
+                      </ButtonLink>
                       <div className={`c-field ${rowBusy ? 'is-disabled' : ''}`.trim()}>
                         <label className="c-field__label">GM note</label>
                         <input

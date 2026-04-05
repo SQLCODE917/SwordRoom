@@ -2,6 +2,7 @@ import type { CharacterDraft, CharacterItem } from '@starter/shared';
 import type { CommandHandler } from '../types.js';
 import {
   applyStartingAndValidate,
+  assertActorCanCreateCharacterInGame,
   computeAndValidate,
   emptyCharacterDraft,
   purchaseAndValidate,
@@ -34,6 +35,12 @@ export const saveDraftHandler: CommandHandler<'SaveCharacterDraft'> = async (ctx
     (error as Error & { code?: string }).code = 'STALE_CHARACTER_VERSION';
     throw error;
   }
+
+  await assertActorCanCreateCharacterInGame(ctx.db, {
+    gameId: envelope.gameId,
+    actorId: envelope.actorId,
+    existingCharacterId: existing?.characterId ?? null,
+  });
 
   const previous = createBaseCharacter(existing, envelope);
   let engineState = toEngineState(previous);

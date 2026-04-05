@@ -118,6 +118,20 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
         await assertSaveCharacterDraftAuthorized(deps.db, envelope);
       }
 
+      if (envelope.type === 'DeleteCharacter') {
+        await assertCharacterOwnerOrGameMaster(deps.db, {
+          gameId: envelope.gameId,
+          characterId: envelope.payload.characterId,
+          actorId: envelope.actorId,
+        });
+        logServiceFlow({
+          enabled: flowLogEnabled,
+          service: 'api',
+          event: 'API_CHARACTER_COMMAND_AUTHORIZED',
+          data: summarizeCommandEnvelope(envelope),
+        });
+      }
+
       if (envelope.type === 'SubmitCharacterForApproval') {
         await assertSubmitCharacterForApprovalAuthorized(deps.db, envelope);
       }

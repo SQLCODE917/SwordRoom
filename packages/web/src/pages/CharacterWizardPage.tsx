@@ -213,6 +213,9 @@ function CharacterWizardPageContent({
         if (cancelled) {
           return;
         }
+        if (!isEditMode && wizardMode === 'apply' && characters.some((item) => item.gameId === routeGameId)) {
+          throw new Error('You already have a character in this game. Open it from My Characters or remove it before applying again.');
+        }
         setSavedCharacters(characters);
         setRouteError(null);
       } catch (error) {

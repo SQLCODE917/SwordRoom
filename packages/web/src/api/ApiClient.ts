@@ -14,6 +14,7 @@ export type CommandType =
   | 'SpendStartingExp'
   | 'PurchaseStarterEquipment'
   | 'ConfirmCharacterAppearanceUpload'
+  | 'DeleteCharacter'
   | 'SubmitCharacterForApproval'
   | 'GMReviewCharacter';
 
@@ -76,6 +77,7 @@ interface CommandPayloadByType {
   };
   PurchaseStarterEquipment: { characterId: string; cart: Record<string, unknown> };
   ConfirmCharacterAppearanceUpload: { characterId: string; s3Key: string };
+  DeleteCharacter: { characterId: string };
   SubmitCharacterForApproval: {
     characterId: string;
     expectedVersion: number;

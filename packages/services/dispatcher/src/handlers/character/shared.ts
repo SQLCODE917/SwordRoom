@@ -8,7 +8,13 @@ import {
   type EquipmentCart,
   type StartingPackageTables,
 } from '@starter/engine';
-import { type CharacterDraft, type CharacterItem, type CharacterRace, type RaisedBy } from '@starter/shared';
+import {
+  isPlayerCharacterLibraryGameId,
+  type CharacterDraft,
+  type CharacterItem,
+  type CharacterRace,
+  type RaisedBy,
+} from '@starter/shared';
 import type { DbAccess } from '@starter/services-shared';
 
 export async function requireCharacter(db: DbAccess, gameId: string, characterId: string): Promise<CharacterItem> {
@@ -17,6 +23,26 @@ export async function requireCharacter(db: DbAccess, gameId: string, characterId
     throw new Error(`character not found: ${gameId}/${characterId}`);
   }
   return character;
+}
+
+export async function assertActorCanCreateCharacterInGame(
+  db: DbAccess,
+  input: { gameId: string; actorId: string; existingCharacterId?: string | null }
+): Promise<void> {
+  if (isPlayerCharacterLibraryGameId(input.gameId)) {
+    return;
+  }
+
+  const existing = await db.characterRepository.findOwnedCharacterInGame(input.gameId, input.actorId);
+  if (!existing || existing.characterId === input.existingCharacterId) {
+    return;
+  }
+
+  const error = new Error(
+    `player "${input.actorId}" already has character "${existing.characterId}" in game "${input.gameId}"`
+  );
+  (error as Error & { code?: string }).code = 'PLAYER_ALREADY_HAS_CHARACTER_IN_GAME';
+  throw error;
 }
 
 export function toCharacterDraft(previous: CharacterItem, state: CharacterCreationState): CharacterDraft {

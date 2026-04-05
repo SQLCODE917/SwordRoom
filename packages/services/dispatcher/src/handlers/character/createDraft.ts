@@ -1,5 +1,5 @@
 import type { CommandHandler } from '../types.js';
-import { emptyCharacterDraft } from './shared.js';
+import { assertActorCanCreateCharacterInGame, emptyCharacterDraft } from './shared.js';
 
 export const createDraftHandler: CommandHandler<'CreateCharacterDraft'> = async (ctx, envelope) => {
   const payload = envelope.payload;
@@ -9,6 +9,11 @@ export const createDraftHandler: CommandHandler<'CreateCharacterDraft'> = async 
     (error as Error & { code?: string }).code = 'CHARACTER_ID_ALREADY_EXISTS';
     throw error;
   }
+
+  await assertActorCanCreateCharacterInGame(ctx.db, {
+    gameId: envelope.gameId,
+    actorId: envelope.actorId,
+  });
 
   return {
     writes: [

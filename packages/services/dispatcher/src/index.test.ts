@@ -23,6 +23,9 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
       async getCharacter() {
         return null;
       },
+      async findOwnedCharacterInGame() {
+        return null;
+      },
       async listCharactersByOwner() {
         return [];
       },
@@ -200,6 +203,7 @@ describe('services/dispatcher command registry', () => {
       'SpendStartingExp',
       'PurchaseStarterEquipment',
       'ConfirmCharacterAppearanceUpload',
+      'DeleteCharacter',
       'SubmitCharacterForApproval',
       'GMReviewCharacter',
     ]);

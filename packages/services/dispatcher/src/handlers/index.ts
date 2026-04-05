@@ -2,6 +2,7 @@ import type { HandlerRegistry } from './types.js';
 import { applyStartingPackageHandler } from './character/applyStartingPackage.js';
 import { confirmAppearanceUploadHandler } from './character/confirmAppearanceUpload.js';
 import { createDraftHandler } from './character/createDraft.js';
+import { deleteCharacterHandler } from './character/deleteCharacter.js';
 import { gmReviewHandler } from './character/gmReview.js';
 import { purchaseStarterEquipmentHandler } from './character/purchaseStarterEquipment.js';
 import { saveDraftHandler } from './character/saveWizardProgress.js';
@@ -27,6 +28,7 @@ export const handlerRegistry: HandlerRegistry = {
   SpendStartingExp: spendStartingExpHandler,
   PurchaseStarterEquipment: purchaseStarterEquipmentHandler,
   ConfirmCharacterAppearanceUpload: confirmAppearanceUploadHandler,
+  DeleteCharacter: deleteCharacterHandler,
   SubmitCharacterForApproval: submitForApprovalHandler,
   GMReviewCharacter: gmReviewHandler,
 };

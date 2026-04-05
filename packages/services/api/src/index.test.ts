@@ -56,6 +56,9 @@ function makeDbMock(): DbAccess {
         }
         return null;
       },
+      async findOwnedCharacterInGame() {
+        return null;
+      },
       async listCharactersByOwner() {
         return [character as any];
       },

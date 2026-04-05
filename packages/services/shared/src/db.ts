@@ -55,6 +55,7 @@ export interface DbAccess {
   transactWrite(items: NonNullable<TransactWriteCommandInput['TransactItems']>): Promise<void>;
   characterRepository: {
     getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
+    findOwnedCharacterInGame(gameId: string, ownerPlayerId: string): Promise<CharacterItem | null>;
     listCharactersByOwner(ownerPlayerId: string): Promise<CharacterItem[]>;
     putCharacterDraft(input: PutCharacterDraftInput): Promise<CharacterItem>;
     updateCharacterWithVersion(input: UpdateCharacterWithVersionInput): Promise<CharacterItem>;
@@ -310,6 +311,28 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
         }
 
         return characterItemSchema.parse(result.Item);
+      },
+
+      async findOwnedCharacterInGame(gameId, ownerPlayerId) {
+        const result = await client.send(
+          new QueryCommand({
+            TableName: tables.gameStateTableName,
+            KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+            FilterExpression: '#type = :type AND ownerPlayerId = :ownerPlayerId',
+            ExpressionAttributeNames: {
+              '#type': 'type',
+            },
+            ExpressionAttributeValues: {
+              ':pk': `GAME#${gameId}`,
+              ':prefix': 'CHAR#',
+              ':type': 'Character',
+              ':ownerPlayerId': ownerPlayerId,
+            },
+          })
+        );
+
+        const first = result.Items?.[0];
+        return first ? characterItemSchema.parse(first) : null;
       },
 
       async listCharactersByOwner(ownerPlayerId) {

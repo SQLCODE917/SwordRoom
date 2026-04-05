@@ -27,6 +27,10 @@ export type WriteEffect =
       input: UpdateCharacterWithVersionInput;
     }
   | {
+      kind: 'DELETE_CHARACTER';
+      input: { gameId: string; characterId: string };
+    }
+  | {
       kind: 'PUT_GAME_METADATA';
       input: PutGameMetadataInput;
     }

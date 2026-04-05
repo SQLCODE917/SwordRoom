@@ -144,6 +144,9 @@ function makeDb(input?: {
         }
         return null;
       },
+      async findOwnedCharacterInGame() {
+        return null;
+      },
       async listCharactersByOwner() {
         return [];
       },
