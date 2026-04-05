@@ -200,6 +200,11 @@ const routeDefinitions: ApiRouteDefinition[] = [
     auth: 'required',
     handler: async (context) => {
       const gameId = context.params.gameId!;
+      await requireGameAccess({
+        db: context.runtime.db,
+        identity: context.identity,
+        gameId,
+      });
       const actorContext = await context.runtime.service.readApis.getGameActorContext(gameId, context.identity.actorId);
       context.logFlow('API_GET_GAME_ACTOR_CONTEXT', {
         requestId: context.requestId,

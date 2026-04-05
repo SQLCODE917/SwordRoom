@@ -65,6 +65,9 @@ command_contracts:
     - type: CreateGame
       payload: { name: string }
       authz: "authenticated actor"
+    - type: ArchiveGame
+      payload: { gameId: string, expectedVersion: int }
+      authz: "actorId is GM member of game"
     - type: SetGameVisibility
       payload: { gameId: string, expectedVersion: int, visibility: "PUBLIC|PRIVATE" }
       authz: "actorId is GM member of game"

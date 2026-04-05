@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   anyCommandEnvelopeSchema,
   getPlayerIdFromCharacterLibraryGameId,
+  isActiveGame,
   isPlayerCharacterLibraryGameId,
   toPlayerCharacterLibraryGameId,
   type AnyCommandEnvelope,
@@ -98,7 +99,11 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
         });
       }
 
-      if (envelope.type === 'SetGameVisibility' || envelope.type === 'InvitePlayerToGameByEmail') {
+      if (
+        envelope.type === 'ArchiveGame' ||
+        envelope.type === 'SetGameVisibility' ||
+        envelope.type === 'InvitePlayerToGameByEmail'
+      ) {
         const gmContext = await assertGameMasterActor(deps.db, {
           gameId: envelope.gameId,
           actorId: envelope.actorId,
@@ -332,10 +337,17 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
       },
 
       async getGame(gameId: string) {
-        return deps.db.gameRepository.getGameMetadata(gameId);
+        const game = await deps.db.gameRepository.getGameMetadata(gameId);
+        return game && isActiveGame(game) ? game : null;
       },
 
       async getCharacter(gameId: string, characterId: string) {
+        if (!isPlayerCharacterLibraryGameId(gameId)) {
+          const game = await deps.db.gameRepository.getGameMetadata(gameId);
+          if (!game || !isActiveGame(game)) {
+            return null;
+          }
+        }
         const character = await deps.db.characterRepository.getCharacter(gameId, characterId);
         if (!character) {
           return null;
@@ -391,7 +403,17 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
       },
 
       async listCharactersByOwner(playerId: string) {
-        return deps.db.characterRepository.listCharactersByOwner(playerId);
+        const characters = await deps.db.characterRepository.listCharactersByOwner(playerId);
+        const filtered = await Promise.all(
+          characters.map(async (character) => {
+            if (isPlayerCharacterLibraryGameId(character.gameId)) {
+              return character;
+            }
+            const game = await deps.db.gameRepository.getGameMetadata(character.gameId);
+            return game && isActiveGame(game) ? character : null;
+          })
+        );
+        return filtered.filter((character): character is NonNullable<(typeof filtered)[number]> => character !== null);
       },
 
       async getMyInbox(playerId: string) {
@@ -445,9 +467,7 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
           deps.db.membershipRepository.listMembershipsForGame(gameId),
           deps.db.chatRepository.queryMessages(gameId),
         ]);
-        if (!game) {
-          throw createApiError(`game not found: ${gameId}`, 'GAME_NOT_FOUND', 404);
-        }
+        assertActiveGame(gameId, game);
 
         const participantRecords = await Promise.all(
           memberships.map(async (membership) => {
@@ -540,10 +560,7 @@ async function assertSaveCharacterDraftAuthorized(
     return;
   }
 
-  const game = await db.gameRepository.getGameMetadata(envelope.gameId);
-  if (!game) {
-    throw createApiError(`game not found: ${envelope.gameId}`, 'GAME_NOT_FOUND', 404);
-  }
+  const game = await requireActiveGameMetadata(db, envelope.gameId);
   if (game.visibility !== 'PUBLIC') {
     throw createApiError(`game "${game.name}" is not public`, 'GAME_NOT_PUBLIC', 403);
   }
@@ -561,10 +578,7 @@ async function assertSubmitCharacterForApprovalAuthorized(
     );
   }
 
-  const game = await db.gameRepository.getGameMetadata(envelope.gameId);
-  if (!game) {
-    throw createApiError(`game not found: ${envelope.gameId}`, 'GAME_NOT_FOUND', 404);
-  }
+  const game = await requireActiveGameMetadata(db, envelope.gameId);
   if (game.visibility !== 'PUBLIC') {
     throw createApiError(`game "${game.name}" is not public`, 'GAME_NOT_PUBLIC', 403);
   }
@@ -574,10 +588,7 @@ async function assertSendGameChatMessageAuthorized(
   db: DbAccess,
   envelope: Extract<AnyCommandEnvelope, { type: 'SendGameChatMessage' }>
 ): Promise<void> {
-  const game = await db.gameRepository.getGameMetadata(envelope.gameId);
-  if (!game) {
-    throw createApiError(`game not found: ${envelope.gameId}`, 'GAME_NOT_FOUND', 404);
-  }
+  await requireActiveGameMetadata(db, envelope.gameId);
 
   const membership = await db.membershipRepository.getMembership(envelope.gameId, envelope.actorId);
   if (!membership) {
@@ -637,6 +648,24 @@ function createApiError(message: string, code: string, statusCode: number): Erro
   error.code = code;
   error.statusCode = statusCode;
   return error;
+}
+
+async function requireActiveGameMetadata(db: DbAccess, gameId: string) {
+  const game = await db.gameRepository.getGameMetadata(gameId);
+  assertActiveGame(gameId, game);
+  return game;
+}
+
+function assertActiveGame(
+  gameId: string,
+  game: Awaited<ReturnType<DbAccess['gameRepository']['getGameMetadata']>>
+): asserts game is NonNullable<Awaited<ReturnType<DbAccess['gameRepository']['getGameMetadata']>>> {
+  if (!game) {
+    throw createApiError(`game not found: ${gameId}`, 'GAME_NOT_FOUND', 404);
+  }
+  if (!isActiveGame(game)) {
+    throw createApiError(`game archived: ${gameId}`, 'GAME_ARCHIVED', 404);
+  }
 }
 
 function readCharacterIdentityName(character: { draft: { identity: { name: string } }; characterId: string }): string {

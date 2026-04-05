@@ -59,6 +59,9 @@ function makeDbMock(): DbAccess {
       async findOwnedCharacterInGame() {
         return null;
       },
+      async listCharactersForGame() {
+        return [];
+      },
       async listCharactersByOwner() {
         return [character as any];
       },
@@ -166,6 +169,9 @@ function makeDbMock(): DbAccess {
     inviteRepository: {
       async getInvite() {
         return null;
+      },
+      async listInvitesForGame() {
+        return [];
       },
       async putInvite() {
         throw new Error('not implemented in api test mock');
@@ -540,6 +546,144 @@ describe('POST /commands', () => {
       code: 'GAME_ACCESS_REQUIRED',
       statusCode: 403,
     });
+  });
+
+  it('filters archived game characters out of my character listings', async () => {
+    const db = makeDbMock();
+    db.characterRepository.listCharactersByOwner = vi.fn(async () => [
+      {
+        pk: 'GAME#game-1',
+        sk: 'CHAR#char-1',
+        type: 'Character',
+        gameId: 'game-1',
+        characterId: 'char-1',
+        ownerPlayerId: 'player-1',
+        status: 'APPROVED',
+        draft: {
+          race: 'HUMAN',
+          raisedBy: null,
+          subAbility: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0, H: 0 },
+          ability: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+          bonus: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+          background: { kind: null, roll2d: null },
+          starting: { expTotal: 0, expUnspent: 0, moneyGamels: 0, moneyRoll2d: null, startingSkills: [] },
+          skills: [],
+          purchases: { weapons: [], armor: [], shields: [], gear: [] },
+          appearance: { imageKey: null, imageUrl: null, updatedAt: null },
+          identity: { name: 'Active Character', age: null, gender: null },
+          noteToGm: null,
+          gmNote: null,
+        },
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+        version: 1,
+      },
+      {
+        pk: 'GAME#game-archived',
+        sk: 'CHAR#char-archived',
+        type: 'Character',
+        gameId: 'game-archived',
+        characterId: 'char-archived',
+        ownerPlayerId: 'player-1',
+        status: 'APPROVED',
+        draft: {
+          race: 'HUMAN',
+          raisedBy: null,
+          subAbility: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0, H: 0 },
+          ability: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+          bonus: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+          background: { kind: null, roll2d: null },
+          starting: { expTotal: 0, expUnspent: 0, moneyGamels: 0, moneyRoll2d: null, startingSkills: [] },
+          skills: [],
+          purchases: { weapons: [], armor: [], shields: [], gear: [] },
+          appearance: { imageKey: null, imageUrl: null, updatedAt: null },
+          identity: { name: 'Archived Character', age: null, gender: null },
+          noteToGm: null,
+          gmNote: null,
+        },
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+        version: 1,
+      },
+      {
+        pk: `GAME#${toPlayerCharacterLibraryGameId('player-1')}`,
+        sk: 'CHAR#char-library',
+        type: 'Character',
+        gameId: toPlayerCharacterLibraryGameId('player-1'),
+        characterId: 'char-library',
+        ownerPlayerId: 'player-1',
+        status: 'DRAFT',
+        draft: {
+          race: 'HUMAN',
+          raisedBy: null,
+          subAbility: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0, H: 0 },
+          ability: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+          bonus: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+          background: { kind: null, roll2d: null },
+          starting: { expTotal: 0, expUnspent: 0, moneyGamels: 0, moneyRoll2d: null, startingSkills: [] },
+          skills: [],
+          purchases: { weapons: [], armor: [], shields: [], gear: [] },
+          appearance: { imageKey: null, imageUrl: null, updatedAt: null },
+          identity: { name: 'Library Character', age: null, gender: null },
+          noteToGm: null,
+          gmNote: null,
+        },
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+        version: 1,
+      },
+    ] as any);
+    db.gameRepository.getGameMetadata = vi.fn(async (gameId: string) => {
+      if (gameId === 'game-1') {
+        return {
+          pk: 'GAME#game-1',
+          sk: 'METADATA',
+          type: 'GameMetadata',
+          gameId: 'game-1',
+          name: 'Active Game',
+          visibility: 'PUBLIC',
+          lifecycleStatus: 'ACTIVE',
+          archivedAt: null,
+          archivedByPlayerId: null,
+          createdByPlayerId: 'gm-1',
+          gmPlayerId: 'gm-1',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          version: 1,
+        } as any;
+      }
+      if (gameId === 'game-archived') {
+        return {
+          pk: 'GAME#game-archived',
+          sk: 'METADATA',
+          type: 'GameMetadata',
+          gameId: 'game-archived',
+          name: 'Archived Game',
+          visibility: 'PRIVATE',
+          lifecycleStatus: 'ARCHIVED',
+          archivedAt: '2026-03-02T00:00:00.000Z',
+          archivedByPlayerId: 'gm-1',
+          createdByPlayerId: 'gm-1',
+          gmPlayerId: 'gm-1',
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-02T00:00:00.000Z',
+          version: 2,
+        } as any;
+      }
+      return null;
+    });
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: new InMemoryFifoQueue(),
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    const characters = await api.readApis.listCharactersByOwner('player-1');
+
+    expect(characters.map((character) => character.characterId)).toEqual(['char-1', 'char-library']);
   });
 });
 

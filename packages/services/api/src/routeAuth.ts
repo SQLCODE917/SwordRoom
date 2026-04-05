@@ -1,4 +1,4 @@
-import type { CharacterItem, CommandLogItem, GameMetadataItem, PlayerRole } from '@starter/shared';
+import { isArchivedGame, type CharacterItem, type CommandLogItem, type GameMetadataItem, type PlayerRole } from '@starter/shared';
 import { assertActorHasRole, isActorAdmin, type DbAccess } from '@starter/services-shared';
 import { resolveActorIdentity, type ResolvedActorIdentity } from './auth.js';
 
@@ -40,6 +40,9 @@ export async function requireGameAccess(input: {
   const game = await input.db.gameRepository.getGameMetadata(input.gameId);
   if (!game) {
     throw withCode(new Error(`game not found: ${input.gameId}`), 'GAME_NOT_FOUND', 404);
+  }
+  if (isArchivedGame(game)) {
+    throw withCode(new Error(`game archived: ${input.gameId}`), 'GAME_ARCHIVED', 404);
   }
 
   if (await isActorAdmin(input.db, input.identity.actorId)) {

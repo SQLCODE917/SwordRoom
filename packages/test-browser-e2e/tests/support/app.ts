@@ -125,6 +125,15 @@ export async function invitePlayer(page: Page, gameName: string, email: string):
   await expect(row.getByRole('textbox')).toHaveValue('');
 }
 
+export async function deleteGame(page: Page, gameName: string): Promise<void> {
+  await page.goto('/gm/games');
+  const row = gmGamesRow(page, gameName);
+  await expect(row).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await row.getByRole('button', { name: 'Delete Game' }).click();
+  await expect(row).toHaveCount(0);
+}
+
 export async function createLibraryCharacter(page: Page, name: string): Promise<void> {
   await page.goto('/');
   await expect(page.getByRole('table', { name: 'My Characters' })).toBeVisible();

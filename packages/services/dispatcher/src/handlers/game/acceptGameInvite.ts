@@ -1,7 +1,9 @@
 import { acceptInvite } from '@starter/engine';
 import type { CommandHandler } from '../types.js';
+import { requireActiveGame } from './shared.js';
 
 export const acceptGameInviteHandler: CommandHandler<'AcceptGameInvite'> = async (ctx, envelope) => {
+  await requireActiveGame(ctx.db, envelope.payload.gameId);
   const invite = await ctx.db.inviteRepository.getInvite(envelope.payload.gameId, envelope.payload.inviteId);
   if (!invite) {
     const error = new Error(`invite not found: ${envelope.payload.gameId}/${envelope.payload.inviteId}`);

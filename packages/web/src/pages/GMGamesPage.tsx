@@ -26,7 +26,7 @@ export function GMGamesPage() {
 
   return (
     <div className="l-page">
-      <Panel title="GM Games" subtitle="Create games, change visibility, and invite players by email.">
+      <Panel title="GM Games" subtitle="Create games, change visibility, invite players, and delete games.">
         <CommandStatusPanel status={commandStatus} />
         <div className={`c-note ${error ? 'c-note--error' : 'c-note--info'}`}>
           <span className="t-small">{error ?? 'GM games refresh after each successful command.'}</span>
@@ -72,6 +72,14 @@ export function GMGamesPage() {
                       onClick={() => void setVisibility(game, game.visibility === 'PUBLIC' ? 'PRIVATE' : 'PUBLIC')}
                     >
                       Make {game.visibility === 'PUBLIC' ? 'Private' : 'Public'}
+                    </button>
+                    <button
+                      className={`c-btn ${busy ? 'is-disabled' : ''}`.trim()}
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void archiveGame(game)}
+                    >
+                      Delete Game
                     </button>
                   </div>
                   <div className="c-table__cell t-small">
@@ -174,6 +182,35 @@ export function GMGamesPage() {
           visibility,
         },
       } satisfies CommandEnvelopeInput<'SetGameVisibility'>);
+      await refreshGames();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
+  async function archiveGame(game: GameItem) {
+    const confirmed = window.confirm(`Delete "${game.name}"? Players will be notified and the game will disappear from active lists.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setBusyKey(game.gameId);
+    try {
+      await submitEnvelopeAndAwait('Delete game', {
+        commandId: createCommandId(),
+        gameId: game.gameId,
+        type: 'ArchiveGame',
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        payload: {
+          gameId: game.gameId,
+          expectedVersion: game.version,
+        },
+      } satisfies CommandEnvelopeInput<'ArchiveGame'>);
+      setError(null);
+      notifyAuthStateChanged();
       await refreshGames();
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));

@@ -3,6 +3,7 @@ import { logWebFlow, summarizeCommandEnvelope, summarizeError } from '../logging
 
 export type CommandType =
   | 'CreateGame'
+  | 'ArchiveGame'
   | 'SetGameVisibility'
   | 'InvitePlayerToGameByEmail'
   | 'AcceptGameInvite'
@@ -22,6 +23,10 @@ export type CommandType =
 interface CommandPayloadByType {
   CreateGame: {
     name: string;
+  };
+  ArchiveGame: {
+    gameId: string;
+    expectedVersion: number;
   };
   SetGameVisibility: {
     gameId: string;
@@ -138,6 +143,9 @@ export interface GameItem {
   gameId: string;
   name: string;
   visibility: 'PUBLIC' | 'PRIVATE';
+  lifecycleStatus?: 'ACTIVE' | 'ARCHIVED';
+  archivedAt?: string | null;
+  archivedByPlayerId?: string | null;
   gmPlayerId: string;
   version: number;
   [key: string]: unknown;

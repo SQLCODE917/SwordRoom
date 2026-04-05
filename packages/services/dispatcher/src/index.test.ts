@@ -26,6 +26,9 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
       async findOwnedCharacterInGame() {
         return null;
       },
+      async listCharactersForGame() {
+        return [];
+      },
       async listCharactersByOwner() {
         return [];
       },
@@ -45,6 +48,9 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
           gameId: 'g',
           name: 'Game',
           visibility: 'PRIVATE',
+          lifecycleStatus: 'ACTIVE',
+          archivedAt: null,
+          archivedByPlayerId: null,
           createdByPlayerId: 'actor-1',
           gmPlayerId: 'actor-1',
           createdAt: '2026-03-01T00:00:00.000Z',
@@ -134,6 +140,9 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
       async getInvite() {
         return null;
       },
+      async listInvitesForGame() {
+        return [];
+      },
       async putInvite() {
         throw new Error('should not be called');
       },
@@ -200,6 +209,7 @@ describe('services/dispatcher command registry', () => {
   it('registers only command types defined by async-layer contract', () => {
     expect(listRegisteredCommandTypes()).toEqual([
       'CreateGame',
+      'ArchiveGame',
       'SetGameVisibility',
       'InvitePlayerToGameByEmail',
       'AcceptGameInvite',

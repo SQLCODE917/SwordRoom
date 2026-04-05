@@ -10,6 +10,7 @@ import { setSubAbilitiesHandler } from './character/setSubAbilities.js';
 import { spendStartingExpHandler } from './character/spendStartingExp.js';
 import { submitForApprovalHandler } from './character/submitForApproval.js';
 import { acceptGameInviteHandler } from './game/acceptGameInvite.js';
+import { archiveGameHandler } from './game/archiveGame.js';
 import { createGameHandler } from './game/createGame.js';
 import { invitePlayerToGameByEmailHandler } from './game/invitePlayerToGameByEmail.js';
 import { rejectGameInviteHandler } from './game/rejectGameInvite.js';
@@ -18,6 +19,7 @@ import { setGameVisibilityHandler } from './game/setGameVisibility.js';
 
 export const handlerRegistry: HandlerRegistry = {
   CreateGame: createGameHandler,
+  ArchiveGame: archiveGameHandler,
   SetGameVisibility: setGameVisibilityHandler,
   InvitePlayerToGameByEmail: invitePlayerToGameByEmailHandler,
   AcceptGameInvite: acceptGameInviteHandler,

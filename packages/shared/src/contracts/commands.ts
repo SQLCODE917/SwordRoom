@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const COMMAND_TYPES = [
   'CreateGame',
+  'ArchiveGame',
   'SetGameVisibility',
   'InvitePlayerToGameByEmail',
   'AcceptGameInvite',
@@ -24,6 +25,11 @@ export type CommandType = z.infer<typeof commandTypeSchema>;
 
 export const createGamePayloadSchema = z.object({
   name: z.string().min(1),
+});
+
+export const archiveGamePayloadSchema = z.object({
+  gameId: z.string(),
+  expectedVersion: z.number().int(),
 });
 
 export const setGameVisibilityPayloadSchema = z.object({
@@ -152,6 +158,7 @@ export const gmReviewCharacterPayloadSchema = z.object({
 
 export const commandPayloadSchemaByType = {
   CreateGame: createGamePayloadSchema,
+  ArchiveGame: archiveGamePayloadSchema,
   SetGameVisibility: setGameVisibilityPayloadSchema,
   InvitePlayerToGameByEmail: invitePlayerToGameByEmailPayloadSchema,
   AcceptGameInvite: acceptGameInvitePayloadSchema,
@@ -181,6 +188,10 @@ export const commandEnvelopeSchemaByType = {
   CreateGame: commandEnvelopeBaseSchema.extend({
     type: z.literal('CreateGame'),
     payload: createGamePayloadSchema,
+  }),
+  ArchiveGame: commandEnvelopeBaseSchema.extend({
+    type: z.literal('ArchiveGame'),
+    payload: archiveGamePayloadSchema,
   }),
   SetGameVisibility: commandEnvelopeBaseSchema.extend({
     type: z.literal('SetGameVisibility'),
@@ -246,6 +257,7 @@ export const commandEnvelopeSchemaByType = {
 
 export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
   commandEnvelopeSchemaByType.CreateGame,
+  commandEnvelopeSchemaByType.ArchiveGame,
   commandEnvelopeSchemaByType.SetGameVisibility,
   commandEnvelopeSchemaByType.InvitePlayerToGameByEmail,
   commandEnvelopeSchemaByType.AcceptGameInvite,
@@ -264,6 +276,7 @@ export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
 ]);
 
 export type CreateGamePayload = z.infer<typeof createGamePayloadSchema>;
+export type ArchiveGamePayload = z.infer<typeof archiveGamePayloadSchema>;
 export type SetGameVisibilityPayload = z.infer<typeof setGameVisibilityPayloadSchema>;
 export type InvitePlayerToGameByEmailPayload = z.infer<typeof invitePlayerToGameByEmailPayloadSchema>;
 export type AcceptGameInvitePayload = z.infer<typeof acceptGameInvitePayloadSchema>;
@@ -282,6 +295,7 @@ export type GMReviewCharacterPayload = z.infer<typeof gmReviewCharacterPayloadSc
 
 export type CommandPayloadByType = {
   CreateGame: CreateGamePayload;
+  ArchiveGame: ArchiveGamePayload;
   SetGameVisibility: SetGameVisibilityPayload;
   InvitePlayerToGameByEmail: InvitePlayerToGameByEmailPayload;
   AcceptGameInvite: AcceptGameInvitePayload;

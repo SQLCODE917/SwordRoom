@@ -1,6 +1,8 @@
 import type { CommandHandler } from '../types.js';
+import { requireActiveGame } from './shared.js';
 
 export const sendGameChatMessageHandler: CommandHandler<'SendGameChatMessage'> = async (ctx, envelope) => {
+  await requireActiveGame(ctx.db, envelope.gameId);
   const membership = await ctx.db.membershipRepository.getMembership(envelope.gameId, envelope.actorId);
   if (!membership) {
     const error = new Error(`player "${envelope.actorId}" is not a member of game "${envelope.gameId}"`);

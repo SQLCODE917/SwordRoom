@@ -49,6 +49,25 @@ describe('routeAuth', () => {
     ).rejects.toMatchObject({ code: 'CHARACTER_ACCESS_REQUIRED', statusCode: 403 });
   });
 
+  it('rejects access to archived games even for members', async () => {
+    const db = makeDb({
+      membership: {
+        gameId: 'game-1',
+        playerId: 'player-1',
+        roles: ['PLAYER'],
+      },
+      archived: true,
+    });
+
+    await expect(
+      requireGameAccess({
+        db,
+        identity: makeIdentity('player-1', ['PLAYER']),
+        gameId: 'game-1',
+      })
+    ).rejects.toMatchObject({ code: 'GAME_ARCHIVED', statusCode: 404 });
+  });
+
   it('rejects raw token admin roles when no platform entitlement exists', async () => {
     const db = makeDb();
 
@@ -106,6 +125,7 @@ function makeIdentity(actorId: string, roles: Array<'PLAYER' | 'GM' | 'ADMIN'>):
 function makeDb(input?: {
   membership?: { gameId: string; playerId: string; roles: Array<'PLAYER' | 'GM'> } | null;
   entitlement?: { playerId: string; roles: Array<'ADMIN'> } | null;
+  archived?: boolean;
 }): DbAccess {
   return {
     tables: { gameStateTableName: 'GameState', commandLogTableName: 'CommandLog' },
@@ -147,6 +167,9 @@ function makeDb(input?: {
       async findOwnedCharacterInGame() {
         return null;
       },
+      async listCharactersForGame() {
+        return [];
+      },
       async listCharactersByOwner() {
         return [];
       },
@@ -167,6 +190,9 @@ function makeDb(input?: {
             gameId: 'game-1',
             name: 'Game One',
             visibility: 'PRIVATE',
+            lifecycleStatus: input?.archived ? 'ARCHIVED' : 'ACTIVE',
+            archivedAt: input?.archived ? '2026-03-02T00:00:00.000Z' : null,
+            archivedByPlayerId: input?.archived ? 'gm-1' : null,
             createdByPlayerId: 'gm-1',
             gmPlayerId: 'gm-1',
             createdAt: '2026-03-01T00:00:00.000Z',
@@ -201,6 +227,9 @@ function makeDb(input?: {
               gameId: 'game-1',
               name: 'Game One',
               visibility: 'PRIVATE',
+              lifecycleStatus: input?.archived ? 'ARCHIVED' : 'ACTIVE',
+              archivedAt: input?.archived ? '2026-03-02T00:00:00.000Z' : null,
+              archivedByPlayerId: input?.archived ? 'gm-1' : null,
               createdByPlayerId: 'gm-1',
               gmPlayerId: 'gm-1',
               createdAt: '2026-03-01T00:00:00.000Z',
@@ -286,6 +315,9 @@ function makeDb(input?: {
     inviteRepository: {
       async getInvite() {
         return null;
+      },
+      async listInvitesForGame() {
+        return [];
       },
       async putInvite() {
         throw new Error('not implemented');

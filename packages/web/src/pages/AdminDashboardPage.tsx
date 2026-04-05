@@ -92,6 +92,7 @@ export function AdminDashboardPage() {
             <div className="c-table" role="table" aria-label="Admin games">
               <div className="c-table__head c-table__row" role="row">
                 <div className="c-table__cell t-small">Game</div>
+                <div className="c-table__cell t-small">Status</div>
                 <div className="c-table__cell t-small">Visibility</div>
                 <div className="c-table__cell t-small">GM</div>
               </div>
@@ -105,6 +106,7 @@ export function AdminDashboardPage() {
                     <div className="c-table__cell t-small">
                       <div>{game.name}</div>
                     </div>
+                    <div className="c-table__cell t-small">{game.lifecycleStatus ?? 'ACTIVE'}</div>
                     <div className="c-table__cell t-small">{game.visibility}</div>
                     <div className="c-table__cell t-small">{game.gmPlayerId}</div>
                   </div>

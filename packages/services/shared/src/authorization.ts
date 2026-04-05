@@ -1,4 +1,4 @@
-import type { PlayerRole } from '@starter/shared';
+import { isArchivedGame, type PlayerRole } from '@starter/shared';
 import type { DbAccess } from './db.js';
 
 export interface GameActorContext {
@@ -58,6 +58,11 @@ export async function assertGameMasterActor(
 
   if (!context.gmPlayerId) {
     throw withCode(new Error(`game not found or missing gmPlayerId: ${input.gameId}`), 'GAME_NOT_FOUND', 404);
+  }
+
+  const game = await db.gameRepository.getGameMetadata(input.gameId);
+  if (!game || isArchivedGame(game)) {
+    throw withCode(new Error(`game archived: ${input.gameId}`), 'GAME_ARCHIVED', 404);
   }
 
   if (!context.isGameMaster) {

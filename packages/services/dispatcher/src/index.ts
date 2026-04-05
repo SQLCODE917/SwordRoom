@@ -58,6 +58,7 @@ export function createDispatcher(deps: DispatcherDependencies) {
 
         if (
           parsed.type === 'GMReviewCharacter' ||
+          parsed.type === 'ArchiveGame' ||
           parsed.type === 'SetGameVisibility' ||
           parsed.type === 'InvitePlayerToGameByEmail'
         ) {
@@ -235,6 +236,9 @@ function toTransactWriteItem(
             gameId: effect.input.gameId,
             name: effect.input.name,
             visibility: effect.input.visibility,
+            lifecycleStatus: effect.input.lifecycleStatus ?? 'ACTIVE',
+            archivedAt: effect.input.archivedAt ?? null,
+            archivedByPlayerId: effect.input.archivedByPlayerId ?? null,
             createdByPlayerId: effect.input.createdByPlayerId,
             gmPlayerId: effect.input.gmPlayerId,
             createdAt: effect.input.createdAt,
@@ -253,7 +257,7 @@ function toTransactWriteItem(
           Key: key,
           ConditionExpression: '#version = :expectedVersion',
           UpdateExpression:
-            'SET #name = :name, visibility = :visibility, createdByPlayerId = :createdByPlayerId, gmPlayerId = :gmPlayerId, updatedAt = :updatedAt, #version = :nextVersion',
+            'SET #name = :name, visibility = :visibility, lifecycleStatus = :lifecycleStatus, archivedAt = :archivedAt, archivedByPlayerId = :archivedByPlayerId, createdByPlayerId = :createdByPlayerId, gmPlayerId = :gmPlayerId, updatedAt = :updatedAt, #version = :nextVersion',
           ExpressionAttributeNames: {
             '#version': 'version',
             '#name': 'name',
@@ -261,6 +265,9 @@ function toTransactWriteItem(
           ExpressionAttributeValues: {
             ':name': effect.input.next.name,
             ':visibility': effect.input.next.visibility,
+            ':lifecycleStatus': effect.input.next.lifecycleStatus,
+            ':archivedAt': effect.input.next.archivedAt,
+            ':archivedByPlayerId': effect.input.next.archivedByPlayerId,
             ':createdByPlayerId': effect.input.next.createdByPlayerId,
             ':gmPlayerId': effect.input.next.gmPlayerId,
             ':updatedAt': effect.input.next.updatedAt,

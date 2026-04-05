@@ -34,10 +34,12 @@ import {
   type GameChatMessageItem,
   type GameInviteItem,
   type GameInviteStatus,
+  type GameLifecycleStatus,
   type GameMemberItem,
   type GameMetadataItem,
   type GMInboxItem,
   type GameVisibility,
+  isActiveGame,
   type PlatformEntitlementItem,
   type PlayerProfileItem,
   type PlayerInboxItem,
@@ -58,6 +60,7 @@ export interface DbAccess {
   characterRepository: {
     getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
     findOwnedCharacterInGame(gameId: string, ownerPlayerId: string): Promise<CharacterItem | null>;
+    listCharactersForGame(gameId: string): Promise<CharacterItem[]>;
     listCharactersByOwner(ownerPlayerId: string): Promise<CharacterItem[]>;
     putCharacterDraft(input: PutCharacterDraftInput): Promise<CharacterItem>;
     updateCharacterWithVersion(input: UpdateCharacterWithVersionInput): Promise<CharacterItem>;
@@ -94,6 +97,7 @@ export interface DbAccess {
   };
   inviteRepository: {
     getInvite(gameId: string, inviteId: string): Promise<GameInviteItem | null>;
+    listInvitesForGame(gameId: string): Promise<GameInviteItem[]>;
     putInvite(input: PutGameInviteInput): Promise<GameInviteItem>;
     updateInviteWithVersion(input: UpdateGameInviteWithVersionInput): Promise<GameInviteItem>;
   };
@@ -186,6 +190,9 @@ export interface PutGameMetadataInput {
   gameId: string;
   name: string;
   visibility: GameVisibility;
+  lifecycleStatus?: GameLifecycleStatus;
+  archivedAt?: string | null;
+  archivedByPlayerId?: string | null;
   createdByPlayerId: string;
   gmPlayerId: string;
   createdAt: string;
@@ -198,6 +205,9 @@ export interface UpdateGameMetadataWithVersionInput {
   next: {
     name: string;
     visibility: GameVisibility;
+    lifecycleStatus: GameLifecycleStatus;
+    archivedAt: string | null;
+    archivedByPlayerId: string | null;
     createdByPlayerId: string;
     gmPlayerId: string;
     updatedAt: string;
@@ -359,6 +369,21 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
         return (result.Items ?? []).map((item) => characterItemSchema.parse(item));
       },
 
+      async listCharactersForGame(gameId) {
+        const result = await client.send(
+          new QueryCommand({
+            TableName: tables.gameStateTableName,
+            KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+            ExpressionAttributeValues: {
+              ':pk': `GAME#${gameId}`,
+              ':prefix': 'CHAR#',
+            },
+          })
+        );
+
+        return (result.Items ?? []).map((item) => characterItemSchema.parse(item));
+      },
+
       async putCharacterDraft(input) {
         const key = gameStateKeys.character(input.gameId, input.characterId);
 
@@ -449,6 +474,9 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
           gameId: input.gameId,
           name: input.name,
           visibility: input.visibility,
+          lifecycleStatus: input.lifecycleStatus ?? 'ACTIVE',
+          archivedAt: input.archivedAt ?? null,
+          archivedByPlayerId: input.archivedByPlayerId ?? null,
           createdByPlayerId: input.createdByPlayerId,
           gmPlayerId: input.gmPlayerId,
           createdAt: input.createdAt,
@@ -476,7 +504,7 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
             Key: key,
             ConditionExpression: '#version = :expectedVersion',
             UpdateExpression:
-              'SET #name = :name, visibility = :visibility, createdByPlayerId = :createdByPlayerId, gmPlayerId = :gmPlayerId, updatedAt = :updatedAt, #version = :nextVersion',
+              'SET #name = :name, visibility = :visibility, lifecycleStatus = :lifecycleStatus, archivedAt = :archivedAt, archivedByPlayerId = :archivedByPlayerId, createdByPlayerId = :createdByPlayerId, gmPlayerId = :gmPlayerId, updatedAt = :updatedAt, #version = :nextVersion',
             ExpressionAttributeNames: {
               '#version': 'version',
               '#name': 'name',
@@ -484,6 +512,9 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
             ExpressionAttributeValues: {
               ':name': input.next.name,
               ':visibility': input.next.visibility,
+              ':lifecycleStatus': input.next.lifecycleStatus,
+              ':archivedAt': input.next.archivedAt,
+              ':archivedByPlayerId': input.next.archivedByPlayerId,
               ':createdByPlayerId': input.next.createdByPlayerId,
               ':gmPlayerId': input.next.gmPlayerId,
               ':updatedAt': input.next.updatedAt,
@@ -501,7 +532,8 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
       },
 
       async listPublicGames() {
-        return scanGameMetadataByVisibility(client, tables.gameStateTableName, 'PUBLIC');
+        const games = await scanGameMetadataByVisibility(client, tables.gameStateTableName, 'PUBLIC');
+        return games.filter(isActiveGame);
       },
 
       async listAllGames() {
@@ -524,14 +556,14 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
       async listGamesForPlayer(playerId) {
         const memberships = await scanMembershipsByPlayer(client, tables.gameStateTableName, playerId);
         const games = await Promise.all(memberships.map((membership) => this.getGameMetadata(membership.gameId)));
-        return games.filter((game): game is GameMetadataItem => game !== null);
+        return games.filter((game): game is GameMetadataItem => game !== null && isActiveGame(game));
       },
 
       async listGamesForGm(playerId) {
         const memberships = await scanMembershipsByPlayer(client, tables.gameStateTableName, playerId);
         const gmMemberships = memberships.filter((membership) => membership.roles.includes('GM'));
         const games = await Promise.all(gmMemberships.map((membership) => this.getGameMetadata(membership.gameId)));
-        return games.filter((game): game is GameMetadataItem => game !== null);
+        return games.filter((game): game is GameMetadataItem => game !== null && isActiveGame(game));
       },
     },
     playerRepository: {
@@ -769,6 +801,21 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
         }
 
         return gameInviteItemSchema.parse(result.Item);
+      },
+
+      async listInvitesForGame(gameId) {
+        const result = await client.send(
+          new QueryCommand({
+            TableName: tables.gameStateTableName,
+            KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+            ExpressionAttributeValues: {
+              ':pk': `GAME#${gameId}`,
+              ':prefix': 'INVITE#',
+            },
+          })
+        );
+
+        return (result.Items ?? []).map((item) => gameInviteItemSchema.parse(item));
       },
 
       async putInvite(input) {

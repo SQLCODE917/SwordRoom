@@ -5,6 +5,7 @@ export const commandStatusSchema = z.enum(['ACCEPTED', 'PROCESSING', 'PROCESSED'
 export const characterRaceSchema = z.enum(['HUMAN', 'DWARF', 'GRASSRUNNER', 'ELF', 'HALF_ELF']);
 export const raisedBySchema = z.enum(['HUMANS', 'ELVES']).nullable();
 export const gameVisibilitySchema = z.enum(['PUBLIC', 'PRIVATE']);
+export const gameLifecycleStatusSchema = z.enum(['ACTIVE', 'ARCHIVED']);
 export const playerRoleSchema = z.enum(['PLAYER', 'GM', 'ADMIN']);
 export const platformRoleSchema = z.enum(['ADMIN']);
 export const gameInviteStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED']);
@@ -15,6 +16,7 @@ export type CommandStatus = z.infer<typeof commandStatusSchema>;
 export type CharacterRace = z.infer<typeof characterRaceSchema>;
 export type RaisedBy = z.infer<typeof raisedBySchema>;
 export type GameVisibility = z.infer<typeof gameVisibilitySchema>;
+export type GameLifecycleStatus = z.infer<typeof gameLifecycleStatusSchema>;
 export type PlayerRole = z.infer<typeof playerRoleSchema>;
 export type PlatformRole = z.infer<typeof platformRoleSchema>;
 export type GameInviteStatus = z.infer<typeof gameInviteStatusSchema>;
@@ -171,6 +173,9 @@ export const gameMetadataItemSchema = pkSkSchema.extend({
   gameId: z.string(),
   name: z.string(),
   visibility: gameVisibilitySchema,
+  lifecycleStatus: gameLifecycleStatusSchema.optional().default('ACTIVE'),
+  archivedAt: z.string().nullable().optional().default(null),
+  archivedByPlayerId: z.string().nullable().optional().default(null),
   createdByPlayerId: z.string(),
   gmPlayerId: z.string(),
   createdAt: z.string(),
@@ -323,3 +328,11 @@ export type GMInboxItem = z.infer<typeof gmInboxItemSchema>;
 export type PlayerInboxItem = z.infer<typeof playerInboxItemSchema>;
 export type CommandLogItem = z.infer<typeof commandLogItemSchema>;
 export type GameStateItem = z.infer<typeof gameStateItemSchema>;
+
+export function isArchivedGame(game: { lifecycleStatus?: GameLifecycleStatus | null }): boolean {
+  return game.lifecycleStatus === 'ARCHIVED';
+}
+
+export function isActiveGame(game: { lifecycleStatus?: GameLifecycleStatus | null }): boolean {
+  return !isArchivedGame(game);
+}

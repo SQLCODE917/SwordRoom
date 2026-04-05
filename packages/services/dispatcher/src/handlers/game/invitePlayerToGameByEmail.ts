@@ -1,13 +1,9 @@
 import { createInvite } from '@starter/engine';
 import type { CommandHandler } from '../types.js';
+import { requireActiveGame } from './shared.js';
 
 export const invitePlayerToGameByEmailHandler: CommandHandler<'InvitePlayerToGameByEmail'> = async (ctx, envelope) => {
-  const game = await ctx.db.gameRepository.getGameMetadata(envelope.payload.gameId);
-  if (!game) {
-    const error = new Error(`game not found: ${envelope.payload.gameId}`);
-    (error as Error & { code?: string }).code = 'GAME_NOT_FOUND';
-    throw error;
-  }
+  const game = await requireActiveGame(ctx.db, envelope.payload.gameId);
 
   const emailNormalized = envelope.payload.email.trim().toLowerCase();
   const invitedProfile = await ctx.db.playerRepository.getPlayerProfileByEmail(emailNormalized);
