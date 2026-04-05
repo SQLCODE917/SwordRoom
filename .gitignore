@@ -8,4 +8,7 @@ coverage
 /cdk-outputs.json
 /packages/infra/cdk.out/.cache/
 /packages/infra/cdk.out/asset.*/
+/packages/infra/cdk.out/swordworld-production-*.assets.json
+/packages/infra/cdk.out/swordworld-production-*.metadata.json
+/packages/infra/cdk.out/swordworld-production-*.template.json
 packages/web/public/dev-admin.local.json

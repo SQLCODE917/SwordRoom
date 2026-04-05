@@ -1,6 +1,7 @@
 import { RemovalPolicy, Size, Stack } from "aws-cdk-lib";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as route53 from "aws-cdk-lib/aws-route53";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
 import { Construct } from "constructs";
@@ -11,6 +12,7 @@ export interface WebSiteProps {
   readonly webAssetPath: string;
   readonly webDomainName: string;
   readonly certificateArnUsEast1?: string;
+  readonly hostedZoneName?: string;
   readonly isProduction: boolean;
 }
 
@@ -83,6 +85,32 @@ export class WebSite extends Construct {
       distributionConfig,
     });
 
+    if (props.certificateArnUsEast1 && props.hostedZoneName) {
+      const hostedZoneName = ensureTrailingDot(props.hostedZoneName);
+
+      new route53.CfnRecordSet(this, "WebAliasARecord", {
+        hostedZoneName,
+        name: props.webDomainName,
+        type: "A",
+        aliasTarget: {
+          dnsName: this.distribution.attrDomainName,
+          hostedZoneId: "Z2FDTNDATAQYW2",
+          evaluateTargetHealth: false,
+        },
+      });
+
+      new route53.CfnRecordSet(this, "WebAliasAaaaRecord", {
+        hostedZoneName,
+        name: props.webDomainName,
+        type: "AAAA",
+        aliasTarget: {
+          dnsName: this.distribution.attrDomainName,
+          hostedZoneId: "Z2FDTNDATAQYW2",
+          evaluateTargetHealth: false,
+        },
+      });
+    }
+
     this.bucket.addToResourcePolicy(
       new iam.PolicyStatement({
         sid: "AllowCloudFrontServicePrincipalReadOnly",
@@ -110,4 +138,12 @@ export class WebSite extends Construct {
       ? `https://${props.webDomainName}`
       : `https://${this.distribution.attrDomainName}`;
   }
+}
+
+function ensureTrailingDot(value: string): string {
+  const trimmed = value.trim();
+  if (trimmed.endsWith(".")) {
+    return trimmed;
+  }
+  return `${trimmed}.`;
 }

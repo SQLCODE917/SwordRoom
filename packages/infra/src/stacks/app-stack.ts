@@ -22,6 +22,7 @@ export class AppStack extends Stack {
       webAssetPath: props.config.webAssetPath,
       webDomainName: props.config.webDomainName,
       certificateArnUsEast1: props.config.certificateArnUsEast1,
+      hostedZoneName: props.config.hostedZoneName,
       isProduction: props.config.isProduction,
     });
 

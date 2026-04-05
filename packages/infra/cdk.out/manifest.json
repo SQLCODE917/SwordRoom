@@ -1,34 +1,34 @@
 {
   "version": "52.0.0",
   "artifacts": {
-    "swordworld-staging-shared.assets": {
+    "swordworld-production-shared.assets": {
       "type": "cdk:asset-manifest",
       "properties": {
-        "file": "swordworld-staging-shared.assets.json",
+        "file": "swordworld-production-shared.assets.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
       }
     },
-    "swordworld-staging-shared": {
+    "swordworld-production-shared": {
       "type": "aws:cloudformation:stack",
       "environment": "aws://922630391388/us-east-1",
       "properties": {
-        "templateFile": "swordworld-staging-shared.template.json",
+        "templateFile": "swordworld-production-shared.template.json",
         "terminationProtection": false,
         "tags": {
           "Application": "swordworld",
-          "Environment": "staging",
+          "Environment": "production",
           "ManagedBy": "aws-cdk",
           "SecurityBoundary": "idm-secure-aws"
         },
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-deploy-role-922630391388-us-east-1",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-cfn-exec-role-922630391388-us-east-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-922630391388-us-east-1/3154e17776807e57d9cc9ad49b85b9473b88281bdd5a95168dba896bace0db0e.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-922630391388-us-east-1/01c2808735c222ddad5b879e075510f101faac95cdbbbbba0995902858b4521a.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
-          "swordworld-staging-shared.assets"
+          "swordworld-production-shared.assets"
         ],
         "lookupRole": {
           "arn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-lookup-role-922630391388-us-east-1",
@@ -37,39 +37,39 @@
         }
       },
       "dependencies": [
-        "swordworld-staging-shared.assets"
+        "swordworld-production-shared.assets"
       ],
-      "additionalMetadataFile": "swordworld-staging-shared.metadata.json",
-      "displayName": "swordworld-staging-shared"
+      "additionalMetadataFile": "swordworld-production-shared.metadata.json",
+      "displayName": "swordworld-production-shared"
     },
-    "swordworld-staging-app.assets": {
+    "swordworld-production-app.assets": {
       "type": "cdk:asset-manifest",
       "properties": {
-        "file": "swordworld-staging-app.assets.json",
+        "file": "swordworld-production-app.assets.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
       }
     },
-    "swordworld-staging-app": {
+    "swordworld-production-app": {
       "type": "aws:cloudformation:stack",
       "environment": "aws://922630391388/us-east-1",
       "properties": {
-        "templateFile": "swordworld-staging-app.template.json",
+        "templateFile": "swordworld-production-app.template.json",
         "terminationProtection": false,
         "tags": {
           "Application": "swordworld",
-          "Environment": "staging",
+          "Environment": "production",
           "ManagedBy": "aws-cdk",
           "SecurityBoundary": "idm-secure-aws"
         },
         "validateOnSynth": false,
         "assumeRoleArn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-deploy-role-922630391388-us-east-1",
         "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-cfn-exec-role-922630391388-us-east-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-922630391388-us-east-1/19bf4ce2d195d47cfeef53b2164425fa4f45b578125c5e0ad2c74dabfb530b57.json",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-922630391388-us-east-1/f5bff452cebe11211e8769860c50da4b983b0463eeaef88a8f548542f1a37e1d.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
-          "swordworld-staging-app.assets"
+          "swordworld-production-app.assets"
         ],
         "lookupRole": {
           "arn": "arn:${AWS::Partition}:iam::922630391388:role/cdk-hnb659fds-lookup-role-922630391388-us-east-1",
@@ -78,11 +78,11 @@
         }
       },
       "dependencies": [
-        "swordworld-staging-shared",
-        "swordworld-staging-app.assets"
+        "swordworld-production-shared",
+        "swordworld-production-app.assets"
       ],
-      "additionalMetadataFile": "swordworld-staging-app.metadata.json",
-      "displayName": "swordworld-staging-app"
+      "additionalMetadataFile": "swordworld-production-app.metadata.json",
+      "displayName": "swordworld-production-app"
     },
     "Tree": {
       "type": "cdk:tree",
