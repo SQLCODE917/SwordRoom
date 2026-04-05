@@ -1,4 +1,4 @@
-import { type Dispatch, type ReactNode, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { toPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient, type CharacterItem } from '../api/ApiClient';
@@ -164,6 +164,7 @@ function CharacterWizardPageContent({
   const [stepError, setStepError] = useState<string>(' ');
   const [snapshot, setSnapshot] = useState<CharacterSnapshot | null>(null);
   const [savedCharacters, setSavedCharacters] = useState<CharacterItem[]>([]);
+  const [selectedSavedCharacterId, setSelectedSavedCharacterId] = useState('');
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeReady, setRouteReady] = useState(false);
   const [lastSavedFingerprint, setLastSavedFingerprint] = useState<string | null>(null);
@@ -184,6 +185,7 @@ function CharacterWizardPageContent({
   useEffect(() => {
     setState(buildInitialState(routeGameId, routeCharacterId));
     setSnapshot(null);
+    setSelectedSavedCharacterId('');
     setLastSavedFingerprint(null);
     setStepError(' ');
   }, [routeCharacterId, routeGameId]);
@@ -824,7 +826,7 @@ function CharacterWizardPageContent({
           </button>
           <FieldSelect
             label="Autofill from saved character"
-            value=""
+            value={selectedSavedCharacterId}
             options={[
               { value: '', label: savedCharacters.length > 0 ? 'Choose a saved character' : 'No saved characters available' },
               ...savedCharacters
@@ -842,6 +844,7 @@ function CharacterWizardPageContent({
               if (!selected) {
                 return;
               }
+              setSelectedSavedCharacterId(value);
               const hydrated = hydrateWizardStateFromCharacter(selected, state);
               setState({
                 ...hydrated,
@@ -1411,10 +1414,15 @@ function FieldText(props: {
   errorText?: string;
   isError?: boolean;
 }) {
+  const fieldId = useId();
+
   return (
     <div className={`c-field ${props.disabled ? 'is-disabled' : ''} ${props.isError ? 'is-error' : ''}`.trim()}>
-      <label className="c-field__label">{props.label}</label>
+      <label className="c-field__label" htmlFor={fieldId}>
+        {props.label}
+      </label>
       <input
+        id={fieldId}
         className="c-field__control"
         value={props.value}
         disabled={props.disabled}
@@ -1435,10 +1443,15 @@ function FieldSelect(props: {
   disabled?: boolean;
   hint?: string;
 }) {
+  const fieldId = useId();
+
   return (
     <div className={`c-field ${props.disabled ? 'is-disabled' : ''}`.trim()}>
-      <label className="c-field__label">{props.label}</label>
+      <label className="c-field__label" htmlFor={fieldId}>
+        {props.label}
+      </label>
       <select
+        id={fieldId}
         className="c-field__control"
         value={props.value}
         disabled={props.disabled}
@@ -1465,10 +1478,15 @@ function FieldNumber(props: {
   hint?: string;
   disabled?: boolean;
 }) {
+  const fieldId = useId();
+
   return (
     <div className={`c-field ${props.disabled ? 'is-disabled' : ''}`.trim()}>
-      <label className="c-field__label">{props.label}</label>
+      <label className="c-field__label" htmlFor={fieldId}>
+        {props.label}
+      </label>
       <input
+        id={fieldId}
         className="c-field__control"
         type="number"
         value={props.value}

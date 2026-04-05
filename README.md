@@ -30,6 +30,13 @@
   - `pnpm build`
   - `pnpm type-check`
   - `pnpm test`
+- Install the local Playwright browser for headless browser regression runs:
+  - `pnpm test:browser:install`
+- Run the local Playwright browser regression suite:
+  - `pnpm test:browser`
+  - `pnpm test:browser -- --workers=4`
+- Run the same browser suite headed for debugging:
+  - `pnpm test:browser:headed`
 - Run the local fixture-driven end-to-end path:
   - `pnpm --filter @starter/test-e2e build`
   - `make e2e`

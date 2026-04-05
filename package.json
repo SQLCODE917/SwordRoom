@@ -11,6 +11,10 @@
     "dev": "pnpm --recursive --if-present --parallel run dev",
     "build": "pnpm --recursive --if-present run build",
     "test": "RUN_LOCAL_DDB_TESTS=1 pnpm --recursive --if-present run test",
+    "test:browser": "bash scripts/local/run-browser-tests.sh",
+    "test:browser:headed": "pnpm --filter @starter/test-browser-e2e exec playwright test --headed --workers=1",
+    "test:browser:ui": "pnpm --filter @starter/test-browser-e2e exec playwright test --ui --workers=1",
+    "test:browser:install": "pnpm --filter @starter/test-browser-e2e exec playwright install chromium",
     "type-check": "pnpm --recursive --if-present run type-check",
     "clean": "pnpm --recursive --if-present exec rm -rf dist"
   },

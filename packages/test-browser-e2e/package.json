@@ -1,0 +1,18 @@
+{
+  "name": "@starter/test-browser-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "browser:test": "playwright test",
+    "browser:test:headed": "playwright test --headed --workers=1",
+    "browser:test:ui": "playwright test --ui --workers=1",
+    "browser:install": "playwright install chromium",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3"
+  }
+}

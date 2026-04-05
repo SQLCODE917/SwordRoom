@@ -8,3 +8,7 @@ coverage
 /cdk-outputs.json
 /packages/infra/cdk.out/
 packages/web/public/dev-admin.local.json
+playwright-report
+test-results
+blob-report
+packages/test-browser-e2e/.auth

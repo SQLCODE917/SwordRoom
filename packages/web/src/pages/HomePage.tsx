@@ -222,7 +222,7 @@ function MyGamesTable(input: {
   characterByGameId: ReadonlyMap<string, CharacterItem>;
 }) {
   return (
-    <div className="c-table" role="table" aria-label={input.emptyText}>
+    <div className="c-table" role="table" aria-label="My Games">
       <div className="c-table__head c-table__row" role="row">
         <div className="c-table__cell t-small">Game</div>
         <div className="c-table__cell t-small">Visibility</div>
@@ -280,7 +280,7 @@ export function PublicGamesTable(input: {
   characterByGameId: ReadonlyMap<string, CharacterItem>;
 }) {
   return (
-    <div className="c-table" role="table" aria-label={input.emptyText}>
+    <div className="c-table" role="table" aria-label="Public Games">
       <div className="c-table__head c-table__row" role="row">
         <div className="c-table__cell t-small">Game</div>
         <div className="c-table__cell t-small">Visibility</div>
