@@ -110,7 +110,23 @@ describe('OidcAuthProvider', () => {
     expect((await auth.withAuthHeaders()).get('Authorization')).toBe(`Bearer ${idToken}`);
   });
 
-  it('drops expired in-memory sessions without using localStorage', async () => {
+  it('restores a valid session after an in-memory reset, like a browser reload', async () => {
+    window.sessionStorage.setItem(
+      'sw_oidc_pending_login',
+      JSON.stringify({ state: 'state-reload', codeVerifier: 'verifier', returnToPath: '/' })
+    );
+
+    await completeOidcLoginFromCallback('https://app.example/auth/callback?code=abc123&state=state-reload', env);
+
+    resetOidcAuthTestState({ clearStorage: false });
+    const reloadedAuth = createOidcAuthProvider(env);
+
+    expect(reloadedAuth.isAuthenticated).toBe(true);
+    expect(reloadedAuth.actorId).toBe('player-oidc');
+    expect((await reloadedAuth.withAuthHeaders()).get('Authorization')).toBe(`Bearer ${idToken}`);
+  });
+
+  it('drops expired persisted sessions', async () => {
     const auth = createOidcAuthProvider(env);
     const expiredIdToken = [
       'header',
@@ -144,6 +160,7 @@ describe('OidcAuthProvider', () => {
 
     expect(auth.isAuthenticated).toBe(false);
     expect((await auth.withAuthHeaders()).get('Authorization')).toBeNull();
+    expect(window.sessionStorage.getItem('sw_oidc_session_v1')).toBeNull();
   });
 
   it('fails the callback when the token response omits id_token', async () => {

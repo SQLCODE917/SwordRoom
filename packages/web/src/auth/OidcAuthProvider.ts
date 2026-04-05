@@ -41,6 +41,7 @@ interface OidcSession {
 }
 
 const OIDC_PENDING_KEY = 'sw_oidc_pending_login';
+const OIDC_SESSION_KEY = 'sw_oidc_session_v1';
 const DEFAULT_OIDC_SCOPE = 'openid profile email';
 const DEFAULT_CLIENT_ID = 'swordworld-web';
 
@@ -78,7 +79,7 @@ export function hasOidcSession(): boolean {
 }
 
 export function clearOidcSession(): void {
-  currentSession = null;
+  clearPersistedOidcSession();
   if (typeof window !== 'undefined') {
     window.sessionStorage.removeItem(OIDC_PENDING_KEY);
   }
@@ -192,6 +193,7 @@ export async function completeOidcLoginFromCallback(
   }
 
   currentSession = createSession(token.id_token, token.expires_in);
+  persistOidcSession(currentSession);
   window.sessionStorage.removeItem(OIDC_PENDING_KEY);
   notifyAuthStateChanged();
 
@@ -202,12 +204,16 @@ export function setOidcRedirectHandlerForTests(handler: ((url: string) => void) 
   redirectHandler = handler;
 }
 
-export function resetOidcAuthTestState(): void {
+export function resetOidcAuthTestState(options?: { clearStorage?: boolean }): void {
   currentSession = null;
   redirectHandler = null;
   discoveryCache.clear();
+  if (options?.clearStorage === false || typeof window === 'undefined') {
+    return;
+  }
   if (typeof window !== 'undefined') {
     window.sessionStorage.removeItem(OIDC_PENDING_KEY);
+    window.sessionStorage.removeItem(OIDC_SESSION_KEY);
   }
 }
 
@@ -300,14 +306,53 @@ function resolveAbsoluteReturnToPath(returnToPath: string): string {
 
 function readValidSession(): OidcSession | null {
   if (!currentSession) {
+    currentSession = readPersistedOidcSession();
+  }
+  if (!currentSession) {
     return null;
   }
   if (Date.now() >= currentSession.expiresAtEpochMs) {
-    currentSession = null;
-    notifyAuthStateChanged();
+    clearPersistedOidcSession();
     return null;
   }
   return currentSession;
+}
+
+function persistOidcSession(session: OidcSession): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  writeJson(window.sessionStorage, OIDC_SESSION_KEY, session);
+}
+
+function readPersistedOidcSession(): OidcSession | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const persisted = readJson<Partial<OidcSession>>(window.sessionStorage, OIDC_SESSION_KEY);
+  if (
+    !persisted ||
+    typeof persisted.idToken !== 'string' ||
+    typeof persisted.actorId !== 'string' ||
+    typeof persisted.expiresAtEpochMs !== 'number'
+  ) {
+    window.sessionStorage.removeItem(OIDC_SESSION_KEY);
+    return null;
+  }
+
+  return {
+    idToken: persisted.idToken,
+    actorId: persisted.actorId,
+    expiresAtEpochMs: persisted.expiresAtEpochMs,
+  };
+}
+
+function clearPersistedOidcSession(): void {
+  currentSession = null;
+  if (typeof window !== 'undefined') {
+    window.sessionStorage.removeItem(OIDC_SESSION_KEY);
+  }
 }
 
 async function createCodeChallenge(codeVerifier: string): Promise<string> {
