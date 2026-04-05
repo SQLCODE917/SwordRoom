@@ -1,9 +1,9 @@
-import { RemovalPolicy, Size, Stack } from "aws-cdk-lib";
+import { Fn, RemovalPolicy, Size, Stack } from "aws-cdk-lib";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as iam from "aws-cdk-lib/aws-iam";
-import * as route53 from "aws-cdk-lib/aws-route53";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as cr from "aws-cdk-lib/custom-resources";
 import { Construct } from "constructs";
 
 export interface WebSiteProps {
@@ -87,27 +87,101 @@ export class WebSite extends Construct {
 
     if (props.certificateArnUsEast1 && props.hostedZoneName) {
       const hostedZoneName = ensureTrailingDot(props.hostedZoneName);
-
-      new route53.CfnRecordSet(this, "WebAliasARecord", {
-        hostedZoneName,
-        name: props.webDomainName,
-        type: "A",
-        aliasTarget: {
-          dnsName: this.distribution.attrDomainName,
-          hostedZoneId: "Z2FDTNDATAQYW2",
-          evaluateTargetHealth: false,
+      const recordName = ensureTrailingDot(props.webDomainName);
+      const hostedZoneLookup = new cr.AwsCustomResource(this, "HostedZoneLookup", {
+        onUpdate: {
+          service: "Route53",
+          action: "listHostedZonesByName",
+          parameters: {
+            DNSName: hostedZoneName,
+            MaxItems: "1",
+          },
+          physicalResourceId: cr.PhysicalResourceId.of(`hosted-zone-lookup:${hostedZoneName}`),
         },
+        installLatestAwsSdk: false,
+        policy: cr.AwsCustomResourcePolicy.fromSdkCalls({
+          resources: cr.AwsCustomResourcePolicy.ANY_RESOURCE,
+        }),
       });
+      const hostedZoneId = Fn.select(2, Fn.split("/", hostedZoneLookup.getResponseField("HostedZones.0.Id")));
+      const aliasTarget = {
+        DNSName: this.distribution.attrDomainName,
+        HostedZoneId: "Z2FDTNDATAQYW2",
+        EvaluateTargetHealth: false,
+      };
+      const changeBatch = {
+        Changes: [
+          {
+            Action: "UPSERT",
+            ResourceRecordSet: {
+              Name: recordName,
+              Type: "A",
+              AliasTarget: aliasTarget,
+            },
+          },
+          {
+            Action: "UPSERT",
+            ResourceRecordSet: {
+              Name: recordName,
+              Type: "AAAA",
+              AliasTarget: aliasTarget,
+            },
+          },
+        ],
+      };
 
-      new route53.CfnRecordSet(this, "WebAliasAaaaRecord", {
-        hostedZoneName,
-        name: props.webDomainName,
-        type: "AAAA",
-        aliasTarget: {
-          dnsName: this.distribution.attrDomainName,
-          hostedZoneId: "Z2FDTNDATAQYW2",
-          evaluateTargetHealth: false,
+      new cr.AwsCustomResource(this, "WebAliasRecords", {
+        onCreate: {
+          service: "Route53",
+          action: "changeResourceRecordSets",
+          parameters: {
+            HostedZoneId: hostedZoneId,
+            ChangeBatch: changeBatch,
+          },
+          physicalResourceId: cr.PhysicalResourceId.of(`web-alias-records:${recordName}`),
         },
+        onUpdate: {
+          service: "Route53",
+          action: "changeResourceRecordSets",
+          parameters: {
+            HostedZoneId: hostedZoneId,
+            ChangeBatch: changeBatch,
+          },
+          physicalResourceId: cr.PhysicalResourceId.of(`web-alias-records:${recordName}`),
+        },
+        onDelete: {
+          service: "Route53",
+          action: "changeResourceRecordSets",
+          parameters: {
+            HostedZoneId: hostedZoneId,
+            ChangeBatch: {
+              Changes: [
+                {
+                  Action: "DELETE",
+                  ResourceRecordSet: {
+                    Name: recordName,
+                    Type: "A",
+                    AliasTarget: aliasTarget,
+                  },
+                },
+                {
+                  Action: "DELETE",
+                  ResourceRecordSet: {
+                    Name: recordName,
+                    Type: "AAAA",
+                    AliasTarget: aliasTarget,
+                  },
+                },
+              ],
+            },
+          },
+          physicalResourceId: cr.PhysicalResourceId.of(`web-alias-records:${recordName}`),
+          ignoreErrorCodesMatching: "InvalidChangeBatch",
+        },
+        installLatestAwsSdk: false,
+        policy: cr.AwsCustomResourcePolicy.fromSdkCalls({
+          resources: cr.AwsCustomResourcePolicy.ANY_RESOURCE,
+        }),
       });
     }
 
