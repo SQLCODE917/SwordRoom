@@ -10,6 +10,7 @@ import { CharacterSheetPage } from './routes/CharacterSheetPage';
 import { CharacterWizardPage } from './routes/CharacterWizardPage';
 import { GMInboxPage } from './routes/GMInboxPage';
 import { GMGamesPage } from './routes/GMGamesPage';
+import { GameChatPage } from './routes/GameChatPage';
 import { HomePage } from './routes/HomePage';
 import { LoginPage } from './routes/LoginPage';
 import { PlayerInboxPage } from './routes/PlayerInboxPage';
@@ -33,6 +34,14 @@ export default function App() {
             <Route
               path="/games/:gameId/character/new"
               element={<RequireAuthRoute><CharacterWizardPage /></RequireAuthRoute>}
+            />
+            <Route
+              path="/games/:gameId/chat"
+              element={<RequireAuthRoute><GameChatPage /></RequireAuthRoute>}
+            />
+            <Route
+              path="/game/:gameId/chat"
+              element={<RequireAuthRoute><GameChatPage /></RequireAuthRoute>}
             />
             <Route
               path="/player/:playerId/character/new"

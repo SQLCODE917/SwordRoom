@@ -200,6 +200,30 @@ function toTransactWriteItem(
         },
       };
     }
+    case 'PUT_GAME_CHAT_MESSAGE': {
+      return {
+        Put: {
+          TableName: db.tables.gameStateTableName,
+          Item: {
+            ...db.keyBuilders.gameState.gameChatMessage(
+              effect.input.gameId,
+              effect.input.createdAt,
+              effect.input.messageId
+            ),
+            type: 'GameChatMessage',
+            gameId: effect.input.gameId,
+            messageId: effect.input.messageId,
+            senderPlayerId: effect.input.senderPlayerId,
+            senderRole: effect.input.senderRole,
+            senderCharacterId: effect.input.senderCharacterId,
+            senderNameSnapshot: effect.input.senderNameSnapshot,
+            body: effect.input.body,
+            createdAt: effect.input.createdAt,
+          },
+          ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',
+        },
+      };
+    }
     case 'PUT_GAME_METADATA': {
       const key = db.keyBuilders.gameState.gameMetadata(effect.input.gameId);
       return {

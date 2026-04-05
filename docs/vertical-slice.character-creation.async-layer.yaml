@@ -24,6 +24,7 @@ aws_components:
       - { method: GET, path: /me/inbox, auth: required }
       - { method: GET, path: /games/public, auth: required }
       - { method: GET, path: /games/{gameId}/characters/{characterId}, auth: required }
+      - { method: GET, path: /games/{gameId}/chat, auth: required }
       - { method: POST, path: /games/{gameId}/characters/{characterId}/appearance/upload-url, auth: required }
       - { method: GET, path: /players/{playerId}/characters/{characterId}, auth: required }
       - { method: GET, path: /gm/games, auth: required }
@@ -100,6 +101,9 @@ command_contracts:
     - type: DeleteCharacter
       payload: { characterId: string }
       authz: "actorId == ownerPlayerId || actorId == gmPlayerId"
+    - type: SendGameChatMessage
+      payload: { body: string }
+      authz: "actorId is current member of game"
     - type: SubmitCharacterForApproval
       payload: { characterId: string, expectedVersion: int }
       authz: "actorId == ownerPlayerId"

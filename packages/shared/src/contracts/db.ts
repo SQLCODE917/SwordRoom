@@ -8,6 +8,7 @@ export const gameVisibilitySchema = z.enum(['PUBLIC', 'PRIVATE']);
 export const playerRoleSchema = z.enum(['PLAYER', 'GM', 'ADMIN']);
 export const platformRoleSchema = z.enum(['ADMIN']);
 export const gameInviteStatusSchema = z.enum(['PENDING', 'ACCEPTED', 'REJECTED', 'CANCELLED']);
+export const gameChatSenderRoleSchema = z.enum(['PLAYER', 'GM']);
 
 export type CharacterStatus = z.infer<typeof characterStatusSchema>;
 export type CommandStatus = z.infer<typeof commandStatusSchema>;
@@ -17,6 +18,7 @@ export type GameVisibility = z.infer<typeof gameVisibilitySchema>;
 export type PlayerRole = z.infer<typeof playerRoleSchema>;
 export type PlatformRole = z.infer<typeof platformRoleSchema>;
 export type GameInviteStatus = z.infer<typeof gameInviteStatusSchema>;
+export type GameChatSenderRole = z.infer<typeof gameChatSenderRoleSchema>;
 
 export type PkSk = { pk: string; sk: string };
 export const PLAYER_CHARACTER_LIBRARY_PREFIX = 'PLAYER_CHARACTER_LIBRARY::';
@@ -49,6 +51,10 @@ export const gameStateKeys = {
   gameInvite: (gameId: string, inviteId: string): PkSk => ({
     pk: `GAME#${gameId}`,
     sk: `INVITE#${inviteId}`,
+  }),
+  gameChatMessage: (gameId: string, createdAtIso: string, messageId: string): PkSk => ({
+    pk: `GAME#${gameId}`,
+    sk: `CHAT#${createdAtIso}#${messageId}`,
   }),
   gmInboxItem: (gameId: string, createdAtIso: string, promptId: string): PkSk => ({
     pk: `GM#${gameId}`,
@@ -230,6 +236,18 @@ export const characterItemSchema = pkSkSchema.extend({
   version: z.number().int(),
 });
 
+export const gameChatMessageItemSchema = pkSkSchema.extend({
+  type: z.literal('GameChatMessage'),
+  messageId: z.string(),
+  gameId: z.string(),
+  senderPlayerId: z.string(),
+  senderRole: gameChatSenderRoleSchema,
+  senderCharacterId: z.string().nullable(),
+  senderNameSnapshot: z.string(),
+  body: z.string(),
+  createdAt: z.string(),
+});
+
 const inboxRefSchema = z.object({
   characterId: z.string().nullable().optional(),
   commandId: z.string().nullable().optional(),
@@ -285,6 +303,7 @@ export const gameStateItemSchema = z.discriminatedUnion('type', [
   gameMemberItemSchema,
   gameInviteItemSchema,
   characterItemSchema,
+  gameChatMessageItemSchema,
   gmInboxItemSchema,
   playerInboxItemSchema,
 ]);
@@ -299,6 +318,7 @@ export type SubAbility = z.infer<typeof subAbilitySchema>;
 export type Ability = z.infer<typeof abilitySchema>;
 export type CharacterDraft = z.infer<typeof characterDraftSchema>;
 export type CharacterItem = z.infer<typeof characterItemSchema>;
+export type GameChatMessageItem = z.infer<typeof gameChatMessageItemSchema>;
 export type GMInboxItem = z.infer<typeof gmInboxItemSchema>;
 export type PlayerInboxItem = z.infer<typeof playerInboxItemSchema>;
 export type CommandLogItem = z.infer<typeof commandLogItemSchema>;

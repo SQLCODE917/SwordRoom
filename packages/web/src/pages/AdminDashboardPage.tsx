@@ -104,7 +104,6 @@ export function AdminDashboardPage() {
                   <div className="c-table__row" role="row" key={game.gameId}>
                     <div className="c-table__cell t-small">
                       <div>{game.name}</div>
-                      <div>{game.gameId}</div>
                     </div>
                     <div className="c-table__cell t-small">{game.visibility}</div>
                     <div className="c-table__cell t-small">{game.gmPlayerId}</div>

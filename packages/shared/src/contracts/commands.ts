@@ -14,6 +14,7 @@ export const COMMAND_TYPES = [
   'PurchaseStarterEquipment',
   'ConfirmCharacterAppearanceUpload',
   'DeleteCharacter',
+  'SendGameChatMessage',
   'SubmitCharacterForApproval',
   'GMReviewCharacter',
 ] as const;
@@ -134,6 +135,10 @@ export const deleteCharacterPayloadSchema = z.object({
   characterId: z.string(),
 });
 
+export const sendGameChatMessagePayloadSchema = z.object({
+  body: z.string().trim().min(1).max(1000),
+});
+
 export const submitCharacterForApprovalPayloadSchema = z.object({
   characterId: z.string(),
   expectedVersion: z.number().int(),
@@ -159,6 +164,7 @@ export const commandPayloadSchemaByType = {
   PurchaseStarterEquipment: purchaseStarterEquipmentPayloadSchema,
   ConfirmCharacterAppearanceUpload: confirmCharacterAppearanceUploadPayloadSchema,
   DeleteCharacter: deleteCharacterPayloadSchema,
+  SendGameChatMessage: sendGameChatMessagePayloadSchema,
   SubmitCharacterForApproval: submitCharacterForApprovalPayloadSchema,
   GMReviewCharacter: gmReviewCharacterPayloadSchema,
 } as const;
@@ -224,6 +230,10 @@ export const commandEnvelopeSchemaByType = {
     type: z.literal('DeleteCharacter'),
     payload: deleteCharacterPayloadSchema,
   }),
+  SendGameChatMessage: commandEnvelopeBaseSchema.extend({
+    type: z.literal('SendGameChatMessage'),
+    payload: sendGameChatMessagePayloadSchema,
+  }),
   SubmitCharacterForApproval: commandEnvelopeBaseSchema.extend({
     type: z.literal('SubmitCharacterForApproval'),
     payload: submitCharacterForApprovalPayloadSchema,
@@ -248,6 +258,7 @@ export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
   commandEnvelopeSchemaByType.PurchaseStarterEquipment,
   commandEnvelopeSchemaByType.ConfirmCharacterAppearanceUpload,
   commandEnvelopeSchemaByType.DeleteCharacter,
+  commandEnvelopeSchemaByType.SendGameChatMessage,
   commandEnvelopeSchemaByType.SubmitCharacterForApproval,
   commandEnvelopeSchemaByType.GMReviewCharacter,
 ]);
@@ -265,6 +276,7 @@ export type SpendStartingExpPayload = z.infer<typeof spendStartingExpPayloadSche
 export type PurchaseStarterEquipmentPayload = z.infer<typeof purchaseStarterEquipmentPayloadSchema>;
 export type ConfirmCharacterAppearanceUploadPayload = z.infer<typeof confirmCharacterAppearanceUploadPayloadSchema>;
 export type DeleteCharacterPayload = z.infer<typeof deleteCharacterPayloadSchema>;
+export type SendGameChatMessagePayload = z.infer<typeof sendGameChatMessagePayloadSchema>;
 export type SubmitCharacterForApprovalPayload = z.infer<typeof submitCharacterForApprovalPayloadSchema>;
 export type GMReviewCharacterPayload = z.infer<typeof gmReviewCharacterPayloadSchema>;
 
@@ -282,6 +294,7 @@ export type CommandPayloadByType = {
   PurchaseStarterEquipment: PurchaseStarterEquipmentPayload;
   ConfirmCharacterAppearanceUpload: ConfirmCharacterAppearanceUploadPayload;
   DeleteCharacter: DeleteCharacterPayload;
+  SendGameChatMessage: SendGameChatMessagePayload;
   SubmitCharacterForApproval: SubmitCharacterForApprovalPayload;
   GMReviewCharacter: GMReviewCharacterPayload;
 };

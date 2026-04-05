@@ -248,6 +248,28 @@ const routeDefinitions: ApiRouteDefinition[] = [
     },
   },
   {
+    method: 'GET',
+    path: '/games/{gameId}/chat',
+    auth: 'required',
+    handler: async (context) => {
+      const gameId = context.params.gameId!;
+      await requireGameAccess({
+        db: context.runtime.db,
+        identity: context.identity,
+        gameId,
+      });
+      const chat = await context.runtime.service.readApis.getGameChat(gameId);
+      context.logFlow('API_GET_GAME_CHAT', {
+        requestId: context.requestId,
+        actorId: context.identity.actorId,
+        gameId,
+        participantCount: chat.participants.length,
+        messageCount: chat.messages.length,
+      });
+      context.sendJson(200, chat);
+    },
+  },
+  {
     method: 'POST',
     path: '/games/{gameId}/characters/{characterId}/appearance/upload-url',
     auth: 'required',

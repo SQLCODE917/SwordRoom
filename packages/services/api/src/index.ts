@@ -22,6 +22,7 @@ import { listContractRoutes } from './httpRoutes.js';
 import type {
   ApiRuntimeService,
   CommandStatusResponse,
+  GameChatParticipantResponse,
   PostCommandRequest,
   PostCommandResponse,
   ReadApis,
@@ -130,6 +131,10 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
           event: 'API_CHARACTER_COMMAND_AUTHORIZED',
           data: summarizeCommandEnvelope(envelope),
         });
+      }
+
+      if (envelope.type === 'SendGameChatMessage') {
+        await assertSendGameChatMessageAuthorized(deps.db, envelope);
       }
 
       if (envelope.type === 'SubmitCharacterForApproval') {
@@ -433,6 +438,61 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
       async getGmInbox(gameId: string) {
         return deps.db.inboxRepository.queryGmInbox(gameId);
       },
+
+      async getGameChat(gameId: string) {
+        const [game, memberships, messages] = await Promise.all([
+          deps.db.gameRepository.getGameMetadata(gameId),
+          deps.db.membershipRepository.listMembershipsForGame(gameId),
+          deps.db.chatRepository.queryMessages(gameId),
+        ]);
+        if (!game) {
+          throw createApiError(`game not found: ${gameId}`, 'GAME_NOT_FOUND', 404);
+        }
+
+        const participantRecords = await Promise.all(
+          memberships.map(async (membership) => {
+            const [profile, character] = await Promise.all([
+              deps.db.playerRepository.getPlayerProfile(membership.playerId),
+              deps.db.characterRepository.findOwnedCharacterInGame(gameId, membership.playerId),
+            ]);
+            const role: GameChatParticipantResponse['role'] = membership.roles.includes('GM') ? 'GM' : 'PLAYER';
+            const baseName = character
+              ? readCharacterIdentityName(character)
+              : (profile?.displayName?.trim() || membership.playerId);
+            return {
+              playerId: membership.playerId,
+              displayName: formatChatDisplayName(baseName, role),
+              sortName: baseName.toLocaleLowerCase(),
+              role,
+              characterId: character?.characterId ?? null,
+            };
+          })
+        );
+
+        const participants = participantRecords
+          .sort((left, right) => {
+            if (left.role !== right.role) {
+              return left.role === 'GM' ? -1 : 1;
+            }
+            return left.sortName.localeCompare(right.sortName);
+          })
+          .map(({ sortName: _sortName, ...participant }) => participant);
+
+        return {
+          gameId: game.gameId,
+          gameName: game.name,
+          participants,
+          messages: messages.map((message) => ({
+            messageId: message.messageId,
+            senderPlayerId: message.senderPlayerId,
+            senderDisplayName: formatChatDisplayName(message.senderNameSnapshot, message.senderRole),
+            senderRole: message.senderRole,
+            senderCharacterId: message.senderCharacterId,
+            body: message.body,
+            createdAt: message.createdAt,
+          })),
+        };
+      },
     },
   };
 }
@@ -510,6 +570,25 @@ async function assertSubmitCharacterForApprovalAuthorized(
   }
 }
 
+async function assertSendGameChatMessageAuthorized(
+  db: DbAccess,
+  envelope: Extract<AnyCommandEnvelope, { type: 'SendGameChatMessage' }>
+): Promise<void> {
+  const game = await db.gameRepository.getGameMetadata(envelope.gameId);
+  if (!game) {
+    throw createApiError(`game not found: ${envelope.gameId}`, 'GAME_NOT_FOUND', 404);
+  }
+
+  const membership = await db.membershipRepository.getMembership(envelope.gameId, envelope.actorId);
+  if (!membership) {
+    throw createApiError(
+      `game access required for actor "${envelope.actorId}" and game "${envelope.gameId}"`,
+      'GAME_ACCESS_REQUIRED',
+      403
+    );
+  }
+}
+
 function normalizeEnvelopeCandidate(
   envelope: PostCommandRequest['envelope'],
   actorId: string
@@ -558,4 +637,13 @@ function createApiError(message: string, code: string, statusCode: number): Erro
   error.code = code;
   error.statusCode = statusCode;
   return error;
+}
+
+function readCharacterIdentityName(character: { draft: { identity: { name: string } }; characterId: string }): string {
+  const name = character.draft.identity.name.trim();
+  return name || character.characterId;
+}
+
+function formatChatDisplayName(name: string, role: 'PLAYER' | 'GM'): string {
+  return role === 'GM' ? `@${name}` : name;
 }

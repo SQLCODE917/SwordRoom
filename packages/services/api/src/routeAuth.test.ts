@@ -268,11 +268,19 @@ function makeDb(input?: {
         }
         return null;
       },
+      async listMembershipsForGame() {
+        return [];
+      },
       async putMembership() {
         throw new Error('not implemented');
       },
       async deleteMembership() {
         throw new Error('not implemented');
+      },
+    },
+    chatRepository: {
+      async queryMessages() {
+        return [];
       },
     },
     inviteRepository: {

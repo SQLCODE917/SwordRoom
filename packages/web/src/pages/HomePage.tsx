@@ -239,7 +239,6 @@ function MyGamesTable(input: {
             <div className="c-table__row" role="row" key={game.gameId}>
               <div className="c-table__cell t-small">
                 <div>{game.name}</div>
-                <div>{game.gameId}</div>
               </div>
               <div className="c-table__cell t-small">{game.visibility}</div>
               <div className="c-table__cell t-small">
@@ -257,6 +256,7 @@ function MyGamesTable(input: {
                   >
                     New Character
                   </ButtonLink>
+                  <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
                   <ButtonLink to="/me/inbox">Player Inbox</ButtonLink>
                   {input.gmGameIds.has(game.gameId) ? (
                     <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
@@ -297,7 +297,6 @@ export function PublicGamesTable(input: {
             <div className="c-table__row" role="row" key={game.gameId}>
               <div className="c-table__cell t-small">
                 <div>{game.name}</div>
-                <div>{game.gameId}</div>
               </div>
               <div className="c-table__cell t-small">{game.visibility}</div>
               <div className="c-table__cell t-small">
@@ -309,6 +308,9 @@ export function PublicGamesTable(input: {
                     </>
                   ) : null}
                   {input.joinedGameIds.has(game.gameId) ? <ButtonLink to="/me/inbox">Player Inbox</ButtonLink> : null}
+                  {input.joinedGameIds.has(game.gameId) || input.gmGameIds.has(game.gameId) ? (
+                    <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
+                  ) : null}
                   {input.gmGameIds.has(game.gameId) ? (
                     <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
                   ) : null}

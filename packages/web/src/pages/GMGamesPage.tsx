@@ -62,7 +62,6 @@ export function GMGamesPage() {
                 <div className="c-table__row" role="row" key={game.gameId}>
                   <div className="c-table__cell t-small">
                     <div>{game.name}</div>
-                    <div>{game.gameId}</div>
                   </div>
                   <div className="c-table__cell t-small">
                     <div>{game.visibility}</div>
@@ -78,6 +77,7 @@ export function GMGamesPage() {
                   <div className="c-table__cell t-small">
                     <div className="l-col">
                       <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</ButtonLink>
+                      <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
                       <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
                     </div>
                   </div>

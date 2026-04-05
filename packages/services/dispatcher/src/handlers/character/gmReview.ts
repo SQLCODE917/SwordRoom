@@ -4,12 +4,15 @@ import { requireCharacter } from './shared.js';
 
 export const gmReviewHandler: CommandHandler<'GMReviewCharacter'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);
+  const membership = await ctx.db.membershipRepository.getMembership(envelope.gameId, character.ownerPlayerId);
 
   const nextStatus = envelope.payload.decision === 'APPROVE' ? 'APPROVED' : 'REJECTED';
   const updatedDraft: CharacterDraft = {
     ...character.draft,
     gmNote: envelope.payload.gmNote ?? null,
   };
+  const approvedMembershipRoles: Array<'PLAYER' | 'GM'> =
+    membership && membership.roles.includes('PLAYER') ? membership.roles : [...(membership?.roles ?? []), 'PLAYER'];
 
   const gmItems = await ctx.db.inboxRepository.queryGmInbox(envelope.gameId);
   const gmItem = gmItems.find((item) => item.kind === 'PENDING_CHARACTER' && item.ref.characterId === envelope.payload.characterId);
@@ -32,6 +35,20 @@ export const gmReviewHandler: CommandHandler<'GMReviewCharacter'> = async (ctx, 
           },
         },
       },
+      ...(nextStatus === 'APPROVED'
+        ? [
+            {
+              kind: 'PUT_GAME_MEMBER' as const,
+              input: {
+                gameId: envelope.gameId,
+                playerId: character.ownerPlayerId,
+                roles: approvedMembershipRoles,
+                createdAt: membership?.createdAt ?? envelope.createdAt,
+                updatedAt: ctx.nowIso(),
+              },
+            },
+          ]
+        : []),
       ...(gmItem
         ? [
             {

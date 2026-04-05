@@ -15,6 +15,7 @@ export type CommandType =
   | 'PurchaseStarterEquipment'
   | 'ConfirmCharacterAppearanceUpload'
   | 'DeleteCharacter'
+  | 'SendGameChatMessage'
   | 'SubmitCharacterForApproval'
   | 'GMReviewCharacter';
 
@@ -78,6 +79,7 @@ interface CommandPayloadByType {
   PurchaseStarterEquipment: { characterId: string; cart: Record<string, unknown> };
   ConfirmCharacterAppearanceUpload: { characterId: string; s3Key: string };
   DeleteCharacter: { characterId: string };
+  SendGameChatMessage: { body: string };
   SubmitCharacterForApproval: {
     characterId: string;
     expectedVersion: number;
@@ -159,6 +161,30 @@ export interface GameActorContextResponse {
   isGameMaster: boolean;
 }
 
+export interface GameChatParticipant {
+  playerId: string;
+  displayName: string;
+  role: 'PLAYER' | 'GM';
+  characterId: string | null;
+}
+
+export interface GameChatMessage {
+  messageId: string;
+  senderPlayerId: string;
+  senderDisplayName: string;
+  senderRole: 'PLAYER' | 'GM';
+  senderCharacterId: string | null;
+  body: string;
+  createdAt: string;
+}
+
+export interface GameChatResponse {
+  gameId: string;
+  gameName: string;
+  participants: GameChatParticipant[];
+  messages: GameChatMessage[];
+}
+
 export interface AppearanceUploadUrlRequest {
   contentType: string;
   fileName: string;
@@ -188,6 +214,7 @@ export interface ApiClient {
   getMyInbox(): Promise<PlayerInboxItem[]>;
   getGameActorContext(gameId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
+  getGameChat(gameId: string): Promise<GameChatResponse>;
   getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
   getOwnedCharacter(playerId: string, characterId: string): Promise<CharacterItem | null>;
   requestAppearanceUploadUrl(
@@ -452,6 +479,25 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
         gameId,
         count: response.length,
+      });
+      return response;
+    },
+
+    async getGameChat(gameId: string): Promise<GameChatResponse> {
+      logWebFlow('WEB_API_GET_GAME_CHAT_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+      });
+      const response = await requestJson<GameChatResponse>(`${baseUrl}/games/${encodeURIComponent(gameId)}/chat`, {
+        headers: await auth.withAuthHeaders(),
+      });
+      logWebFlow('WEB_API_GET_GAME_CHAT_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        participantCount: response.participants.length,
+        messageCount: response.messages.length,
       });
       return response;
     },

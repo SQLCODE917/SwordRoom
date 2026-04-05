@@ -123,6 +123,13 @@ function summarizePayload(type: string | null, payload: Record<string, unknown>)
     };
   }
 
+  if (type === 'SendGameChatMessage') {
+    return {
+      bodyLength: typeof payload.body === 'string' ? payload.body.length : null,
+      bodyPresent: typeof payload.body === 'string' ? payload.body.trim().length > 0 : false,
+    };
+  }
+
   if (type === 'SubmitCharacterForApproval') {
     return {
       expectedVersion: readNumber(payload.expectedVersion),

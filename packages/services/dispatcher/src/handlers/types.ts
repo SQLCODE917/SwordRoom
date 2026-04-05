@@ -31,6 +31,19 @@ export type WriteEffect =
       input: { gameId: string; characterId: string };
     }
   | {
+      kind: 'PUT_GAME_CHAT_MESSAGE';
+      input: {
+        gameId: string;
+        messageId: string;
+        senderPlayerId: string;
+        senderRole: 'PLAYER' | 'GM';
+        senderCharacterId: string | null;
+        senderNameSnapshot: string;
+        body: string;
+        createdAt: string;
+      };
+    }
+  | {
       kind: 'PUT_GAME_METADATA';
       input: PutGameMetadataInput;
     }

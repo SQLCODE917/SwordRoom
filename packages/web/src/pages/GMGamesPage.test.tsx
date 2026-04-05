@@ -110,6 +110,7 @@ describe('GMGamesPage', () => {
     );
 
     const gmInboxLink = await screen.findByRole('link', { name: 'GM Inbox' });
+    expect(screen.queryByText('game-new')).toBeNull();
     expect(gmInboxLink.className).toContain('c-btn');
     expect(vi.mocked(notifyAuthStateChanged)).toHaveBeenCalledTimes(1);
   });

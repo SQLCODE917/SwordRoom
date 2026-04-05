@@ -18,6 +18,7 @@ import {
   commandLogItemSchema,
   commandLogKeys,
   gameStateKeys,
+  gameChatMessageItemSchema,
   gameInviteItemSchema,
   gameMemberItemSchema,
   gmInboxItemSchema,
@@ -30,6 +31,7 @@ import {
   type CharacterStatus,
   type CommandLogItem,
   type CommandStatus,
+  type GameChatMessageItem,
   type GameInviteItem,
   type GameInviteStatus,
   type GameMemberItem,
@@ -83,8 +85,12 @@ export interface DbAccess {
   };
   membershipRepository: {
     getMembership(gameId: string, playerId: string): Promise<GameMemberItem | null>;
+    listMembershipsForGame(gameId: string): Promise<GameMemberItem[]>;
     putMembership(input: PutGameMemberInput): Promise<GameMemberItem>;
     deleteMembership(gameId: string, playerId: string): Promise<void>;
+  };
+  chatRepository: {
+    queryMessages(gameId: string): Promise<GameChatMessageItem[]>;
   };
   inviteRepository: {
     getInvite(gameId: string, inviteId: string): Promise<GameInviteItem | null>;
@@ -709,6 +715,21 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
         return item;
       },
 
+      async listMembershipsForGame(gameId) {
+        const result = await client.send(
+          new QueryCommand({
+            TableName: tables.gameStateTableName,
+            KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+            ExpressionAttributeValues: {
+              ':pk': `GAME#${gameId}`,
+              ':prefix': 'MEMBER#',
+            },
+          })
+        );
+
+        return (result.Items ?? []).map((item) => gameMemberItemSchema.parse(item));
+      },
+
       async deleteMembership(gameId, playerId) {
         await client.send(
           new DeleteCommand({
@@ -716,6 +737,22 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
             Key: gameStateKeys.gameMember(gameId, playerId),
           })
         );
+      },
+    },
+    chatRepository: {
+      async queryMessages(gameId) {
+        const result = await client.send(
+          new QueryCommand({
+            TableName: tables.gameStateTableName,
+            KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+            ExpressionAttributeValues: {
+              ':pk': `GAME#${gameId}`,
+              ':prefix': 'CHAT#',
+            },
+          })
+        );
+
+        return (result.Items ?? []).map((item) => gameChatMessageItemSchema.parse(item));
       },
     },
     inviteRepository: {

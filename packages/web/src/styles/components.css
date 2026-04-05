@@ -181,6 +181,99 @@
   border-left: 4px solid var(--ok);
 }
 
+.c-chat__layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-chat__panel,
+.c-chat__members-panel,
+.c-chat__mobile-sheet {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--s-3);
+}
+
+.c-chat__members-panel {
+  display: none;
+}
+
+.c-chat__transcript {
+  min-height: 320px;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--s-3);
+  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+}
+
+.c-chat__line,
+.c-chat__empty,
+.c-chat__member {
+  font-size: var(--fs-1);
+  line-height: 1.5;
+}
+
+.c-chat__speaker {
+  font-weight: 600;
+}
+
+.c-chat__composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-chat__members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-chat__member-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-chat__member {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gap);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--s-2);
+}
+
+.c-chat__mobile-controls {
+  display: flex;
+}
+
+.c-chat__mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgba(17, 17, 17, 0.36);
+}
+
+.c-chat__mobile-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  border-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
 .c-cmd {
   border: 1px solid var(--line);
   background: var(--panel);
@@ -520,6 +613,11 @@
   .c-sheet__page1-right {
     flex: 1;
   }
+
+  .c-chat__composer {
+    flex-direction: row;
+    align-items: flex-end;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -529,6 +627,26 @@
 
   .c-sheet__page1-right {
     flex: 1;
+  }
+
+  .c-chat__layout {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .c-chat__panel {
+    flex: 1.6;
+  }
+
+  .c-chat__members-panel {
+    display: flex;
+    width: min(320px, 32%);
+  }
+
+  .c-chat__mobile-controls,
+  .c-chat__mobile-backdrop,
+  .c-chat__mobile-sheet {
+    display: none;
   }
 }
 

@@ -13,6 +13,7 @@ import { acceptGameInviteHandler } from './game/acceptGameInvite.js';
 import { createGameHandler } from './game/createGame.js';
 import { invitePlayerToGameByEmailHandler } from './game/invitePlayerToGameByEmail.js';
 import { rejectGameInviteHandler } from './game/rejectGameInvite.js';
+import { sendGameChatMessageHandler } from './game/sendGameChatMessage.js';
 import { setGameVisibilityHandler } from './game/setGameVisibility.js';
 
 export const handlerRegistry: HandlerRegistry = {
@@ -29,6 +30,7 @@ export const handlerRegistry: HandlerRegistry = {
   PurchaseStarterEquipment: purchaseStarterEquipmentHandler,
   ConfirmCharacterAppearanceUpload: confirmAppearanceUploadHandler,
   DeleteCharacter: deleteCharacterHandler,
+  SendGameChatMessage: sendGameChatMessageHandler,
   SubmitCharacterForApproval: submitForApprovalHandler,
   GMReviewCharacter: gmReviewHandler,
 };

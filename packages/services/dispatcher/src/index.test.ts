@@ -115,11 +115,19 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
       async getMembership() {
         return null;
       },
+      async listMembershipsForGame() {
+        return [];
+      },
       async putMembership() {
         throw new Error('should not be called');
       },
       async deleteMembership() {
         throw new Error('should not be called');
+      },
+    },
+    chatRepository: {
+      async queryMessages() {
+        return [];
       },
     },
     inviteRepository: {
@@ -204,6 +212,7 @@ describe('services/dispatcher command registry', () => {
       'PurchaseStarterEquipment',
       'ConfirmCharacterAppearanceUpload',
       'DeleteCharacter',
+      'SendGameChatMessage',
       'SubmitCharacterForApproval',
       'GMReviewCharacter',
     ]);

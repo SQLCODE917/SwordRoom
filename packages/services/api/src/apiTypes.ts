@@ -2,6 +2,7 @@ import type {
   AnyCommandEnvelope,
   CharacterItem,
   CommandStatus,
+  GameChatSenderRole,
   GameMetadataItem,
   GMInboxItem,
   PlayerInboxItem,
@@ -30,6 +31,30 @@ export interface GameActorContextResponse {
   roles: string[];
   gmPlayerId: string | null;
   isGameMaster: boolean;
+}
+
+export interface GameChatParticipantResponse {
+  playerId: string;
+  displayName: string;
+  role: GameChatSenderRole;
+  characterId: string | null;
+}
+
+export interface GameChatMessageResponse {
+  messageId: string;
+  senderPlayerId: string;
+  senderDisplayName: string;
+  senderRole: GameChatSenderRole;
+  senderCharacterId: string | null;
+  body: string;
+  createdAt: string;
+}
+
+export interface GameChatResponse {
+  gameId: string;
+  gameName: string;
+  participants: GameChatParticipantResponse[];
+  messages: GameChatMessageResponse[];
 }
 
 export interface PostCommandRequest {
@@ -68,4 +93,5 @@ export interface ReadApis {
   listUsers(): Promise<PlayerProfileItem[]>;
   getGameActorContext(gameId: string, actorId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
+  getGameChat(gameId: string): Promise<GameChatResponse>;
 }

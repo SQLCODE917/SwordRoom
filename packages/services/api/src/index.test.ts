@@ -148,11 +148,19 @@ function makeDbMock(): DbAccess {
       async getMembership() {
         return null;
       },
+      async listMembershipsForGame() {
+        return [];
+      },
       async putMembership() {
         throw new Error('not implemented in api test mock');
       },
       async deleteMembership() {
         throw new Error('not implemented in api test mock');
+      },
+    },
+    chatRepository: {
+      async queryMessages() {
+        return [];
       },
     },
     inviteRepository: {
@@ -255,6 +263,7 @@ describe('services/api contract route map', () => {
         { method: 'GET', path: '/games/{gameId}/me', auth: 'required' },
         { method: 'GET', path: '/me/inbox', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
+        { method: 'GET', path: '/games/{gameId}/chat', auth: 'required' },
         { method: 'POST', path: '/games/{gameId}/characters/{characterId}/appearance/upload-url', auth: 'required' },
         { method: 'GET', path: '/players/{playerId}/characters/{characterId}', auth: 'required' },
         { method: 'GET', path: '/gm/games', auth: 'required' },
@@ -500,6 +509,38 @@ describe('POST /commands', () => {
       statusCode: 403,
     });
   });
+
+  it('rejects sending a game chat message when the actor is not a member of the game', async () => {
+    const db = makeDbMock();
+    db.membershipRepository.getMembership = vi.fn(async () => null);
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: new InMemoryFifoQueue(),
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    await expect(
+      api.postCommands({
+        bypassActorId: 'player-outsider',
+        envelope: {
+          commandId: '55555555-5555-4555-8555-555555555555',
+          gameId: 'game-1',
+          type: 'SendGameChatMessage',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          payload: {
+            body: 'Hello from outside.',
+          },
+        },
+      })
+    ).rejects.toMatchObject({
+      code: 'GAME_ACCESS_REQUIRED',
+      statusCode: 403,
+    });
+  });
 });
 
 describe('profile sync', () => {
@@ -535,5 +576,133 @@ describe('profile sync', () => {
         displayName: 'gm-zzz',
       })
     );
+  });
+});
+
+describe('game chat', () => {
+  it('returns participants sorted by role then name, and IRC-ready sender labels', async () => {
+    const db = makeDbMock();
+    db.membershipRepository.listMembershipsForGame = vi.fn(async () => [
+      {
+        pk: 'GAME#game-1',
+        sk: 'MEMBER#gm-1',
+        type: 'GameMember',
+        gameId: 'game-1',
+        playerId: 'gm-1',
+        roles: ['GM'],
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+      },
+      {
+        pk: 'GAME#game-1',
+        sk: 'MEMBER#player-2',
+        type: 'GameMember',
+        gameId: 'game-1',
+        playerId: 'player-2',
+        roles: ['PLAYER'],
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+      },
+      {
+        pk: 'GAME#game-1',
+        sk: 'MEMBER#player-1',
+        type: 'GameMember',
+        gameId: 'game-1',
+        playerId: 'player-1',
+        roles: ['PLAYER'],
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+      },
+    ]);
+    db.playerRepository.getPlayerProfile = vi.fn(async (playerId: string) => ({
+      pk: `PLAYER#${playerId}`,
+      sk: 'PROFILE',
+      type: 'PlayerProfile',
+      playerId,
+      displayName: playerId === 'gm-1' ? 'Zed GM' : playerId === 'player-2' ? 'Alice' : 'Player One',
+      email: `${playerId}@example.com`,
+      emailNormalized: `${playerId}@example.com`,
+      emailVerified: true,
+      roles: ['PLAYER'],
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z',
+    }) as any);
+    db.characterRepository.findOwnedCharacterInGame = vi.fn(async (_gameId: string, playerId: string) => {
+      if (playerId === 'player-1') {
+        return {
+          pk: 'GAME#game-1',
+          sk: 'CHAR#char-1',
+          type: 'Character',
+          gameId: 'game-1',
+          characterId: 'char-1',
+          ownerPlayerId: 'player-1',
+          status: 'APPROVED',
+          draft: {
+            race: 'HUMAN',
+            raisedBy: null,
+            subAbility: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0, H: 0 },
+            ability: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+            bonus: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+            background: { kind: null, roll2d: null },
+            starting: { expTotal: 0, expUnspent: 0, moneyGamels: 0, moneyRoll2d: null, startingSkills: [] },
+            skills: [],
+            purchases: { weapons: [], armor: [], shields: [], gear: [] },
+            appearance: { imageKey: null, imageUrl: null, updatedAt: null },
+            identity: { name: 'Borin', age: null, gender: null },
+            noteToGm: null,
+            gmNote: null,
+          },
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          version: 1,
+        } as any;
+      }
+      return null;
+    });
+    db.chatRepository.queryMessages = vi.fn(async () => [
+      {
+        pk: 'GAME#game-1',
+        sk: 'CHAT#2026-03-01T09:15:00.000Z#msg-1',
+        type: 'GameChatMessage',
+        messageId: 'msg-1',
+        gameId: 'game-1',
+        senderPlayerId: 'gm-1',
+        senderRole: 'GM',
+        senderCharacterId: null,
+        senderNameSnapshot: 'Zed GM',
+        body: 'Session starts soon.',
+        createdAt: '2026-03-01T09:15:00.000Z',
+      },
+      {
+        pk: 'GAME#game-1',
+        sk: 'CHAT#2026-03-01T09:16:00.000Z#msg-2',
+        type: 'GameChatMessage',
+        messageId: 'msg-2',
+        gameId: 'game-1',
+        senderPlayerId: 'player-1',
+        senderRole: 'PLAYER',
+        senderCharacterId: 'char-1',
+        senderNameSnapshot: 'Borin',
+        body: 'Ready.',
+        createdAt: '2026-03-01T09:16:00.000Z',
+      },
+    ]);
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: { sendMessage: vi.fn(async () => undefined) },
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    const chat = await api.readApis.getGameChat('game-1');
+
+    expect(chat.gameName).toBe('Game One');
+    expect(chat.participants.map((participant) => participant.displayName)).toEqual(['@Zed GM', 'Alice', 'Borin']);
+    expect(chat.messages.map((message) => `${message.senderDisplayName}:${message.body}`)).toEqual([
+      '@Zed GM:Session starts soon.',
+      'Borin:Ready.',
+    ]);
   });
 });
