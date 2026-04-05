@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearAuthUiState } from './AuthProvider';
 import {
   beginOidcLogin,
   beginOidcLogout,
@@ -76,6 +77,7 @@ describe('OidcAuthProvider', () => {
   });
 
   afterEach(() => {
+    clearAuthUiState();
     setOidcRedirectHandlerForTests(null);
     clearOidcSession();
     resetOidcAuthTestState();

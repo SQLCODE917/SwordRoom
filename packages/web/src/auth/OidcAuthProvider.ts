@@ -1,4 +1,4 @@
-import { notifyAuthStateChanged, type AuthProvider } from './AuthProvider';
+import { clearAuthError, getAuthUiState, notifyAuthStateChanged, runAuthAction, type AuthProvider } from './AuthProvider';
 
 interface OidcEnv {
   VITE_OIDC_DISCOVERY_URL?: string;
@@ -60,6 +60,12 @@ export function createOidcAuthProvider(env = import.meta.env as OidcEnv): AuthPr
     get isAuthenticated() {
       return readValidSession() !== null;
     },
+    get pendingAction() {
+      return getAuthUiState().pendingAction;
+    },
+    get errorMessage() {
+      return getAuthUiState().errorMessage;
+    },
     async withAuthHeaders(headers?: HeadersInit): Promise<Headers> {
       const merged = new Headers(headers ?? {});
       const session = readValidSession();
@@ -70,6 +76,39 @@ export function createOidcAuthProvider(env = import.meta.env as OidcEnv): AuthPr
     },
     withActor<T extends Record<string, unknown>>(body: T): T & { bypassActorId?: string } {
       return body;
+    },
+    login(options = {}) {
+      return runAuthAction({
+        action: 'login',
+        authMode: 'oidc',
+        actorId: readValidSession()?.actorId ?? '',
+        work: async () => {
+          await beginOidcLogin(options.returnToPath ?? '/', env);
+        },
+      });
+    },
+    register(options = {}) {
+      return runAuthAction({
+        action: 'register',
+        authMode: 'oidc',
+        actorId: readValidSession()?.actorId ?? '',
+        work: async () => {
+          await beginOidcRegistration(options.returnToPath ?? '/', env);
+        },
+      });
+    },
+    logout(options = {}) {
+      return runAuthAction({
+        action: 'logout',
+        authMode: 'oidc',
+        actorId: readValidSession()?.actorId ?? '',
+        work: async () => {
+          await beginOidcLogout(options.returnToPath ?? '/', env);
+        },
+      });
+    },
+    clearError() {
+      clearAuthError();
     },
   };
 }

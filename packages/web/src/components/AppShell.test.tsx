@@ -95,12 +95,18 @@ function renderWithAuth(overrides?: Partial<AuthProvider>) {
     mode: 'dev',
     actorId: 'player-aaa',
     isAuthenticated: true,
+    pendingAction: null,
+    errorMessage: null,
     async withAuthHeaders(headers?: HeadersInit) {
       return new Headers(headers);
     },
     withActor<T extends Record<string, unknown>>(body: T): T & { bypassActorId?: string } {
       return { ...body, bypassActorId: 'player-aaa' };
     },
+    login: vi.fn(async () => ({ ok: true, redirectTo: '/' })),
+    register: vi.fn(async () => ({ ok: true, redirectTo: '/' })),
+    logout: vi.fn(async () => ({ ok: true, redirectTo: '/login' })),
+    clearError: vi.fn(),
     ...overrides,
   };
 

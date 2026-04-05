@@ -52,14 +52,18 @@ describe('PublicGamesTable', () => {
 
     expect(within(gmRow as HTMLElement).getByRole('link', { name: 'Player Inbox' })).toBeTruthy();
     expect(within(gmRow as HTMLElement).getByRole('link', { name: 'GM Inbox' })).toBeTruthy();
+    expect(within(gmRow as HTMLElement).getByRole('link', { name: 'Player Inbox' }).className).toContain('c-btn');
+    expect(within(gmRow as HTMLElement).getByRole('link', { name: 'GM Inbox' }).className).toContain('c-btn');
     expect(within(gmRow as HTMLElement).queryByRole('link', { name: 'Apply to Join' })).toBeNull();
 
     expect(within(joinedRow as HTMLElement).getByRole('link', { name: 'Player Inbox' })).toBeTruthy();
+    expect(within(joinedRow as HTMLElement).getByRole('link', { name: 'Player Inbox' }).className).toContain('c-btn');
     expect(within(joinedRow as HTMLElement).queryByRole('link', { name: 'GM Inbox' })).toBeNull();
     expect(within(joinedRow as HTMLElement).queryByRole('link', { name: 'Apply to Join' })).toBeNull();
 
     const applyLink = within(openRow as HTMLElement).getByRole('link', { name: 'Apply to Join' });
     expect(applyLink.getAttribute('href')).toBe('/games/game-open/character/new');
+    expect(applyLink.className).toContain('c-btn');
     expect(within(openRow as HTMLElement).queryByRole('link', { name: 'Player Inbox' })).toBeNull();
     expect(within(openRow as HTMLElement).queryByRole('link', { name: 'GM Inbox' })).toBeNull();
   });

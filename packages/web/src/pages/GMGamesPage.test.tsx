@@ -32,8 +32,14 @@ function createAuth(): AuthProvider {
     mode: 'dev',
     actorId: 'player-aaa',
     isAuthenticated: true,
+    pendingAction: null,
+    errorMessage: null,
     withAuthHeaders: vi.fn(async (headers?: HeadersInit) => new Headers(headers ?? {})),
     withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-aaa' }),
+    login: vi.fn(async () => ({ ok: true, redirectTo: '/' })),
+    register: vi.fn(async () => ({ ok: true, redirectTo: '/' })),
+    logout: vi.fn(async () => ({ ok: true, redirectTo: '/login' })),
+    clearError: vi.fn(),
   };
 }
 
@@ -103,7 +109,8 @@ describe('GMGamesPage', () => {
       )
     );
 
-    expect(await screen.findByRole('link', { name: 'GM Inbox' })).toBeTruthy();
+    const gmInboxLink = await screen.findByRole('link', { name: 'GM Inbox' });
+    expect(gmInboxLink.className).toContain('c-btn');
     expect(vi.mocked(notifyAuthStateChanged)).toHaveBeenCalledTimes(1);
   });
 });

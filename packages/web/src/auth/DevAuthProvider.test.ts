@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { clearAuthUiState } from './AuthProvider';
 import {
   createDevAuthProvider,
   loginOrRegisterDevAccount,
@@ -9,6 +10,7 @@ import {
 
 describe('createDevAuthProvider', () => {
   afterEach(() => {
+    clearAuthUiState();
     window.localStorage.clear();
   });
 
@@ -80,5 +82,32 @@ describe('createDevAuthProvider', () => {
     expect(auth.actorId).toBe(account.actorId);
     logoutDevSession();
     expect(createDevAuthProvider({ VITE_AUTH_MODE: 'dev' }).isAuthenticated).toBe(false);
+  });
+
+  it('exposes shared auth action state for dev login and logout', async () => {
+    const auth = createDevAuthProvider({ VITE_AUTH_MODE: 'dev' });
+
+    const loginResult = await auth.login({
+      username: 'stateful-user',
+      password: 'secret',
+      returnToPath: '/',
+    });
+
+    expect(loginResult).toEqual({
+      ok: true,
+      redirectTo: '/',
+    });
+    expect(auth.pendingAction).toBeNull();
+    expect(auth.errorMessage).toBeNull();
+    expect(auth.isAuthenticated).toBe(true);
+
+    const logoutResult = await auth.logout({ returnToPath: '/login' });
+
+    expect(logoutResult).toEqual({
+      ok: true,
+      redirectTo: '/login',
+    });
+    expect(auth.pendingAction).toBeNull();
+    expect(auth.isAuthenticated).toBe(false);
   });
 });

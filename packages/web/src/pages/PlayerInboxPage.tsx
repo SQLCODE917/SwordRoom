@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { createApiClient, type CommandEnvelopeInput, type PlayerInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
@@ -129,9 +129,9 @@ export function PlayerInboxPage() {
                   <div className="c-table__cell t-small">
                     <div className="l-row">
                       {row.characterId ? (
-                        <Link to={`/games/${encodeURIComponent(row.gameId)}/characters/${encodeURIComponent(row.characterId)}`}>
+                        <ButtonLink to={`/games/${encodeURIComponent(row.gameId)}/characters/${encodeURIComponent(row.characterId)}`}>
                           Open
-                        </Link>
+                        </ButtonLink>
                       ) : null}
                       {row.kind === 'GAME_INVITE' && row.inviteId ? (
                         <>

@@ -41,8 +41,14 @@ function createAuthProvider(): AuthProvider {
     mode: 'oidc',
     actorId: '',
     isAuthenticated: false,
+    pendingAction: null,
+    errorMessage: null,
     withAuthHeaders: vi.fn(async (headers?: HeadersInit) => new Headers(headers ?? {})),
     withActor: <T extends Record<string, unknown>>(body: T) => body,
+    login: vi.fn(async () => ({ ok: true })),
+    register: vi.fn(async () => ({ ok: true })),
+    logout: vi.fn(async () => ({ ok: true, redirectTo: '/login' })),
+    clearError: vi.fn(),
   };
 }
 

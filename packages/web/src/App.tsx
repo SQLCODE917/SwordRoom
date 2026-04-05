@@ -1,7 +1,7 @@
-import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useMemo, useSyncExternalStore } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { AppShell } from './components/AppShell';
-import { AuthProviderContext, subscribeToAuthState, useAuthProvider } from './auth/AuthProvider';
+import { AuthProviderContext, getAuthStoreVersion, subscribeToAuthState, useAuthProvider } from './auth/AuthProvider';
 import { createDevAuthProvider } from './auth/DevAuthProvider';
 import { createOidcAuthProvider } from './auth/OidcAuthProvider';
 import { AuthCallbackPage } from './routes/AuthCallbackPage';
@@ -17,9 +17,7 @@ import { useGameActorContext } from './hooks/useGameActorContext';
 import { useMyProfile } from './hooks/useMyProfile';
 
 export default function App() {
-  const [authRevision, setAuthRevision] = useState(0);
-
-  useEffect(() => subscribeToAuthState(() => setAuthRevision((current) => current + 1)), []);
+  const authRevision = useSyncExternalStore(subscribeToAuthState, getAuthStoreVersion, getAuthStoreVersion);
 
   const authProvider = useMemo(() => {
     const mode = import.meta.env.VITE_AUTH_MODE;

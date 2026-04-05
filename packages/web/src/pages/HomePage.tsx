@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { isPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient, type CharacterItem, type GameItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
@@ -126,9 +125,7 @@ export function HomePage() {
                     <div className="c-table__cell t-small">{character.status}</div>
                     <div className="c-table__cell t-small">
                       <div className="l-row">
-                        <Link to={getCharacterSheetPath(character)}>
-                          Sheet
-                        </Link>
+                        <ButtonLink to={getCharacterSheetPath(character)}>Sheet</ButtonLink>
                         <ButtonLink to={getCharacterEditPath(character)}>Edit</ButtonLink>
                       </div>
                     </div>
@@ -187,9 +184,9 @@ function MyGamesTable(input: { games: GameItem[]; loading: boolean; emptyText: s
             <div className="c-table__cell t-small">
               <div className="l-row">
                 <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</ButtonLink>
-                <Link to="/me/inbox">Player Inbox</Link>
+                <ButtonLink to="/me/inbox">Player Inbox</ButtonLink>
                 {input.gmGameIds.has(game.gameId) ? (
-                  <Link to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</Link>
+                  <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
                 ) : null}
               </div>
             </div>
@@ -228,9 +225,9 @@ export function PublicGamesTable(input: {
             <div className="c-table__cell t-small">{game.visibility}</div>
             <div className="c-table__cell t-small">
               <div className="l-row">
-                {input.joinedGameIds.has(game.gameId) ? <Link to="/me/inbox">Player Inbox</Link> : null}
+                {input.joinedGameIds.has(game.gameId) ? <ButtonLink to="/me/inbox">Player Inbox</ButtonLink> : null}
                 {input.gmGameIds.has(game.gameId) ? (
-                  <Link to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</Link>
+                  <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
                 ) : null}
                 {!input.joinedGameIds.has(game.gameId) ? (
                   <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>Apply to Join</ButtonLink>

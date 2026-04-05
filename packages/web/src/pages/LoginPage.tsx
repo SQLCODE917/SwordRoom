@@ -1,37 +1,34 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthProvider } from '../auth/AuthProvider';
-import { loginOrRegisterDevAccount, logoutDevSession, registerDevAccount } from '../auth/DevAuthProvider';
-import {
-  beginOidcLogin,
-  beginOidcLogout,
-  beginOidcRegistration,
-} from '../auth/OidcAuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
-import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 export function LoginPage() {
   const auth = useAuthProvider();
   const navigate = useNavigate();
-  const [error, setError] = useState<string | null>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [busyAction, setBusyAction] = useState<'login' | 'register' | 'logout' | null>(null);
   const isOidcAuthenticated = auth.mode === 'oidc' && auth.isAuthenticated;
-  const noticeClassName = useMemo(() => `c-note ${error ? 'c-note--error' : 'c-note--info'}`, [error]);
+  const noticeClassName = useMemo(
+    () => `c-note ${auth.errorMessage ? 'c-note--error' : 'c-note--info'}`,
+    [auth.errorMessage]
+  );
+  const busyAction = auth.pendingAction;
 
   return (
     <div className="l-page">
       <Panel title="Account" subtitle="OIDC login, registration, and logout entry points.">
         <div className={noticeClassName} role="note" aria-live="polite">
           <span className="t-small">
-            {error ??
+            {auth.errorMessage ??
               (auth.mode === 'oidc'
                 ? isOidcAuthenticated
                   ? 'Authenticated with OIDC.'
                   : 'Sign in or create an account with the configured OIDC provider.'
-                : `Dev auth enabled as ${auth.actorId}. Restart dev with RUN_DEV_ACTOR_ID to switch actors.`)}
+                : auth.isAuthenticated
+                  ? `Dev auth enabled as ${auth.actorId}. Restart dev with RUN_DEV_ACTOR_ID to switch actors.`
+                  : 'Sign in with a local dev account or register a new one.')}
           </span>
         </div>
 
@@ -59,7 +56,16 @@ export function LoginPage() {
             </div>
             <label className="c-field l-col">
               <span className="c-field__label">Username</span>
-              <input className="c-field__control" value={username} onChange={(event) => setUsername(event.target.value)} />
+              <input
+                className="c-field__control"
+                value={username}
+                onChange={(event) => {
+                  if (auth.errorMessage) {
+                    auth.clearError();
+                  }
+                  setUsername(event.target.value);
+                }}
+              />
             </label>
             <label className="c-field l-col">
               <span className="c-field__label">Password</span>
@@ -67,7 +73,12 @@ export function LoginPage() {
                 className="c-field__control"
                 type="password"
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  if (auth.errorMessage) {
+                    auth.clearError();
+                  }
+                  setPassword(event.target.value);
+                }}
               />
             </label>
             <div className="l-row">
@@ -98,61 +109,33 @@ export function LoginPage() {
   );
 
   async function handleLogin() {
-    await perform('login', async () => {
-      await beginOidcLogin('/');
-    });
+    await followAuthAction(() => auth.login({ returnToPath: '/' }));
   }
 
   async function handleRegister() {
-    await perform('register', async () => {
-      beginOidcRegistration('/');
-    });
+    await followAuthAction(() => auth.register({ returnToPath: '/' }));
   }
 
   async function handleLogout() {
-    await perform('logout', async () => {
-      beginOidcLogout('/');
-    });
+    await followAuthAction(() => auth.logout({ returnToPath: '/' }));
   }
 
   async function handleDevRegister() {
-    await perform('register', async () => {
-      await registerDevAccount(username, password);
-      navigate('/', { replace: true });
-    });
+    await followAuthAction(() => auth.register({ username, password, returnToPath: '/' }));
   }
 
   async function handleDevLogin() {
-    await perform('login', async () => {
-      await loginOrRegisterDevAccount(username, password);
-      navigate('/', { replace: true });
-    });
+    await followAuthAction(() => auth.login({ username, password, returnToPath: '/' }));
   }
 
   async function handleDevLogout() {
-    await perform('logout', async () => {
-      logoutDevSession();
-      navigate('/login', { replace: true });
-    });
+    await followAuthAction(() => auth.logout({ returnToPath: '/login' }));
   }
 
-  async function perform(action: 'login' | 'register' | 'logout', work: () => Promise<void> | void) {
-    setError(null);
-    setBusyAction(action);
-    logWebFlow(`WEB_ACCOUNT_${action.toUpperCase()}_START`, {
-      authMode: auth.mode,
-      actorId: auth.actorId,
-    });
-    try {
-      await work();
-    } catch (actionError) {
-      setBusyAction(null);
-      setError(actionError instanceof Error ? actionError.message : String(actionError));
-      logWebFlow(`WEB_ACCOUNT_${action.toUpperCase()}_FAILED`, {
-        authMode: auth.mode,
-        actorId: auth.actorId,
-        ...summarizeError(actionError),
-      });
+  async function followAuthAction(work: () => ReturnType<typeof auth.login>) {
+    const result = await work();
+    if (result.ok && result.redirectTo) {
+      navigate(result.redirectTo, { replace: true });
     }
   }
 }

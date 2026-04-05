@@ -1,4 +1,11 @@
-import { notifyAuthStateChanged, type AuthMode, type AuthProvider } from './AuthProvider';
+import {
+  clearAuthError,
+  getAuthUiState,
+  notifyAuthStateChanged,
+  runAuthAction,
+  type AuthMode,
+  type AuthProvider,
+} from './AuthProvider';
 
 interface WebEnv {
   VITE_AUTH_MODE?: string;
@@ -33,6 +40,12 @@ export function createDevAuthProvider(env = import.meta.env as WebEnv): AuthProv
     get isAuthenticated() {
       return mode === 'dev' ? readActorId(mode, oidcToken).trim() !== '' : Boolean(oidcToken);
     },
+    get pendingAction() {
+      return getAuthUiState().pendingAction;
+    },
+    get errorMessage() {
+      return getAuthUiState().errorMessage;
+    },
     async withAuthHeaders(headers?: HeadersInit): Promise<Headers> {
       const merged = new Headers(headers ?? {});
       const actorId = readActorId(mode, oidcToken);
@@ -50,6 +63,44 @@ export function createDevAuthProvider(env = import.meta.env as WebEnv): AuthProv
         return { ...body, bypassActorId: actorId };
       }
       return body;
+    },
+    login(options = {}) {
+      return runAuthAction({
+        action: 'login',
+        authMode: mode,
+        actorId: readActorId(mode, oidcToken),
+        work: async () => {
+          assertDevMode(mode);
+          await loginOrRegisterDevAccount(options.username ?? '', options.password ?? '');
+          return { redirectTo: options.returnToPath ?? '/' };
+        },
+      });
+    },
+    register(options = {}) {
+      return runAuthAction({
+        action: 'register',
+        authMode: mode,
+        actorId: readActorId(mode, oidcToken),
+        work: async () => {
+          assertDevMode(mode);
+          await registerDevAccount(options.username ?? '', options.password ?? '');
+          return { redirectTo: options.returnToPath ?? '/' };
+        },
+      });
+    },
+    logout(options = {}) {
+      return runAuthAction({
+        action: 'logout',
+        authMode: mode,
+        actorId: readActorId(mode, oidcToken),
+        work: () => {
+          logoutDevSession();
+          return { redirectTo: options.returnToPath ?? '/login' };
+        },
+      });
+    },
+    clearError() {
+      clearAuthError();
     },
   };
 }
@@ -227,6 +278,12 @@ function createActorId(username: string): string {
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+function assertDevMode(mode: AuthMode): void {
+  if (mode !== 'dev') {
+    throw new Error('Username and password auth is unavailable when AUTH_MODE=oidc.');
+  }
 }
 
 function readJson<T>(storage: Storage, key: string): T | null {
