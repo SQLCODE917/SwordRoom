@@ -210,5 +210,58 @@ describe('OidcAuthProvider', () => {
     const logoutUrl = new URL(redirectedTo);
     expect(logoutUrl.origin + logoutUrl.pathname).toBe(discoveryDocument.end_session_endpoint);
     expect(logoutUrl.searchParams.get('post_logout_redirect_uri')).toBe(`${window.location.origin}/login`);
+    expect(logoutUrl.searchParams.get('client_id')).toBe(env.VITE_OIDC_CLIENT_ID);
+  });
+
+  it('uses logout_uri for Amazon Cognito managed logout endpoints', async () => {
+    let redirectedTo = '';
+    setOidcRedirectHandlerForTests((url) => {
+      redirectedTo = url;
+    });
+
+    const cognitoEnv = {
+      ...env,
+      VITE_OIDC_DISCOVERY_URL: 'https://swordworld-staging.auth.us-east-1.amazoncognito.com/.well-known/openid-configuration',
+      VITE_OIDC_CLIENT_ID: 'staging-client-id',
+    };
+    const cognitoDiscovery = {
+      ...discoveryDocument,
+      end_session_endpoint: 'https://swordworld-staging.auth.us-east-1.amazoncognito.com/logout',
+    };
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        if (url === cognitoEnv.VITE_OIDC_DISCOVERY_URL) {
+          return new Response(JSON.stringify(cognitoDiscovery), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        if (url === cognitoDiscovery.token_endpoint) {
+          expect(init?.method).toBe('POST');
+          return new Response(JSON.stringify({ access_token: accessToken, id_token: idToken, expires_in: 3600 }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          });
+        }
+        throw new Error(`unexpected fetch ${url}`);
+      })
+    );
+
+    window.sessionStorage.setItem(
+      'sw_oidc_pending_login',
+      JSON.stringify({ state: 'state-cognito', codeVerifier: 'verifier', returnToPath: '/' })
+    );
+    await completeOidcLoginFromCallback('https://app.example/auth/callback?code=abc123&state=state-cognito', cognitoEnv);
+
+    await beginOidcLogout('/login', cognitoEnv);
+
+    const logoutUrl = new URL(redirectedTo);
+    expect(logoutUrl.origin + logoutUrl.pathname).toBe(cognitoDiscovery.end_session_endpoint);
+    expect(logoutUrl.searchParams.get('logout_uri')).toBe(`${window.location.origin}/login`);
+    expect(logoutUrl.searchParams.get('post_logout_redirect_uri')).toBeNull();
+    expect(logoutUrl.searchParams.get('client_id')).toBe(cognitoEnv.VITE_OIDC_CLIENT_ID);
   });
 });

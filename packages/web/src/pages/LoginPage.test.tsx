@@ -2,7 +2,13 @@ import { useMemo, useSyncExternalStore } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { AuthProviderContext, clearAuthUiState, getAuthStoreVersion, subscribeToAuthState } from '../auth/AuthProvider';
+import {
+  AuthProviderContext,
+  clearAuthUiState,
+  getAuthStoreVersion,
+  subscribeToAuthState,
+  type AuthProvider,
+} from '../auth/AuthProvider';
 import { createDevAuthProvider, writeDevSession } from '../auth/DevAuthProvider';
 import { LoginPage } from './LoginPage';
 
@@ -35,6 +41,39 @@ describe('LoginPage', () => {
 
     expect(screen.queryByRole('button', { name: 'Signing Out...' })).toBeNull();
     expect((screen.getByRole('button', { name: 'Login' }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('routes OIDC logout back to /login', async () => {
+    const logout = vi.fn(async () => ({ ok: true }));
+    const auth: AuthProvider = {
+      mode: 'oidc',
+      actorId: 'player-oidc',
+      isAuthenticated: true,
+      pendingAction: null,
+      errorMessage: null,
+      withAuthHeaders: vi.fn(async () => new Headers()),
+      withActor: (body) => body,
+      login: vi.fn(async () => ({ ok: true })),
+      register: vi.fn(async () => ({ ok: true })),
+      logout,
+      clearError: vi.fn(),
+    };
+
+    render(
+      <AuthProviderContext.Provider value={auth}>
+        <MemoryRouter initialEntries={['/login']}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+          </Routes>
+        </MemoryRouter>
+      </AuthProviderContext.Provider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign Out' }));
+
+    await waitFor(() => {
+      expect(logout).toHaveBeenCalledWith({ returnToPath: '/login' });
+    });
   });
 });
 

@@ -103,7 +103,7 @@ export function createOidcAuthProvider(env = import.meta.env as OidcEnv): AuthPr
         authMode: 'oidc',
         actorId: readValidSession()?.actorId ?? '',
         work: async () => {
-          await beginOidcLogout(options.returnToPath ?? '/', env);
+          await beginOidcLogout(options.returnToPath ?? '/login', env);
         },
       });
     },
@@ -160,7 +160,7 @@ export async function beginOidcRegistration(returnToPath = '/', env = import.met
   await beginOidcLogin(returnToPath, env);
 }
 
-export async function beginOidcLogout(returnToPath = '/', env = import.meta.env as OidcEnv): Promise<void> {
+export async function beginOidcLogout(returnToPath = '/login', env = import.meta.env as OidcEnv): Promise<void> {
   assertBrowser();
   const config = resolveConfig(env);
   const discovery = await loadDiscovery(config.discoveryUrl);
@@ -173,8 +173,14 @@ export async function beginOidcLogout(returnToPath = '/', env = import.meta.env 
   }
 
   const logoutUrl = new URL(logoutEndpoint);
-  logoutUrl.searchParams.set('post_logout_redirect_uri', resolveAbsoluteReturnToPath(returnToPath));
-  logoutUrl.searchParams.set('client_id', config.clientId);
+  const resolvedReturnTo = resolveAbsoluteReturnToPath(returnToPath);
+  if (isAmazonCognitoLogoutEndpoint(logoutUrl)) {
+    logoutUrl.searchParams.set('logout_uri', resolvedReturnTo);
+    logoutUrl.searchParams.set('client_id', config.clientId);
+  } else {
+    logoutUrl.searchParams.set('post_logout_redirect_uri', resolvedReturnTo);
+    logoutUrl.searchParams.set('client_id', config.clientId);
+  }
   redirectTo(logoutUrl.toString());
 }
 
@@ -341,6 +347,10 @@ function resolveAbsoluteReturnToPath(returnToPath: string): string {
     return returnToPath;
   }
   return new URL(returnToPath || '/', window.location.origin).toString();
+}
+
+function isAmazonCognitoLogoutEndpoint(url: URL): boolean {
+  return url.pathname === '/logout' && /\.amazoncognito\.com$/i.test(url.hostname);
 }
 
 function readValidSession(): OidcSession | null {

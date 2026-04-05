@@ -117,7 +117,7 @@ export function LoginPage() {
   }
 
   async function handleLogout() {
-    await followAuthAction(() => auth.logout({ returnToPath: '/' }));
+    await followAuthAction(() => auth.logout({ returnToPath: '/login' }));
   }
 
   async function handleDevRegister() {
