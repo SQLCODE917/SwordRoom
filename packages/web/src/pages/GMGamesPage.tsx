@@ -74,12 +74,12 @@ export function GMGamesPage() {
                       Make {game.visibility === 'PUBLIC' ? 'Private' : 'Public'}
                     </button>
                     <button
-                      className={`c-btn ${busy ? 'is-disabled' : ''}`.trim()}
+                      className={`c-btn c-btn--destructive ${busy ? 'is-disabled' : ''}`.trim()}
                       type="button"
                       disabled={busy}
                       onClick={() => void archiveGame(game)}
                     >
-                      Delete Game
+                      Delete
                     </button>
                   </div>
                   <div className="c-table__cell t-small">

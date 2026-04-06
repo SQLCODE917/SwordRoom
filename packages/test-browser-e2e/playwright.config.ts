@@ -6,7 +6,7 @@ import { defineConfig, devices } from '@playwright/test';
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDir = path.dirname(currentFilePath);
 const repoRoot = path.resolve(currentDir, '../..');
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173';
+const baseURL = assertLocalBaseUrl(process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173');
 const workerCount = process.env.PLAYWRIGHT_WORKERS
   ? Number(process.env.PLAYWRIGHT_WORKERS)
   : process.env.CI
@@ -40,12 +40,20 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `RUN_AUTH_MODE=dev RUN_DEV_ACTOR_ID=player-aaa bash "${path.join(repoRoot, 'scripts/local/dev-up.sh')}"`,
+    command: `bash "${path.join(repoRoot, 'scripts/local/browser-test-webserver.sh')}"`,
     cwd: repoRoot,
     url: `${baseURL}/api/me`,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
     timeout: 5 * 60 * 1000,
     stdout: 'pipe',
     stderr: 'pipe',
   },
 });
+
+function assertLocalBaseUrl(rawBaseUrl: string): string {
+  const parsed = new URL(rawBaseUrl);
+  if (!['127.0.0.1', 'localhost'].includes(parsed.hostname)) {
+    throw new Error(`Browser e2e tests only support a local base URL. Refusing to run against: ${rawBaseUrl}`);
+  }
+  return parsed.toString().replace(/\/$/, '');
+}

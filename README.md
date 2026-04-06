@@ -35,8 +35,13 @@
 - Run the local Playwright browser regression suite:
   - `pnpm test:browser`
   - `pnpm test:browser -- --workers=4`
+  - This stops any running local dev stack first so the suite can start from a clean state.
+  - This resets local DynamoDB tables, local SQS queues, and the local uploads bucket before the suite starts, then recreates resources and reseeds baseline data.
+  - This shuts the local dev stack back down after the suite finishes.
+  - The browser suite is intentionally local-only. Do not point it at staging or production.
 - Run the same browser suite headed for debugging:
   - `pnpm test:browser:headed`
+  - This uses the same local reset flow and is also not intended for deployed environments.
 - Run the local fixture-driven end-to-end path:
   - `pnpm --filter @starter/test-e2e build`
   - `make e2e`

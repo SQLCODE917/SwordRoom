@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '../api/ApiClient';
-import { useAuthProvider, type AuthProvider } from '../auth/AuthProvider';
+import { notifyAuthStateChanged, useAuthProvider, type AuthProvider } from '../auth/AuthProvider';
 import { useMyProfile } from '../hooks/useMyProfile';
 import { HomePage } from './HomePage';
 
@@ -12,6 +12,7 @@ vi.mock('../api/ApiClient', () => ({
 
 vi.mock('../auth/AuthProvider', () => ({
   useAuthProvider: vi.fn(),
+  notifyAuthStateChanged: vi.fn(),
 }));
 
 vi.mock('../hooks/useMyProfile', () => ({
@@ -44,6 +45,7 @@ function createAuth(): AuthProvider {
 describe('HomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal('confirm', vi.fn(() => true));
   });
 
   it('shows Create Game under My Games for authenticated players', async () => {
@@ -215,5 +217,52 @@ describe('HomePage', () => {
     const newCharacterControl = within(gameRow as HTMLElement).getByRole('link', { name: 'New Character' });
     expect(newCharacterControl.getAttribute('aria-disabled')).toBe('true');
     expect(newCharacterControl.getAttribute('title')).toBe('You already have a character in this game.');
+  });
+
+  it('shows a destructive Delete button on GM-manageable games in My Games', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(createAuth());
+    vi.mocked(useMyProfile).mockReturnValue({
+      profile: {
+        playerId: 'player-aaa',
+        displayName: 'Local Player',
+        email: 'player@example.com',
+        roles: ['PLAYER'],
+      },
+      loading: false,
+      error: null,
+    });
+    vi.mocked(createApiClient).mockReturnValue({
+      getMyCharacters: vi.fn(async () => []),
+      getMyGames: vi.fn(async () => [
+        {
+          gameId: 'game-gm',
+          name: 'GM Game',
+          visibility: 'PRIVATE',
+          gmPlayerId: 'player-aaa',
+          version: 3,
+        },
+      ]),
+      getGmGames: vi.fn(async () => [
+        {
+          gameId: 'game-gm',
+          name: 'GM Game',
+          visibility: 'PRIVATE',
+          gmPlayerId: 'player-aaa',
+          version: 3,
+        },
+      ]),
+      getPublicGames: vi.fn(async () => []),
+    } as unknown as ReturnType<typeof createApiClient>);
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    const gameRow = (await screen.findByText('GM Game')).closest('[role="row"]');
+    expect(gameRow).toBeTruthy();
+    const deleteButton = within(gameRow as HTMLElement).getByRole('button', { name: 'Delete' });
+    expect(deleteButton.className).toContain('c-btn--destructive');
   });
 });

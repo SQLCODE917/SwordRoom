@@ -167,7 +167,9 @@ describe('GMGamesPage', () => {
     const row = await screen.findByText('Delete Me');
     expect(row).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Game' }));
+    const deleteButton = screen.getByRole('button', { name: 'Delete' });
+    expect(deleteButton.className).toContain('c-btn--destructive');
+    fireEvent.click(deleteButton);
 
     await waitFor(() =>
       expect(submitEnvelopeAndAwait).toHaveBeenCalledWith(

@@ -156,10 +156,15 @@ log "Clearing orphaned web dev servers"
 kill_orphan_web_vite
 
 log "Provisioning local resources"
-retry 30 bash scripts/local/create-resources.sh
+if [[ "${RESET_LOCAL_STATE:-0}" == "1" ]]; then
+  log "Resetting local browser-test state"
+  retry 10 bash scripts/local/reset-browser-test-state.sh
+else
+  retry 30 bash scripts/local/create-resources.sh
 
-log "Seeding local data"
-retry 10 bash scripts/local/seed.sh
+  log "Seeding local data"
+  retry 10 bash scripts/local/seed.sh
+fi
 
 if [[ "$RUN_AUTH_MODE" == "oidc" ]]; then
   log "Importing Keycloak realm"

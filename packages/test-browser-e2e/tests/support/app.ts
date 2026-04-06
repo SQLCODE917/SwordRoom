@@ -130,7 +130,7 @@ export async function deleteGame(page: Page, gameName: string): Promise<void> {
   const row = gmGamesRow(page, gameName);
   await expect(row).toBeVisible();
   page.once('dialog', (dialog) => dialog.accept());
-  await row.getByRole('button', { name: 'Delete Game' }).click();
+  await row.getByRole('button', { name: 'Delete' }).click();
   await expect(row).toHaveCount(0);
 }
 

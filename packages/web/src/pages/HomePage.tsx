@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient, type CharacterItem, type GameItem } from '../api/ApiClient';
-import { useAuthProvider } from '../auth/AuthProvider';
+import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
@@ -33,6 +33,7 @@ export function HomePage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
   const [removingCharacterId, setRemovingCharacterId] = useState<string | null>(null);
+  const [archivingGameId, setArchivingGameId] = useState<string | null>(null);
   const { status: commandStatus, isRunning: isRunningCommand, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   const refreshDashboard = useCallback(async () => {
@@ -170,6 +171,9 @@ export function HomePage() {
               emptyText="You are not in any games yet."
               gmGameIds={gmGameIds}
               characterByGameId={gameCharacterByGameId}
+              archivingGameId={archivingGameId}
+              isRunningCommand={isRunningCommand}
+              onArchiveGame={(game) => void archiveGame(game)}
             />
 
             <SectionTitle title="Public Games" />
@@ -208,6 +212,35 @@ export function HomePage() {
       setRemovingCharacterId(null);
     }
   }
+
+  async function archiveGame(game: GameItem) {
+    const confirmed = window.confirm(`Delete "${game.name}"? Players will be notified and the game will disappear from active lists.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setArchivingGameId(game.gameId);
+    setDataError(null);
+    try {
+      await submitEnvelopeAndAwait('Delete game', {
+        commandId: createCommandId(),
+        gameId: game.gameId,
+        type: 'ArchiveGame',
+        schemaVersion: 1,
+        createdAt: new Date().toISOString(),
+        payload: {
+          gameId: game.gameId,
+          expectedVersion: game.version,
+        },
+      });
+      notifyAuthStateChanged();
+      await refreshDashboard();
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setArchivingGameId(null);
+    }
+  }
 }
 
 function SectionTitle({ title }: { title: string }) {
@@ -220,6 +253,9 @@ function MyGamesTable(input: {
   emptyText: string;
   gmGameIds: ReadonlySet<string>;
   characterByGameId: ReadonlyMap<string, CharacterItem>;
+  archivingGameId: string | null;
+  isRunningCommand: boolean;
+  onArchiveGame: (game: GameItem) => void;
 }) {
   return (
     <div className="c-table" role="table" aria-label="My Games">
@@ -235,6 +271,8 @@ function MyGamesTable(input: {
       ) : (
         input.games.map((game) => {
           const character = input.characterByGameId.get(game.gameId) ?? null;
+          const canDelete = input.gmGameIds.has(game.gameId);
+          const isArchiving = input.archivingGameId === game.gameId;
           return (
             <div className="c-table__row" role="row" key={game.gameId}>
               <div className="c-table__cell t-small">
@@ -260,6 +298,16 @@ function MyGamesTable(input: {
                   <ButtonLink to="/me/inbox">Player Inbox</ButtonLink>
                   {input.gmGameIds.has(game.gameId) ? (
                     <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
+                  ) : null}
+                  {canDelete ? (
+                    <button
+                      className={`c-btn c-btn--destructive ${isArchiving || input.isRunningCommand ? 'is-disabled' : ''}`.trim()}
+                      type="button"
+                      disabled={isArchiving || input.isRunningCommand}
+                      onClick={() => input.onArchiveGame(game)}
+                    >
+                      Delete
+                    </button>
                   ) : null}
                 </div>
               </div>

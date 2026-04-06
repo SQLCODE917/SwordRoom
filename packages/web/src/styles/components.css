@@ -58,10 +58,25 @@
 .c-btn,
 .c-navlink {
   /* ISA-101-inspired controls keep the resting state neutral, reserve accent for active/current, and mute disabled. */
-  --c-btn-bg: var(--btn-bg);
-  --c-btn-fg: var(--btn-fg);
-  --c-btn-border: var(--btn-border);
-  --c-btn-shadow: var(--btn-shadow);
+  --c-btn-rest-bg: var(--btn-bg);
+  --c-btn-rest-fg: var(--btn-fg);
+  --c-btn-rest-border: var(--btn-border);
+  --c-btn-rest-shadow: var(--btn-shadow);
+  --c-btn-hover-bg: var(--btn-bg-hover);
+  --c-btn-hover-border: var(--btn-border-hover);
+  --c-btn-hover-shadow: var(--btn-shadow-hover);
+  --c-btn-active-bg: var(--btn-bg-active);
+  --c-btn-active-fg: var(--btn-fg-active);
+  --c-btn-active-border: var(--btn-border-active);
+  --c-btn-active-shadow: var(--btn-shadow-active);
+  --c-btn-disabled-bg: var(--btn-bg-disabled);
+  --c-btn-disabled-fg: var(--btn-fg-disabled);
+  --c-btn-disabled-border: var(--btn-border-disabled);
+  --c-btn-disabled-shadow: var(--btn-shadow-disabled);
+  --c-btn-bg: var(--c-btn-rest-bg);
+  --c-btn-fg: var(--c-btn-rest-fg);
+  --c-btn-border: var(--c-btn-rest-border);
+  --c-btn-shadow: var(--c-btn-rest-shadow);
   min-height: var(--touch-h);
   padding: 0 var(--touch-pad-x);
   display: inline-flex;
@@ -89,11 +104,27 @@
   white-space: nowrap;
 }
 
+.c-btn--destructive,
+.c-navlink--destructive,
+.c-btn.is-error {
+  --c-btn-rest-bg: var(--btn-danger-bg);
+  --c-btn-rest-fg: var(--btn-danger-fg);
+  --c-btn-rest-border: var(--btn-danger-border);
+  --c-btn-rest-shadow: var(--btn-shadow-danger);
+  --c-btn-hover-bg: var(--btn-danger-bg-hover);
+  --c-btn-hover-border: var(--btn-danger-border-hover);
+  --c-btn-hover-shadow: var(--btn-shadow-danger-hover);
+  --c-btn-active-bg: var(--btn-danger-bg-active);
+  --c-btn-active-fg: var(--btn-danger-fg-active);
+  --c-btn-active-border: var(--btn-danger-border-active);
+  --c-btn-active-shadow: var(--btn-shadow-danger-active);
+}
+
 .c-btn:hover:not(:disabled):not(.is-disabled):not(.is-active):not([aria-current='page']):not([aria-current='step']):not([aria-selected='true']),
 .c-navlink:hover:not([aria-disabled='true']):not(.is-disabled):not(.is-active):not([aria-current='page']):not([aria-current='step']):not([aria-selected='true']) {
-  --c-btn-bg: var(--btn-bg-hover);
-  --c-btn-border: var(--btn-border-hover);
-  --c-btn-shadow: var(--btn-shadow-hover);
+  --c-btn-bg: var(--c-btn-hover-bg);
+  --c-btn-border: var(--c-btn-hover-border);
+  --c-btn-shadow: var(--c-btn-hover-shadow);
 }
 
 .c-btn.is-active,
@@ -104,10 +135,10 @@
 .c-navlink[aria-current='page'],
 .c-navlink[aria-current='step'],
 .c-navlink[aria-selected='true'] {
-  --c-btn-bg: var(--btn-bg-active);
-  --c-btn-fg: var(--btn-fg-active);
-  --c-btn-border: var(--btn-border-active);
-  --c-btn-shadow: var(--btn-shadow-active);
+  --c-btn-bg: var(--c-btn-active-bg);
+  --c-btn-fg: var(--c-btn-active-fg);
+  --c-btn-border: var(--c-btn-active-border);
+  --c-btn-shadow: var(--c-btn-active-shadow);
   filter: none;
 }
 
@@ -116,19 +147,12 @@
 .c-btn[aria-disabled='true'],
 .c-navlink.is-disabled,
 .c-navlink[aria-disabled='true'] {
-  --c-btn-bg: var(--btn-bg-disabled);
-  --c-btn-fg: var(--btn-fg-disabled);
-  --c-btn-border: var(--btn-border-disabled);
-  --c-btn-shadow: var(--btn-shadow-disabled);
+  --c-btn-bg: var(--c-btn-disabled-bg);
+  --c-btn-fg: var(--c-btn-disabled-fg);
+  --c-btn-border: var(--c-btn-disabled-border);
+  --c-btn-shadow: var(--c-btn-disabled-shadow);
   cursor: not-allowed;
   opacity: 1;
-}
-
-.c-btn.is-error {
-  --c-btn-bg: var(--error);
-  --c-btn-fg: var(--bg);
-  --c-btn-border: var(--error);
-  --c-btn-shadow: inset 0 -2px 0 rgba(88, 0, 15, 0.2);
 }
 
 .c-btn:focus-visible,
