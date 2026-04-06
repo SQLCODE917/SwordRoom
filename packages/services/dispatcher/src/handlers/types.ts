@@ -1,11 +1,13 @@
 import type { CommandEnvelope, CommandType } from '@starter/shared';
 import type {
   AddGmInboxItemInput,
+  AddGameplayEventInput,
   AddPlayerInboxItemInput,
   DbAccess,
   PutGameInviteInput,
   PutGameMemberInput,
   PutGameMetadataInput,
+  PutGameplaySessionInput,
   PutCharacterDraftInput,
   UpdateGameInviteWithVersionInput,
   UpdateGameMetadataWithVersionInput,
@@ -42,6 +44,14 @@ export type WriteEffect =
         body: string;
         createdAt: string;
       };
+    }
+  | {
+      kind: 'PUT_GAMEPLAY_SESSION';
+      input: PutGameplaySessionInput;
+    }
+  | {
+      kind: 'PUT_GAMEPLAY_EVENT';
+      input: AddGameplayEventInput;
     }
   | {
       kind: 'PUT_GAME_METADATA';

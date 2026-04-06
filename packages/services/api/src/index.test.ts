@@ -12,6 +12,11 @@ const ASYNC_DOC_PATH = resolve(
   '../../../..',
   'docs/vertical-slice.character-creation.async-layer.yaml'
 );
+const GAMEPLAY_ASYNC_DOC_PATH = resolve(
+  HERE,
+  '../../../..',
+  'docs/vertical-slice.gameplay-loop.async-layer.yaml'
+);
 
 function makeDbMock(): DbAccess {
   const log = new Map<string, any>();
@@ -166,6 +171,20 @@ function makeDbMock(): DbAccess {
         return [];
       },
     },
+    gameplayRepository: {
+      async getSession() {
+        return null;
+      },
+      async putSession() {
+        throw new Error('not implemented in api test mock');
+      },
+      async addEvent() {
+        throw new Error('not implemented in api test mock');
+      },
+      async queryEvents() {
+        return [];
+      },
+    },
     inviteRepository: {
       async getInvite() {
         return null;
@@ -270,10 +289,12 @@ describe('services/api contract route map', () => {
         { method: 'GET', path: '/me/inbox', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/chat', auth: 'required' },
+        { method: 'GET', path: '/games/{gameId}/play', auth: 'required' },
         { method: 'POST', path: '/games/{gameId}/characters/{characterId}/appearance/upload-url', auth: 'required' },
         { method: 'GET', path: '/players/{playerId}/characters/{characterId}', auth: 'required' },
         { method: 'GET', path: '/gm/games', auth: 'required' },
         { method: 'GET', path: '/gm/{gameId}/inbox', auth: 'gm_required' },
+        { method: 'GET', path: '/gm/{gameId}/play', auth: 'gm_required' },
         { method: 'GET', path: '/admin/users', auth: 'admin_required' },
         { method: 'GET', path: '/admin/games', auth: 'admin_required' },
       ])
@@ -281,7 +302,7 @@ describe('services/api contract route map', () => {
   });
 
   it('source contract document contains every mapped route', () => {
-    const asyncDoc = readFileSync(ASYNC_DOC_PATH, 'utf8');
+    const asyncDoc = `${readFileSync(ASYNC_DOC_PATH, 'utf8')}\n${readFileSync(GAMEPLAY_ASYNC_DOC_PATH, 'utf8')}`;
     for (const route of listContractRoutes()) {
       expect(asyncDoc).toContain(`method: ${route.method}`);
       expect(asyncDoc).toContain(`path: ${route.path}`);

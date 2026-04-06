@@ -16,7 +16,7 @@
     "build": "tsc -b",
     "dev": "pnpm run build && node dist/server.js",
     "test": "vitest --run",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc -b --force"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1004.0",

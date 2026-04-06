@@ -82,13 +82,15 @@ export function GMGamesPage() {
                       Delete
                     </button>
                   </div>
-                  <div className="c-table__cell t-small">
-                    <div className="l-col">
-                      <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</ButtonLink>
-                      <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
-                      <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
+                    <div className="c-table__cell t-small">
+                      <div className="l-col">
+                        <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</ButtonLink>
+                        <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/play`}>Play</ButtonLink>
+                        <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
+                        <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/play`}>GM Play</ButtonLink>
+                        <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
+                      </div>
                     </div>
-                  </div>
                   <div className="c-table__cell">
                     <div className="l-col">
                       <input

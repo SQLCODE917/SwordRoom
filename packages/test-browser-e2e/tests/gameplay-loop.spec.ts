@@ -1,0 +1,202 @@
+import { expect, test } from '@playwright/test';
+import {
+  applyToJoinWithNewCharacter,
+  approvePendingCharacter,
+  createGame,
+  createSyntheticActor,
+  gmCloseCombat,
+  gmDeclareCombatAction,
+  gmOpenCombat,
+  gmResolveCheck,
+  gmResolveCombatTurn,
+  gmSelectProcedure,
+  loadRpgSample,
+  openAuthenticatedPage,
+  openGmPlay,
+  openPlayerPlay,
+  sendChatMessage,
+  setGameVisibility,
+  submitCombatActionFromPlay,
+  submitIntentFromPlay,
+} from './support/app';
+
+test.describe.configure({ mode: 'parallel' });
+
+test('seeds the tavern sample in GM and player play views with integrated chat and adaptive graph', async ({
+  browser,
+}, testInfo) => {
+  const gm = createSyntheticActor('gm-play-smoke', testInfo);
+  const player = createSyntheticActor('player-play-smoke', testInfo);
+  const token = Date.now().toString(36);
+  const gameName = `Gameplay Smoke ${testInfo.parallelIndex} ${token}`;
+  const characterName = `Ari ${token}`;
+  const chatBody = `ready-for-tavern-${token}`;
+
+  const { context: gmContext, page: gmPage } = await openAuthenticatedPage(browser, gm);
+  const { context: playerContext, page: playerPage } = await openAuthenticatedPage(browser, player);
+
+  try {
+    const gameId = await createGame(gmPage, gameName);
+    await setGameVisibility(gmPage, gameName, 'PUBLIC');
+
+    await applyToJoinWithNewCharacter(playerPage, gameName, characterName);
+    await approvePendingCharacter(gmPage, gameId, player.actorId);
+
+    await openGmPlay(gmPage, gameId);
+    await loadRpgSample(gmPage);
+    await expect(gmPage.getByLabel('Gameplay graph')).toBeVisible();
+
+    await gmPage.setViewportSize({ width: 390, height: 844 });
+    await expect(gmPage.getByRole('list', { name: 'Gameplay stages' })).toBeVisible();
+
+    await openPlayerPlay(playerPage, gameId);
+    await expect(playerPage.getByLabel('Current scene').getByRole('heading', { name: 'Tavern At Sundown' })).toBeVisible();
+    await expect(playerPage.getByRole('heading', { name: 'Game Chat' })).toBeVisible();
+
+    await sendChatMessage(playerPage, chatBody);
+    await gmPage.reload();
+    await expect(gmPage.getByText(chatBody, { exact: true })).toBeVisible({ timeout: 15_000 });
+  } finally {
+    await Promise.all([gmContext.close(), playerContext.close()]);
+  }
+});
+
+test('executes public checks, hidden checks, combat declarations, and combat resolution through the gameplay loop', async ({
+  browser,
+}, testInfo) => {
+  const gm = createSyntheticActor('gm-play-full', testInfo);
+  const playerA = createSyntheticActor('player-a', testInfo);
+  const playerB = createSyntheticActor('player-b', testInfo);
+  const playerC = createSyntheticActor('player-c', testInfo);
+  const token = Date.now().toString(36);
+  const gameName = `Gameplay Full ${testInfo.parallelIndex} ${token}`;
+  const charA = `Asha ${token}`;
+  const charB = `Borin ${token}`;
+  const charC = `Cyra ${token}`;
+  const standardNarration = `${charA} cuts through the noise and steadies the room.`;
+  const hiddenNarration = 'Brando Boss narrows his eyes and reevaluates the heroes.';
+  const gmHiddenNarration = 'Hidden target 11: the Brando family has not fully committed yet.';
+  const combatNarration = `${charA} drives Brando Boss back across the tavern floor.`;
+  const closeSummary = 'The Brando family withdraws and the tavern breathes again.';
+
+  const { context: gmContext, page: gmPage } = await openAuthenticatedPage(browser, gm);
+  const { context: aContext, page: aPage } = await openAuthenticatedPage(browser, playerA);
+  const { context: bContext, page: bPage } = await openAuthenticatedPage(browser, playerB);
+  const { context: cContext, page: cPage } = await openAuthenticatedPage(browser, playerC);
+
+  try {
+    const gameId = await createGame(gmPage, gameName);
+    await setGameVisibility(gmPage, gameName, 'PUBLIC');
+
+    await applyToJoinWithNewCharacter(aPage, gameName, charA);
+    await applyToJoinWithNewCharacter(bPage, gameName, charB);
+    await applyToJoinWithNewCharacter(cPage, gameName, charC);
+
+    await approvePendingCharacter(gmPage, gameId, playerA.actorId);
+    await approvePendingCharacter(gmPage, gameId, playerB.actorId);
+    await approvePendingCharacter(gmPage, gameId, playerC.actorId);
+
+    await openGmPlay(gmPage, gameId);
+    await loadRpgSample(gmPage);
+
+    await openPlayerPlay(aPage, gameId);
+    await openPlayerPlay(bPage, gameId);
+    await openPlayerPlay(cPage, gameId);
+
+    await submitIntentFromPlay(aPage, `${charA} steps between the thugs and the poster girl.`);
+    await submitIntentFromPlay(bPage, `${charB} studies Brando Boss for an opening.`);
+    await submitIntentFromPlay(cPage, `${charC} shifts toward a chair and readies for trouble.`);
+
+    await gmPage.reload();
+    await expect(gmPage.getByLabel('Public Transcript')).toContainText('declares an intent');
+
+    await gmSelectProcedure(gmPage, {
+      procedure: 'STANDARD_CHECK',
+      actionLabel: 'Calm the room',
+      baselineScore: '4',
+      modifiers: '0',
+      targetScore: '10',
+      publicPrompt: 'The table can see the target for this social push.',
+      gmPrompt: 'Use the standard tavern sample math.',
+    });
+    await gmResolveCheck(gmPage, {
+      playerRollTotal: '8',
+      publicNarration: standardNarration,
+      gmNarration: 'Public target 10 met.',
+    });
+
+    await aPage.reload();
+    await expect(aPage.getByLabel('Public Transcript')).toContainText(standardNarration);
+
+    await gmSelectProcedure(gmPage, {
+      procedure: 'DIFFICULTY_CHECK',
+      actionLabel: 'Read the Brando family',
+      baselineScore: '3',
+      modifiers: '0',
+      difficulty: '5',
+      publicPrompt: 'The heroes can only read the fiction, not the hidden target.',
+      gmPrompt: 'Run the hidden difficulty version from the tavern sample.',
+    });
+    await gmResolveCheck(gmPage, {
+      playerRollTotal: '7',
+      gmRollTotal: '6',
+      publicNarration: hiddenNarration,
+      gmNarration: gmHiddenNarration,
+    });
+
+    await aPage.reload();
+    await expect(aPage.getByLabel('Public Transcript')).toContainText(hiddenNarration);
+    await expect(aPage.getByText(gmHiddenNarration)).toHaveCount(0);
+    await expect(gmPage.getByLabel('GM Transcript')).toContainText(gmHiddenNarration);
+
+    await gmOpenCombat(gmPage, 'Weapons flash and tavern tables scatter.');
+    await Promise.all([aPage.reload(), bPage.reload(), cPage.reload()]);
+
+    await submitCombatActionFromPlay(aPage, {
+      targetName: 'Brando Boss',
+      summary: `${charA} charges Brando Boss.`,
+    });
+    await submitCombatActionFromPlay(bPage, {
+      targetName: 'Brando Thug 1',
+      summary: `${charB} flanks Brando Thug 1.`,
+    });
+    await submitCombatActionFromPlay(cPage, {
+      actionType: 'DELAY',
+      summary: `${charC} waits for an opening.`,
+      delayToOrderZero: true,
+    });
+    await gmDeclareCombatAction(gmPage, {
+      actorName: 'Brando Boss',
+      targetName: charA,
+      summary: 'Brando Boss swings a heavy club at the lead hero.',
+    });
+
+    await gmPage.reload();
+    await expect(gmPage.getByLabel('Combat control status')).toContainText(`${charA} charges Brando Boss.`);
+
+    await gmResolveCombatTurn(gmPage, {
+      actionSummary: `${charA} charges Brando Boss.`,
+      actorName: charA,
+      targetName: 'Brando Boss',
+      attackContext: 'CHARACTER_TO_MONSTER',
+      attackerBase: '8',
+      attackerRoll: '8',
+      fixedTargetScore: '9',
+      baseDamage: '7',
+      bonusDamage: '2',
+      defenseValue: '1',
+      damageReduction: '0',
+      narration: combatNarration,
+    });
+
+    await aPage.reload();
+    await expect(aPage.getByLabel('Public Transcript')).toContainText(combatNarration);
+    await expect(aPage.getByLabel('Combatants')).toContainText('LP 10/18');
+
+    await gmCloseCombat(gmPage, closeSummary);
+    await aPage.reload();
+    await expect(aPage.getByLabel('Public Transcript')).toContainText(closeSummary);
+  } finally {
+    await Promise.all([gmContext.close(), aContext.close(), bContext.close(), cContext.close()]);
+  }
+});

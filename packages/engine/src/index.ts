@@ -43,6 +43,7 @@ export type {
   SubAbility,
 } from './types.js';
 export * from './games.js';
+export * from './gameplay.js';
 
 export function createDraftState(input: {
   characterId: string;

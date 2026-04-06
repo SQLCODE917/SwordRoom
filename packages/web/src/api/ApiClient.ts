@@ -1,4 +1,13 @@
 import type { AuthProvider } from '../auth/AuthProvider';
+import type {
+  GameplayCombatActionType,
+  GameplayEventRecord,
+  GameplayGraphEdge,
+  GameplayGraphNode,
+  GameplayMovementMode,
+  GameplayProcedure,
+  GameplayViewResponse,
+} from '@starter/shared';
 import { logWebFlow, summarizeCommandEnvelope, summarizeError } from '../logging/flowLog';
 
 export type CommandType =
@@ -18,7 +27,15 @@ export type CommandType =
   | 'DeleteCharacter'
   | 'SendGameChatMessage'
   | 'SubmitCharacterForApproval'
-  | 'GMReviewCharacter';
+  | 'GMReviewCharacter'
+  | 'GMFrameGameplayScene'
+  | 'SubmitGameplayIntent'
+  | 'GMSelectGameplayProcedure'
+  | 'GMResolveGameplayCheck'
+  | 'GMOpenCombatRound'
+  | 'SubmitCombatAction'
+  | 'GMResolveCombatTurn'
+  | 'GMCloseCombat';
 
 interface CommandPayloadByType {
   CreateGame: {
@@ -90,6 +107,60 @@ interface CommandPayloadByType {
     expectedVersion: number;
   };
   GMReviewCharacter: { characterId: string; decision: 'APPROVE' | 'REJECT'; gmNote?: string };
+  GMFrameGameplayScene: { seedId: 'rpg_sample_tavern' };
+  SubmitGameplayIntent: { body: string; characterId?: string | null };
+  GMSelectGameplayProcedure: {
+    procedure: GameplayProcedure;
+    actionLabel: string;
+    baselineScore: number;
+    modifiers: number;
+    targetScore?: number | null;
+    difficulty?: number | null;
+    publicPrompt: string;
+    gmPrompt?: string;
+  };
+  GMResolveGameplayCheck: {
+    procedure: 'NO_ROLL' | 'STANDARD_CHECK' | 'DIFFICULTY_CHECK';
+    actionLabel: string;
+    baselineScore: number;
+    modifiers: number;
+    targetScore?: number | null;
+    difficulty?: number | null;
+    playerRollTotal?: number | null;
+    gmRollTotal?: number | null;
+    publicNarration: string;
+    gmNarration?: string;
+  };
+  GMOpenCombatRound: {
+    summary: string;
+  };
+  SubmitCombatAction: {
+    roundNumber: number;
+    actorCombatantId: string;
+    targetCombatantId?: string | null;
+    actionType: GameplayCombatActionType;
+    movementMode: GameplayMovementMode;
+    delayToOrderZero?: boolean;
+    summary: string;
+  };
+  GMResolveCombatTurn: {
+    roundNumber: number;
+    actionId: string;
+    actorCombatantId: string;
+    targetCombatantId: string;
+    attackContext: 'CHARACTER_TO_MONSTER' | 'MONSTER_TO_CHARACTER' | 'CHARACTER_TO_CHARACTER';
+    attackerBase: number;
+    attackerRollTotal: number;
+    fixedTargetScore?: number | null;
+    defenderBase?: number | null;
+    defenderRollTotal?: number | null;
+    baseDamage: number;
+    bonusDamage: number;
+    defenseValue: number;
+    damageReduction: number;
+    narration: string;
+  };
+  GMCloseCombat: { summary: string };
 }
 
 export type CommandEnvelopeInput<T extends CommandType = CommandType> = {
@@ -193,6 +264,11 @@ export interface GameChatResponse {
   messages: GameChatMessage[];
 }
 
+export type GameplayGraphNodeView = GameplayGraphNode;
+export type GameplayGraphEdgeView = GameplayGraphEdge;
+export type GameplayEventView = GameplayEventRecord;
+export type GameplayView = GameplayViewResponse;
+
 export interface AppearanceUploadUrlRequest {
   contentType: string;
   fileName: string;
@@ -223,6 +299,8 @@ export interface ApiClient {
   getGameActorContext(gameId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getGameChat(gameId: string): Promise<GameChatResponse>;
+  getPlayerGameplayView(gameId: string): Promise<GameplayView | null>;
+  getGmGameplayView(gameId: string): Promise<GameplayView | null>;
   getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
   getOwnedCharacter(playerId: string, characterId: string): Promise<CharacterItem | null>;
   requestAppearanceUploadUrl(
@@ -506,6 +584,49 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         gameId,
         participantCount: response.participants.length,
         messageCount: response.messages.length,
+      });
+      return response;
+    },
+
+    async getPlayerGameplayView(gameId: string): Promise<GameplayView | null> {
+      logWebFlow('WEB_API_GET_GAMEPLAY_VIEW_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        view: 'PLAYER',
+      });
+      const response = await requestJsonOrNull<GameplayView>(
+        `${baseUrl}/games/${encodeURIComponent(gameId)}/play`,
+        auth
+      );
+      logWebFlow(response ? 'WEB_API_GET_GAMEPLAY_VIEW_HIT' : 'WEB_API_GET_GAMEPLAY_VIEW_MISS', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        view: 'PLAYER',
+        publicEventCount: response?.publicEvents.length ?? 0,
+      });
+      return response;
+    },
+
+    async getGmGameplayView(gameId: string): Promise<GameplayView | null> {
+      logWebFlow('WEB_API_GET_GAMEPLAY_VIEW_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        view: 'GM',
+      });
+      const response = await requestJsonOrNull<GameplayView>(
+        `${baseUrl}/gm/${encodeURIComponent(gameId)}/play`,
+        auth
+      );
+      logWebFlow(response ? 'WEB_API_GET_GAMEPLAY_VIEW_HIT' : 'WEB_API_GET_GAMEPLAY_VIEW_MISS', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        view: 'GM',
+        publicEventCount: response?.publicEvents.length ?? 0,
+        gmEventCount: response?.gmOnlyEvents?.length ?? 0,
       });
       return response;
     },

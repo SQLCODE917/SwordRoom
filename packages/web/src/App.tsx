@@ -10,9 +10,11 @@ import { CharacterSheetPage } from './routes/CharacterSheetPage';
 import { CharacterWizardPage } from './routes/CharacterWizardPage';
 import { GMInboxPage } from './routes/GMInboxPage';
 import { GMGamesPage } from './routes/GMGamesPage';
+import { GMGameplayPage } from './routes/GMGameplayPage';
 import { GameChatPage } from './routes/GameChatPage';
 import { HomePage } from './routes/HomePage';
 import { LoginPage } from './routes/LoginPage';
+import { PlayerGameplayPage } from './routes/PlayerGameplayPage';
 import { PlayerInboxPage } from './routes/PlayerInboxPage';
 import { useGameActorContext } from './hooks/useGameActorContext';
 import { useMyProfile } from './hooks/useMyProfile';
@@ -38,6 +40,10 @@ export default function App() {
             <Route
               path="/games/:gameId/chat"
               element={<RequireAuthRoute><GameChatPage /></RequireAuthRoute>}
+            />
+            <Route
+              path="/games/:gameId/play"
+              element={<RequireAuthRoute><PlayerGameplayPage /></RequireAuthRoute>}
             />
             <Route
               path="/game/:gameId/chat"
@@ -78,6 +84,16 @@ export default function App() {
                 <RequireAuthRoute>
                   <RequireGmRoute>
                     <GMInboxPage />
+                  </RequireGmRoute>
+                </RequireAuthRoute>
+              }
+            />
+            <Route
+              path="/gm/:gameId/play"
+              element={
+                <RequireAuthRoute>
+                  <RequireGmRoute>
+                    <GMGameplayPage />
                   </RequireGmRoute>
                 </RequireAuthRoute>
               }

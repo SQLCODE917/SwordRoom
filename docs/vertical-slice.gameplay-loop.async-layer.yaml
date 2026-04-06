@@ -1,0 +1,61 @@
+# file: vertical-slice.gameplay-loop.async-layer.yaml
+doc_type: work_plan
+slice: gameplay_loop_vertical_slice
+deliverable: async_communication_layer
+version: 1
+
+source_of_truth:
+  rules:
+    - "docs/sword-world-gameplay-loop.md"
+    - "docs/sword-world-gameplay-loop-flow-diagrams.md"
+
+api:
+  endpoints:
+    - { method: POST, path: /commands, auth: required }
+    - { method: GET, path: /games/{gameId}/play, auth: required }
+    - { method: GET, path: /gm/{gameId}/play, auth: gm_required }
+
+command_contracts:
+  envelope:
+    fields:
+      commandId: uuid
+      gameId: string
+      actorId: string
+      type: string
+      schemaVersion: number
+      payload: object
+      createdAt: string
+  types:
+    - type: GMFrameGameplayScene
+      payload: { seedId: "rpg_sample_tavern" }
+      authz: "actorId == gmPlayerId"
+    - type: SubmitGameplayIntent
+      payload: { body: string, characterId?: string|null }
+      authz: "actorId is current member of game"
+    - type: GMSelectGameplayProcedure
+      payload: { procedure: "NO_ROLL|STANDARD_CHECK|DIFFICULTY_CHECK|COMBAT|MAGIC", actionLabel: string, baselineScore: int, modifiers: int, targetScore?: int|null, difficulty?: int|null, publicPrompt: string, gmPrompt?: string }
+      authz: "actorId == gmPlayerId"
+    - type: GMResolveGameplayCheck
+      payload: { procedure: "NO_ROLL|STANDARD_CHECK|DIFFICULTY_CHECK", actionLabel: string, baselineScore: int, modifiers: int, targetScore?: int|null, difficulty?: int|null, playerRollTotal?: int|null, gmRollTotal?: int|null, publicNarration: string, gmNarration?: string }
+      authz: "actorId == gmPlayerId"
+    - type: GMOpenCombatRound
+      payload: { summary: string }
+      authz: "actorId == gmPlayerId"
+    - type: SubmitCombatAction
+      payload: { roundNumber: int, actorCombatantId: string, targetCombatantId?: string|null, actionType: "ATTACK|CAST_MAGIC|MOVE|DELAY|DEFEND|OTHER", movementMode: "FULL|NORMAL|STAND_STILL", delayToOrderZero?: bool, summary: string }
+      authz: "actorId is current member of game"
+    - type: GMResolveCombatTurn
+      payload: { roundNumber: int, actionId: string, actorCombatantId: string, targetCombatantId: string, attackContext: "CHARACTER_TO_MONSTER|MONSTER_TO_CHARACTER|CHARACTER_TO_CHARACTER", attackerBase: int, attackerRollTotal: int, fixedTargetScore?: int|null, defenderBase?: int|null, defenderRollTotal?: int|null, baseDamage: int, bonusDamage: int, defenseValue: int, damageReduction: int, narration: string }
+      authz: "actorId == gmPlayerId"
+    - type: GMCloseCombat
+      payload: { summary: string }
+      authz: "actorId == gmPlayerId"
+
+read_models:
+  game_state_items:
+    - GameplaySession
+    - GameplayEvent
+  rules:
+    - "GameplaySession stores only active node, current domain state, and version."
+    - "GameplayEvent stores transcript/history rows with audience PUBLIC or GM_ONLY."
+    - "GM play projection includes GM_ONLY events; player play projection excludes them."

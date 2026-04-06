@@ -1,0 +1,121 @@
+import type { GameplayGraphEdge, GameplayGraphNode } from './contracts/gameplay.js';
+
+export const gameplayLoopGraphVersion = 1;
+
+export const gameplayLoopGraphNodes: GameplayGraphNode[] = [
+  {
+    id: 'SCENE_FRAME',
+    label: 'Scene Frame',
+    shortLabel: 'Scene',
+    description: 'GM frames the current situation, setting, NPCs, and clues.',
+    desktop: { x: 0, y: 0 },
+    mobileOrder: 1,
+  },
+  {
+    id: 'PLAYER_INTENT',
+    label: 'Player Intent',
+    shortLabel: 'Intent',
+    description: 'Players ask questions and declare what their characters do next.',
+    desktop: { x: 240, y: 0 },
+    mobileOrder: 2,
+  },
+  {
+    id: 'PROCEDURE_SELECTION',
+    label: 'Procedure Selection',
+    shortLabel: 'Select',
+    description: 'GM chooses no-roll, public roll, hidden difficulty, combat, or magic procedure.',
+    desktop: { x: 520, y: 0 },
+    mobileOrder: 3,
+  },
+  {
+    id: 'NO_ROLL',
+    label: 'No-Roll Adjudication',
+    shortLabel: 'No Roll',
+    description: 'GM narrates the outcome directly when uncertainty is not meaningful.',
+    desktop: { x: 520, y: 170 },
+    mobileOrder: 4,
+  },
+  {
+    id: 'STANDARD_CHECK',
+    label: 'Standard Check',
+    shortLabel: 'Check',
+    description: 'Public target score success roll using baseline + 2D + modifiers.',
+    desktop: { x: 780, y: -70 },
+    mobileOrder: 5,
+  },
+  {
+    id: 'DIFFICULTY_CHECK',
+    label: 'Difficulty Check',
+    shortLabel: 'Hidden',
+    description: 'Secret target score with GM-hidden information and in-fiction feedback.',
+    desktop: { x: 780, y: 70 },
+    mobileOrder: 6,
+  },
+  {
+    id: 'COMBAT_ROUND',
+    label: 'Combat Round',
+    shortLabel: 'Combat',
+    description: 'Round control with announcements by Intelligence and action order by Agility.',
+    desktop: { x: 780, y: 230 },
+    mobileOrder: 7,
+  },
+  {
+    id: 'WEAPON_ATTACK',
+    label: 'Weapon Attack',
+    shortLabel: 'Attack',
+    description: 'Resolve hit, evade, or opposed checks for weapon combat.',
+    desktop: { x: 1030, y: 210 },
+    mobileOrder: 8,
+  },
+  {
+    id: 'DAMAGE',
+    label: 'Damage',
+    shortLabel: 'Damage',
+    description: 'Apply strike result, defense, reduction, and status changes.',
+    desktop: { x: 1280, y: 210 },
+    mobileOrder: 9,
+  },
+  {
+    id: 'AFTERMATH',
+    label: 'Aftermath',
+    shortLabel: 'After',
+    description: 'Exit combat and continue the scene with consequences, loot, and recovery.',
+    desktop: { x: 1030, y: 360 },
+    mobileOrder: 10,
+  },
+  {
+    id: 'MAGIC',
+    label: 'Magic',
+    shortLabel: 'Magic',
+    description: 'Spell or rune actions; modeled now for extensibility and future UI work.',
+    desktop: { x: 1030, y: 20 },
+    mobileOrder: 11,
+  },
+];
+
+export const gameplayLoopGraphEdges: GameplayGraphEdge[] = [
+  { from: 'SCENE_FRAME', to: 'PLAYER_INTENT', label: 'Describe scene' },
+  { from: 'PLAYER_INTENT', to: 'PROCEDURE_SELECTION', label: 'Intent declared' },
+  { from: 'PROCEDURE_SELECTION', to: 'NO_ROLL', label: 'No roll' },
+  { from: 'PROCEDURE_SELECTION', to: 'STANDARD_CHECK', label: 'Public check' },
+  { from: 'PROCEDURE_SELECTION', to: 'DIFFICULTY_CHECK', label: 'Hidden check' },
+  { from: 'PROCEDURE_SELECTION', to: 'COMBAT_ROUND', label: 'Enter combat' },
+  { from: 'PROCEDURE_SELECTION', to: 'MAGIC', label: 'Magic action' },
+  { from: 'NO_ROLL', to: 'SCENE_FRAME', label: 'Narrate outcome' },
+  { from: 'STANDARD_CHECK', to: 'SCENE_FRAME', label: 'Narrate result' },
+  { from: 'DIFFICULTY_CHECK', to: 'SCENE_FRAME', label: 'In-fiction feedback' },
+  { from: 'COMBAT_ROUND', to: 'WEAPON_ATTACK', label: 'Resolve turn' },
+  { from: 'WEAPON_ATTACK', to: 'DAMAGE', label: 'Hit lands' },
+  { from: 'WEAPON_ATTACK', to: 'COMBAT_ROUND', label: 'Miss / evade' },
+  { from: 'DAMAGE', to: 'COMBAT_ROUND', label: 'Continue round' },
+  { from: 'COMBAT_ROUND', to: 'AFTERMATH', label: 'Combat ends' },
+  { from: 'AFTERMATH', to: 'SCENE_FRAME', label: 'Resume scene' },
+  { from: 'MAGIC', to: 'STANDARD_CHECK', label: 'Magic check' },
+  { from: 'MAGIC', to: 'COMBAT_ROUND', label: 'Magic in combat' },
+];
+
+export const gameplayLoopGraph = {
+  version: gameplayLoopGraphVersion,
+  nodes: gameplayLoopGraphNodes,
+  edges: gameplayLoopGraphEdges,
+} as const;

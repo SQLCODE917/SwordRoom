@@ -1,4 +1,14 @@
 import { z } from 'zod';
+import {
+  gmCloseCombatPayloadSchema,
+  gmFrameGameplayScenePayloadSchema,
+  gmOpenCombatRoundPayloadSchema,
+  gmResolveCombatTurnPayloadSchema,
+  gmResolveGameplayCheckPayloadSchema,
+  gmSelectGameplayProcedurePayloadSchema,
+  submitCombatActionPayloadSchema,
+  submitGameplayIntentPayloadSchema,
+} from './gameplay.js';
 
 export const COMMAND_TYPES = [
   'CreateGame',
@@ -18,6 +28,14 @@ export const COMMAND_TYPES = [
   'SendGameChatMessage',
   'SubmitCharacterForApproval',
   'GMReviewCharacter',
+  'GMFrameGameplayScene',
+  'SubmitGameplayIntent',
+  'GMSelectGameplayProcedure',
+  'GMResolveGameplayCheck',
+  'GMOpenCombatRound',
+  'SubmitCombatAction',
+  'GMResolveCombatTurn',
+  'GMCloseCombat',
 ] as const;
 
 export const commandTypeSchema = z.enum(COMMAND_TYPES);
@@ -174,6 +192,14 @@ export const commandPayloadSchemaByType = {
   SendGameChatMessage: sendGameChatMessagePayloadSchema,
   SubmitCharacterForApproval: submitCharacterForApprovalPayloadSchema,
   GMReviewCharacter: gmReviewCharacterPayloadSchema,
+  GMFrameGameplayScene: gmFrameGameplayScenePayloadSchema,
+  SubmitGameplayIntent: submitGameplayIntentPayloadSchema,
+  GMSelectGameplayProcedure: gmSelectGameplayProcedurePayloadSchema,
+  GMResolveGameplayCheck: gmResolveGameplayCheckPayloadSchema,
+  GMOpenCombatRound: gmOpenCombatRoundPayloadSchema,
+  SubmitCombatAction: submitCombatActionPayloadSchema,
+  GMResolveCombatTurn: gmResolveCombatTurnPayloadSchema,
+  GMCloseCombat: gmCloseCombatPayloadSchema,
 } as const;
 
 const commandEnvelopeBaseSchema = z.object({
@@ -253,6 +279,38 @@ export const commandEnvelopeSchemaByType = {
     type: z.literal('GMReviewCharacter'),
     payload: gmReviewCharacterPayloadSchema,
   }),
+  GMFrameGameplayScene: commandEnvelopeBaseSchema.extend({
+    type: z.literal('GMFrameGameplayScene'),
+    payload: gmFrameGameplayScenePayloadSchema,
+  }),
+  SubmitGameplayIntent: commandEnvelopeBaseSchema.extend({
+    type: z.literal('SubmitGameplayIntent'),
+    payload: submitGameplayIntentPayloadSchema,
+  }),
+  GMSelectGameplayProcedure: commandEnvelopeBaseSchema.extend({
+    type: z.literal('GMSelectGameplayProcedure'),
+    payload: gmSelectGameplayProcedurePayloadSchema,
+  }),
+  GMResolveGameplayCheck: commandEnvelopeBaseSchema.extend({
+    type: z.literal('GMResolveGameplayCheck'),
+    payload: gmResolveGameplayCheckPayloadSchema,
+  }),
+  GMOpenCombatRound: commandEnvelopeBaseSchema.extend({
+    type: z.literal('GMOpenCombatRound'),
+    payload: gmOpenCombatRoundPayloadSchema,
+  }),
+  SubmitCombatAction: commandEnvelopeBaseSchema.extend({
+    type: z.literal('SubmitCombatAction'),
+    payload: submitCombatActionPayloadSchema,
+  }),
+  GMResolveCombatTurn: commandEnvelopeBaseSchema.extend({
+    type: z.literal('GMResolveCombatTurn'),
+    payload: gmResolveCombatTurnPayloadSchema,
+  }),
+  GMCloseCombat: commandEnvelopeBaseSchema.extend({
+    type: z.literal('GMCloseCombat'),
+    payload: gmCloseCombatPayloadSchema,
+  }),
 } as const;
 
 export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
@@ -273,6 +331,14 @@ export const anyCommandEnvelopeSchema = z.discriminatedUnion('type', [
   commandEnvelopeSchemaByType.SendGameChatMessage,
   commandEnvelopeSchemaByType.SubmitCharacterForApproval,
   commandEnvelopeSchemaByType.GMReviewCharacter,
+  commandEnvelopeSchemaByType.GMFrameGameplayScene,
+  commandEnvelopeSchemaByType.SubmitGameplayIntent,
+  commandEnvelopeSchemaByType.GMSelectGameplayProcedure,
+  commandEnvelopeSchemaByType.GMResolveGameplayCheck,
+  commandEnvelopeSchemaByType.GMOpenCombatRound,
+  commandEnvelopeSchemaByType.SubmitCombatAction,
+  commandEnvelopeSchemaByType.GMResolveCombatTurn,
+  commandEnvelopeSchemaByType.GMCloseCombat,
 ]);
 
 export type CreateGamePayload = z.infer<typeof createGamePayloadSchema>;
@@ -292,6 +358,14 @@ export type DeleteCharacterPayload = z.infer<typeof deleteCharacterPayloadSchema
 export type SendGameChatMessagePayload = z.infer<typeof sendGameChatMessagePayloadSchema>;
 export type SubmitCharacterForApprovalPayload = z.infer<typeof submitCharacterForApprovalPayloadSchema>;
 export type GMReviewCharacterPayload = z.infer<typeof gmReviewCharacterPayloadSchema>;
+export type GMFrameGameplayScenePayload = z.infer<typeof gmFrameGameplayScenePayloadSchema>;
+export type SubmitGameplayIntentPayload = z.infer<typeof submitGameplayIntentPayloadSchema>;
+export type GMSelectGameplayProcedurePayload = z.infer<typeof gmSelectGameplayProcedurePayloadSchema>;
+export type GMResolveGameplayCheckPayload = z.infer<typeof gmResolveGameplayCheckPayloadSchema>;
+export type GMOpenCombatRoundPayload = z.infer<typeof gmOpenCombatRoundPayloadSchema>;
+export type SubmitCombatActionPayload = z.infer<typeof submitCombatActionPayloadSchema>;
+export type GMResolveCombatTurnPayload = z.infer<typeof gmResolveCombatTurnPayloadSchema>;
+export type GMCloseCombatPayload = z.infer<typeof gmCloseCombatPayloadSchema>;
 
 export type CommandPayloadByType = {
   CreateGame: CreateGamePayload;
@@ -311,6 +385,14 @@ export type CommandPayloadByType = {
   SendGameChatMessage: SendGameChatMessagePayload;
   SubmitCharacterForApproval: SubmitCharacterForApprovalPayload;
   GMReviewCharacter: GMReviewCharacterPayload;
+  GMFrameGameplayScene: GMFrameGameplayScenePayload;
+  SubmitGameplayIntent: SubmitGameplayIntentPayload;
+  GMSelectGameplayProcedure: GMSelectGameplayProcedurePayload;
+  GMResolveGameplayCheck: GMResolveGameplayCheckPayload;
+  GMOpenCombatRound: GMOpenCombatRoundPayload;
+  SubmitCombatAction: SubmitCombatActionPayload;
+  GMResolveCombatTurn: GMResolveCombatTurnPayload;
+  GMCloseCombat: GMCloseCombatPayload;
 };
 
 export type CommandEnvelope<T extends CommandType = CommandType> = {

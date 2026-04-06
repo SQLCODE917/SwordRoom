@@ -1,0 +1,79 @@
+# file: gameplay-loop.fixtures.yaml
+doc_type: fixtures
+slice: gameplay_loop_vertical_slice
+version: 1
+purpose:
+  - "Single source of truth for gameplay-loop seed data, engine tests, dispatcher tests, and browser flows."
+  - "Keep the tavern sample deterministic while still allowing browser tests to substitute real joined players for the table."
+  - "Separate public transcript expectations from GM-only hidden information."
+
+fixtures:
+  - id: good.rpg_sample_tavern
+    title: "What is a Role-Playing Game? tavern + Brando family sample"
+    gameId: game-1
+    seedId: rpg_sample_tavern
+    scene:
+      title: "Tavern At Sundown"
+      summary: "The party is resting at a small village tavern when five or six unsavory-looking people enter and begin harassing the poster girl."
+      focus_prompt: "Players ask questions, roleplay, and decide whether to intervene."
+      location: "Small village tavern"
+    enemies:
+      - combatantId: brando-boss
+        displayName: "Brando Boss"
+        lifePoints: 18
+        stats:
+          intelligence: 9
+          agility: 10
+          attackBase: 7
+          evasionBase: 9
+          bonusDamage: 2
+          damageReduction: 1
+          strikeBase: 8
+          defenseValue: 2
+      - combatantId: brando-thug-1
+        displayName: "Brando Thug 1"
+        lifePoints: 12
+        stats:
+          intelligence: 7
+          agility: 8
+          attackBase: 6
+          evasionBase: 8
+          bonusDamage: 1
+          damageReduction: 0
+          strikeBase: 6
+          defenseValue: 1
+      - combatantId: brando-thug-2
+        displayName: "Brando Thug 2"
+        lifePoints: 12
+        stats:
+          intelligence: 7
+          agility: 8
+          attackBase: 6
+          evasionBase: 8
+          bonusDamage: 1
+          damageReduction: 0
+          strikeBase: 6
+          defenseValue: 1
+    public_transcript_contains:
+      - "Tavern At Sundown"
+      - "five or six unsavory-looking people enter"
+      - "Players ask questions, roleplay, and decide whether to intervene."
+    gm_only_transcript_contains:
+      - "Brando family"
+      - "Use the sample scene to drive procedure selection, checks, and combat."
+    scripted_rolls:
+      standard_check:
+        player_roll_total: 8
+        baseline_score: 4
+        modifiers: 0
+        target_score: 10
+      difficulty_check:
+        player_roll_total: 7
+        gm_roll_total: 6
+        baseline_score: 3
+        modifiers: 0
+        difficulty: 5
+      combat_attack:
+        attacker_roll_total: 8
+        base_damage: 7
+

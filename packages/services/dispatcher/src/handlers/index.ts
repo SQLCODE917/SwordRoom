@@ -16,6 +16,16 @@ import { invitePlayerToGameByEmailHandler } from './game/invitePlayerToGameByEma
 import { rejectGameInviteHandler } from './game/rejectGameInvite.js';
 import { sendGameChatMessageHandler } from './game/sendGameChatMessage.js';
 import { setGameVisibilityHandler } from './game/setGameVisibility.js';
+import {
+  gmCloseCombatHandler,
+  gmFrameGameplaySceneHandler,
+  gmOpenCombatRoundHandler,
+  gmResolveCombatTurnHandler,
+  gmResolveGameplayCheckHandler,
+  gmSelectGameplayProcedureHandler,
+  submitCombatActionHandler,
+  submitGameplayIntentHandler,
+} from './gameplay/gameplayCommands.js';
 
 export const handlerRegistry: HandlerRegistry = {
   CreateGame: createGameHandler,
@@ -35,4 +45,12 @@ export const handlerRegistry: HandlerRegistry = {
   SendGameChatMessage: sendGameChatMessageHandler,
   SubmitCharacterForApproval: submitForApprovalHandler,
   GMReviewCharacter: gmReviewHandler,
+  GMFrameGameplayScene: gmFrameGameplaySceneHandler,
+  SubmitGameplayIntent: submitGameplayIntentHandler,
+  GMSelectGameplayProcedure: gmSelectGameplayProcedureHandler,
+  GMResolveGameplayCheck: gmResolveGameplayCheckHandler,
+  GMOpenCombatRound: gmOpenCombatRoundHandler,
+  SubmitCombatAction: submitCombatActionHandler,
+  GMResolveCombatTurn: gmResolveCombatTurnHandler,
+  GMCloseCombat: gmCloseCombatHandler,
 };

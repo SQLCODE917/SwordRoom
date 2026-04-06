@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  gameplayEventItemSchema,
+  gameplaySessionItemSchema,
+} from './gameplay.js';
 
 export const characterStatusSchema = z.enum(['DRAFT', 'PENDING', 'APPROVED', 'REJECTED']);
 export const commandStatusSchema = z.enum(['ACCEPTED', 'PROCESSING', 'PROCESSED', 'FAILED']);
@@ -57,6 +61,14 @@ export const gameStateKeys = {
   gameChatMessage: (gameId: string, createdAtIso: string, messageId: string): PkSk => ({
     pk: `GAME#${gameId}`,
     sk: `CHAT#${createdAtIso}#${messageId}`,
+  }),
+  gameplaySession: (gameId: string): PkSk => ({
+    pk: `GAME#${gameId}`,
+    sk: 'PLAY#SESSION',
+  }),
+  gameplayEvent: (gameId: string, createdAtIso: string, eventId: string): PkSk => ({
+    pk: `GAME#${gameId}`,
+    sk: `PLAY#EVENT#${createdAtIso}#${eventId}`,
   }),
   gmInboxItem: (gameId: string, createdAtIso: string, promptId: string): PkSk => ({
     pk: `GM#${gameId}`,
@@ -309,6 +321,8 @@ export const gameStateItemSchema = z.discriminatedUnion('type', [
   gameInviteItemSchema,
   characterItemSchema,
   gameChatMessageItemSchema,
+  gameplaySessionItemSchema,
+  gameplayEventItemSchema,
   gmInboxItemSchema,
   playerInboxItemSchema,
 ]);

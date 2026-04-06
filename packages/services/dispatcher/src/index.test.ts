@@ -11,6 +11,11 @@ const ASYNC_DOC_PATH = resolve(
   '../../../..',
   'docs/vertical-slice.character-creation.async-layer.yaml'
 );
+const GAMEPLAY_ASYNC_DOC_PATH = resolve(
+  HERE,
+  '../../../..',
+  'docs/vertical-slice.gameplay-loop.async-layer.yaml'
+);
 
 function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
   return {
@@ -136,6 +141,20 @@ function makeDbMock(status: 'PROCESSED' | 'ACCEPTED'): DbAccess {
         return [];
       },
     },
+    gameplayRepository: {
+      async getSession() {
+        return null;
+      },
+      async putSession() {
+        throw new Error('not implemented in dispatcher test mock');
+      },
+      async addEvent() {
+        throw new Error('not implemented in dispatcher test mock');
+      },
+      async queryEvents() {
+        return [];
+      },
+    },
     inviteRepository: {
       async getInvite() {
         return null;
@@ -225,11 +244,19 @@ describe('services/dispatcher command registry', () => {
       'SendGameChatMessage',
       'SubmitCharacterForApproval',
       'GMReviewCharacter',
+      'GMFrameGameplayScene',
+      'SubmitGameplayIntent',
+      'GMSelectGameplayProcedure',
+      'GMResolveGameplayCheck',
+      'GMOpenCombatRound',
+      'SubmitCombatAction',
+      'GMResolveCombatTurn',
+      'GMCloseCombat',
     ]);
   });
 
   it('verifies command types exist in source contract text', () => {
-    const asyncDoc = readFileSync(ASYNC_DOC_PATH, 'utf8');
+    const asyncDoc = `${readFileSync(ASYNC_DOC_PATH, 'utf8')}\n${readFileSync(GAMEPLAY_ASYNC_DOC_PATH, 'utf8')}`;
     for (const type of listRegisteredCommandTypes()) {
       expect(asyncDoc).toContain(`type: ${type}`);
     }

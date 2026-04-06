@@ -192,6 +192,186 @@ export async function sendChatMessage(page: Page, body: string): Promise<void> {
   await expect(page.getByText(body, { exact: true })).toBeVisible();
 }
 
+export async function openPlayerPlay(page: Page, gameId: string): Promise<void> {
+  await page.goto(`/games/${encodeURIComponent(gameId)}/play`);
+  await expect(page.getByRole('heading', { name: 'Player Play' })).toBeVisible();
+}
+
+export async function openGmPlay(page: Page, gameId: string): Promise<void> {
+  await page.goto(`/gm/${encodeURIComponent(gameId)}/play`);
+  await expect(page.getByRole('heading', { name: 'GM Play' })).toBeVisible();
+}
+
+export async function loadRpgSample(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Load RPG Sample' }).first().click();
+  await expect(page.getByRole('heading', { name: 'Tavern At Sundown' })).toBeVisible();
+}
+
+export async function submitIntentFromPlay(page: Page, body: string): Promise<void> {
+  const panel = gameplayPanel(page, 'Intent');
+  await panel.getByRole('textbox', { name: 'What does your character do?' }).fill(body);
+  await panel.getByRole('button', { name: 'Submit Intent' }).click();
+}
+
+export async function submitCombatActionFromPlay(
+  page: Page,
+  input: {
+    actionType?: string;
+    movementMode?: string;
+    targetName?: string;
+    summary: string;
+    delayToOrderZero?: boolean;
+  }
+): Promise<void> {
+  const panel = gameplayPanel(page, 'Combat Action');
+  if (input.actionType) {
+    await panel.getByRole('combobox', { name: 'Action', exact: true }).selectOption(input.actionType);
+  }
+  if (input.movementMode) {
+    await panel.getByRole('combobox', { name: 'Movement', exact: true }).selectOption(input.movementMode);
+  }
+  if (input.targetName) {
+    await panel.getByRole('combobox', { name: 'Target', exact: true }).selectOption({ label: input.targetName });
+  }
+  if (input.delayToOrderZero) {
+    await panel.getByRole('checkbox', { name: 'Delay to order zero' }).check();
+  }
+  await panel.getByRole('textbox', { name: 'Summary', exact: true }).fill(input.summary);
+  await panel.getByRole('button', { name: 'Declare Combat Action' }).click();
+}
+
+export async function gmSelectProcedure(
+  page: Page,
+  input: {
+    procedure: string;
+    actionLabel: string;
+    baselineScore: string;
+    modifiers: string;
+    targetScore?: string;
+    difficulty?: string;
+    publicPrompt: string;
+    gmPrompt?: string;
+  }
+): Promise<void> {
+  const panel = gameplayPanel(page, 'Procedure');
+  await panel.getByRole('combobox', { name: 'Procedure', exact: true }).selectOption(input.procedure);
+  await panel.getByRole('textbox', { name: 'Action label', exact: true }).fill(input.actionLabel);
+  await panel.getByRole('textbox', { name: 'Baseline', exact: true }).fill(input.baselineScore);
+  await panel.getByRole('textbox', { name: 'Modifiers', exact: true }).fill(input.modifiers);
+  if (input.targetScore !== undefined) {
+    await panel.getByRole('textbox', { name: 'Target', exact: true }).fill(input.targetScore);
+  }
+  if (input.difficulty !== undefined) {
+    await panel.getByRole('textbox', { name: 'Difficulty', exact: true }).fill(input.difficulty);
+  }
+  await panel.getByRole('textbox', { name: 'Public prompt', exact: true }).fill(input.publicPrompt);
+  await panel.getByRole('textbox', { name: 'GM prompt', exact: true }).fill(input.gmPrompt ?? '');
+  await panel.getByRole('button', { name: 'Select Procedure' }).click();
+}
+
+export async function gmResolveCheck(
+  page: Page,
+  input: {
+    playerRollTotal?: string;
+    gmRollTotal?: string;
+    publicNarration: string;
+    gmNarration?: string;
+  }
+): Promise<void> {
+  const panel = gameplayPanel(page, 'Resolve Check');
+  if (input.playerRollTotal !== undefined) {
+    await panel.getByRole('textbox', { name: 'Player roll', exact: true }).fill(input.playerRollTotal);
+  }
+  if (input.gmRollTotal !== undefined) {
+    await panel.getByRole('textbox', { name: 'GM roll', exact: true }).fill(input.gmRollTotal);
+  }
+  await panel.getByRole('textbox', { name: 'Public narration', exact: true }).fill(input.publicNarration);
+  await panel.getByRole('textbox', { name: 'GM narration', exact: true }).fill(input.gmNarration ?? '');
+  await panel.getByRole('button', { name: 'Resolve Check' }).click();
+}
+
+export async function gmOpenCombat(page: Page, summary: string): Promise<void> {
+  const panel = gameplayPanel(page, 'Open Combat');
+  await panel.getByRole('textbox', { name: 'Combat summary', exact: true }).fill(summary);
+  await panel.getByRole('button', { name: 'Open Combat Round' }).click();
+}
+
+export async function gmDeclareCombatAction(
+  page: Page,
+  input: {
+    actorName: string;
+    targetName?: string;
+    actionType?: string;
+    movementMode?: string;
+    summary: string;
+    delayToOrderZero?: boolean;
+  }
+): Promise<void> {
+  const panel = gameplayPanel(page, 'GM Combat Declaration');
+  await panel.getByRole('combobox', { name: 'Actor combatant', exact: true }).selectOption({ label: input.actorName });
+  if (input.targetName) {
+    await panel.getByRole('combobox', { name: 'Target combatant', exact: true }).selectOption({ label: input.targetName });
+  }
+  if (input.actionType) {
+    await panel.getByRole('combobox', { name: 'Action', exact: true }).selectOption(input.actionType);
+  }
+  if (input.movementMode) {
+    await panel.getByRole('combobox', { name: 'Movement', exact: true }).selectOption(input.movementMode);
+  }
+  if (input.delayToOrderZero) {
+    await panel.getByRole('checkbox', { name: 'Delay to order zero' }).check();
+  }
+  await panel.getByRole('textbox', { name: 'Summary', exact: true }).fill(input.summary);
+  await panel.getByRole('button', { name: 'Declare Combat Action' }).click();
+}
+
+export async function gmResolveCombatTurn(
+  page: Page,
+  input: {
+    actionSummary: string;
+    actorName: string;
+    targetName: string;
+    attackContext: string;
+    attackerBase: string;
+    attackerRoll: string;
+    fixedTargetScore: string;
+    defenderBase?: string;
+    defenderRoll?: string;
+    baseDamage: string;
+    bonusDamage: string;
+    defenseValue: string;
+    damageReduction: string;
+    narration: string;
+  }
+): Promise<void> {
+  const panel = gameplayPanel(page, 'Resolve Combat Turn');
+  await panel.getByRole('combobox', { name: 'Action', exact: true }).selectOption({ label: input.actionSummary });
+  await panel.getByRole('combobox', { name: 'Actor combatant', exact: true }).selectOption({ label: input.actorName });
+  await panel.getByRole('combobox', { name: 'Target combatant', exact: true }).selectOption({ label: input.targetName });
+  await panel.getByRole('combobox', { name: 'Attack context', exact: true }).selectOption(input.attackContext);
+  await panel.getByRole('textbox', { name: 'Attacker base', exact: true }).fill(input.attackerBase);
+  await panel.getByRole('textbox', { name: 'Attacker roll', exact: true }).fill(input.attackerRoll);
+  await panel.getByRole('textbox', { name: 'Fixed target', exact: true }).fill(input.fixedTargetScore);
+  if (input.defenderBase !== undefined) {
+    await panel.getByRole('textbox', { name: 'Defender base', exact: true }).fill(input.defenderBase);
+  }
+  if (input.defenderRoll !== undefined) {
+    await panel.getByRole('textbox', { name: 'Defender roll', exact: true }).fill(input.defenderRoll);
+  }
+  await panel.getByRole('textbox', { name: 'Base damage', exact: true }).fill(input.baseDamage);
+  await panel.getByRole('textbox', { name: 'Bonus damage', exact: true }).fill(input.bonusDamage);
+  await panel.getByRole('textbox', { name: 'Defense value', exact: true }).fill(input.defenseValue);
+  await panel.getByRole('textbox', { name: 'Damage reduction', exact: true }).fill(input.damageReduction);
+  await panel.getByRole('textbox', { name: 'Narration', exact: true }).fill(input.narration);
+  await panel.getByRole('button', { name: 'Resolve Combat Turn' }).click();
+}
+
+export async function gmCloseCombat(page: Page, summary: string): Promise<void> {
+  const panel = gameplayPanel(page, 'Close Combat');
+  await panel.getByRole('textbox', { name: 'Aftermath summary', exact: true }).fill(summary);
+  await panel.getByRole('button', { name: 'Close Combat' }).click();
+}
+
 export async function ensureSignedIn(page: Page): Promise<void> {
   await page.goto('/');
   await expect(page.locator('.c-note .t-small').filter({ hasText: /^Signed in as / }).first()).toBeVisible({
@@ -221,6 +401,10 @@ export function playerInboxRow(page: Page, gameName: string): Locator {
 
 function rowInTable(page: Page, tableName: string, text: string): Locator {
   return page.getByRole('table', { name: tableName }).getByRole('row').filter({ hasText: text }).first();
+}
+
+function gameplayPanel(page: Page, heading: string): Locator {
+  return page.locator('.c-gameplay-ops__panel').filter({ has: page.getByRole('heading', { name: heading }) }).first();
 }
 
 async function autofillCharacterWizard(page: Page, name: string): Promise<void> {

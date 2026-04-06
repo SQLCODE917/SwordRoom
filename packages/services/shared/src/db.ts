@@ -21,6 +21,8 @@ import {
   gameChatMessageItemSchema,
   gameInviteItemSchema,
   gameMemberItemSchema,
+  gameplayEventItemSchema,
+  gameplaySessionItemSchema,
   gmInboxItemSchema,
   gameMetadataItemSchema,
   platformEntitlementItemSchema,
@@ -37,6 +39,12 @@ import {
   type GameLifecycleStatus,
   type GameMemberItem,
   type GameMetadataItem,
+  type GameplayAudience,
+  type GameplayEventItem,
+  type GameplayEventKind,
+  type GameplayNodeId,
+  type GameplaySessionItem,
+  type GameplaySessionState,
   type GMInboxItem,
   type GameVisibility,
   isActiveGame,
@@ -94,6 +102,12 @@ export interface DbAccess {
   };
   chatRepository: {
     queryMessages(gameId: string): Promise<GameChatMessageItem[]>;
+  };
+  gameplayRepository: {
+    getSession(gameId: string): Promise<GameplaySessionItem | null>;
+    putSession(input: PutGameplaySessionInput): Promise<GameplaySessionItem>;
+    addEvent(input: AddGameplayEventInput): Promise<GameplayEventItem>;
+    queryEvents(gameId: string, audience?: GameplayAudience): Promise<GameplayEventItem[]>;
   };
   inviteRepository: {
     getInvite(gameId: string, inviteId: string): Promise<GameInviteItem | null>;
@@ -248,6 +262,26 @@ export interface PutGameInviteInput {
   createdAt: string;
   updatedAt: string;
   respondedAt: string | null;
+}
+
+export interface PutGameplaySessionInput {
+  gameId: string;
+  state: GameplaySessionState;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AddGameplayEventInput {
+  gameId: string;
+  eventId: string;
+  audience: GameplayAudience;
+  eventKind: GameplayEventKind;
+  nodeId: GameplayNodeId;
+  actorId: string | null;
+  title: string;
+  body: string;
+  detail: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface UpdateGameInviteWithVersionInput {
@@ -785,6 +819,86 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
         );
 
         return (result.Items ?? []).map((item) => gameChatMessageItemSchema.parse(item));
+      },
+    },
+    gameplayRepository: {
+      async getSession(gameId) {
+        const result = await client.send(
+          new GetCommand({
+            TableName: tables.gameStateTableName,
+            Key: gameStateKeys.gameplaySession(gameId),
+          })
+        );
+
+        if (!result.Item) {
+          return null;
+        }
+
+        return gameplaySessionItemSchema.parse(result.Item);
+      },
+
+      async putSession(input) {
+        const existing = await this.getSession(input.gameId);
+        const item: GameplaySessionItem = {
+          ...gameStateKeys.gameplaySession(input.gameId),
+          type: 'GameplaySession',
+          gameId: input.gameId,
+          state: input.state,
+          createdAt: existing?.createdAt ?? input.createdAt,
+          updatedAt: input.updatedAt,
+        };
+
+        await client.send(
+          new PutCommand({
+            TableName: tables.gameStateTableName,
+            Item: item,
+          })
+        );
+
+        return item;
+      },
+
+      async addEvent(input) {
+        const item: GameplayEventItem = {
+          ...gameStateKeys.gameplayEvent(input.gameId, input.createdAt, input.eventId),
+          type: 'GameplayEvent',
+          eventId: input.eventId,
+          gameId: input.gameId,
+          audience: input.audience,
+          eventKind: input.eventKind,
+          nodeId: input.nodeId,
+          actorId: input.actorId,
+          title: input.title,
+          body: input.body,
+          detail: input.detail,
+          createdAt: input.createdAt,
+        };
+
+        await client.send(
+          new PutCommand({
+            TableName: tables.gameStateTableName,
+            Item: item,
+          })
+        );
+
+        return item;
+      },
+
+      async queryEvents(gameId, audience) {
+        const result = await client.send(
+          new QueryCommand({
+            TableName: tables.gameStateTableName,
+            KeyConditionExpression: 'pk = :pk AND begins_with(sk, :prefix)',
+            ExpressionAttributeValues: {
+              ':pk': `GAME#${gameId}`,
+              ':prefix': 'PLAY#EVENT#',
+            },
+          })
+        );
+
+        return (result.Items ?? [])
+          .map((item) => gameplayEventItemSchema.parse(item))
+          .filter((item) => (audience ? item.audience === audience : true));
       },
     },
     inviteRepository: {

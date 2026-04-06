@@ -625,7 +625,307 @@
   visibility: visible;
 }
 
+.c-gameplay__layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-gameplay__main,
+.c-gameplay__aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.c-gameplay-card,
+.c-gameplay-ops,
+.c-gameplay-status,
+.c-gameplay-feed,
+.c-gameplay-actions-list__item {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--panel-pad);
+}
+
+.c-gameplay-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-gameplay-card__eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.c-gameplay-card__prompt {
+  border-left: 4px solid var(--focus);
+  background: var(--bg);
+  padding: var(--s-3);
+  font-size: var(--fs-2);
+}
+
+.c-gameplay-card__facts,
+.c-gameplay-status__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.c-gameplay-card__fact {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 6px 10px;
+  font-size: var(--fs-1);
+}
+
+.c-gameplay-graph {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-gameplay-graph__desktop {
+  display: none;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(26, 115, 232, 0.04), rgba(26, 115, 232, 0)),
+    var(--bg);
+}
+
+.c-gameplay-graph__surface {
+  position: relative;
+  min-width: 100%;
+}
+
+.c-gameplay-graph__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.c-gameplay-graph__edge {
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.c-gameplay-graph__edge-label {
+  fill: var(--muted);
+  font-size: 11px;
+  text-anchor: middle;
+}
+
+.c-gameplay-graph__node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-1);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--fg);
+  padding: var(--s-3);
+  text-align: left;
+  cursor: pointer;
+}
+
+.c-gameplay-graph__node.is-selected,
+.c-gameplay-graph__stage.is-selected {
+  border-color: var(--focus);
+  box-shadow: inset 0 0 0 1px rgba(26, 115, 232, 0.18);
+}
+
+.c-gameplay-graph__node.is-current,
+.c-gameplay-graph__stage.is-current {
+  border-color: var(--focus);
+  background: #eef5ff;
+}
+
+.c-gameplay-graph__node-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.c-gameplay-graph__node-title,
+.c-gameplay-graph__stage-title,
+.c-gameplay-feed__title,
+.c-gameplay-status__header {
+  font-weight: 600;
+}
+
+.c-gameplay-graph__node-description,
+.c-gameplay-graph__stage-description {
+  color: var(--muted);
+}
+
+.c-gameplay-graph__mobile {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-gameplay-graph__stage {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--fg);
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  text-align: left;
+}
+
+.c-gameplay-graph__stage-order {
+  color: var(--muted);
+}
+
+.c-gameplay-graph__stage-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.c-gameplay-ops {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-gameplay-ops__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap);
+}
+
+.c-gameplay-ops__panel {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--panel-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-gameplay-ops__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--s-2);
+}
+
+.c-gameplay__textarea {
+  min-height: 96px;
+  padding: var(--s-2) var(--touch-pad-x);
+  resize: vertical;
+  font: inherit;
+}
+
+.c-gameplay-status__grid,
+.c-gameplay-feed-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--gap);
+}
+
+.c-gameplay-status__card {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.c-gameplay-status__card--player {
+  border-left: 4px solid var(--focus);
+}
+
+.c-gameplay-status__card--npc {
+  border-left: 4px solid var(--warn);
+}
+
+.c-gameplay-status__header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+.c-gameplay-feed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-gameplay-feed__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-gameplay-feed__item {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--s-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-gameplay-feed__item--gm {
+  border-left: 4px solid var(--warn);
+}
+
+.c-gameplay-feed__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gap);
+  color: var(--muted);
+}
+
+.c-gameplay-feed__detail {
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-2);
+}
+
+.c-gameplay-feed__detail-pre {
+  margin: 0;
+  padding: var(--s-2);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  overflow-x: auto;
+  font-size: 12px;
+}
+
+.c-gameplay-feed__empty {
+  border: 1px dashed var(--line);
+  background: var(--bg);
+  padding: var(--s-3);
+}
+
+.c-gameplay-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
 @media (min-width: 640px) {
+  .c-gameplay-feed-grid,
+  .c-gameplay-status__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .c-sheet__page1-main {
     flex-direction: row;
   }
@@ -645,6 +945,33 @@
 }
 
 @media (min-width: 1024px) {
+  .c-gameplay__layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .c-gameplay__main {
+    flex: 1 1 auto;
+  }
+
+  .c-gameplay__aside {
+    flex: 0 0 420px;
+    position: sticky;
+    top: var(--page-pad);
+  }
+
+  .c-gameplay-graph__desktop {
+    display: block;
+  }
+
+  .c-gameplay-graph__mobile {
+    display: none;
+  }
+
+  .c-gameplay-ops__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .c-sheet__page1-left {
     flex: 2;
   }

@@ -4,6 +4,7 @@ import {
   getPlayerIdFromCharacterLibraryGameId,
   isActiveGame,
   isPlayerCharacterLibraryGameId,
+  gameplayLoopGraph,
   toPlayerCharacterLibraryGameId,
   type AnyCommandEnvelope,
 } from '@starter/shared';
@@ -100,6 +101,12 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
       }
 
       if (
+        envelope.type === 'GMFrameGameplayScene' ||
+        envelope.type === 'GMSelectGameplayProcedure' ||
+        envelope.type === 'GMResolveGameplayCheck' ||
+        envelope.type === 'GMOpenCombatRound' ||
+        envelope.type === 'GMResolveCombatTurn' ||
+        envelope.type === 'GMCloseCombat' ||
         envelope.type === 'ArchiveGame' ||
         envelope.type === 'SetGameVisibility' ||
         envelope.type === 'InvitePlayerToGameByEmail'
@@ -140,6 +147,14 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
 
       if (envelope.type === 'SendGameChatMessage') {
         await assertSendGameChatMessageAuthorized(deps.db, envelope);
+      }
+
+      if (envelope.type === 'SubmitGameplayIntent') {
+        await assertSubmitGameplayIntentAuthorized(deps.db, envelope);
+      }
+
+      if (envelope.type === 'SubmitCombatAction') {
+        await assertSubmitCombatActionAuthorized(deps.db, envelope);
       }
 
       if (envelope.type === 'SubmitCharacterForApproval') {
@@ -513,6 +528,14 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
           })),
         };
       },
+
+      async getPlayerGameplayView(gameId: string) {
+        return buildGameplayView(deps.db, gameId, 'PLAYER');
+      },
+
+      async getGmGameplayView(gameId: string) {
+        return buildGameplayView(deps.db, gameId, 'GM');
+      },
     },
   };
 }
@@ -600,6 +623,51 @@ async function assertSendGameChatMessageAuthorized(
   }
 }
 
+async function assertSubmitGameplayIntentAuthorized(
+  db: DbAccess,
+  envelope: Extract<AnyCommandEnvelope, { type: 'SubmitGameplayIntent' }>
+): Promise<void> {
+  await requireActiveGameMetadata(db, envelope.gameId);
+
+  const membership = await db.membershipRepository.getMembership(envelope.gameId, envelope.actorId);
+  if (!membership) {
+    throw createApiError(
+      `game access required for actor "${envelope.actorId}" and game "${envelope.gameId}"`,
+      'GAME_ACCESS_REQUIRED',
+      403
+    );
+  }
+}
+
+async function assertSubmitCombatActionAuthorized(
+  db: DbAccess,
+  envelope: Extract<AnyCommandEnvelope, { type: 'SubmitCombatAction' }>
+): Promise<void> {
+  await requireActiveGameMetadata(db, envelope.gameId);
+
+  const membership = await db.membershipRepository.getMembership(envelope.gameId, envelope.actorId);
+  if (!membership) {
+    throw createApiError(
+      `game access required for actor "${envelope.actorId}" and game "${envelope.gameId}"`,
+      'GAME_ACCESS_REQUIRED',
+      403
+    );
+  }
+
+  if (membership.roles.includes('GM')) {
+    return;
+  }
+
+  const ownedCharacter = await db.characterRepository.findOwnedCharacterInGame(envelope.gameId, envelope.actorId);
+  if (!ownedCharacter || ownedCharacter.characterId !== envelope.payload.actorCombatantId) {
+    throw createApiError(
+      `combat action actor "${envelope.payload.actorCombatantId}" is not owned by "${envelope.actorId}"`,
+      'COMBAT_ACTION_OWNER_REQUIRED',
+      403
+    );
+  }
+}
+
 function normalizeEnvelopeCandidate(
   envelope: PostCommandRequest['envelope'],
   actorId: string
@@ -675,4 +743,71 @@ function readCharacterIdentityName(character: { draft: { identity: { name: strin
 
 function formatChatDisplayName(name: string, role: 'PLAYER' | 'GM'): string {
   return role === 'GM' ? `@${name}` : name;
+}
+
+async function buildGameplayView(
+  db: DbAccess,
+  gameId: string,
+  view: 'PLAYER' | 'GM'
+) {
+  const [game, session, memberships, publicEvents, gmOnlyEvents] = await Promise.all([
+    db.gameRepository.getGameMetadata(gameId),
+    db.gameplayRepository.getSession(gameId),
+    db.membershipRepository.listMembershipsForGame(gameId),
+    db.gameplayRepository.queryEvents(gameId, 'PUBLIC'),
+    view === 'GM' ? db.gameplayRepository.queryEvents(gameId, 'GM_ONLY') : Promise.resolve([]),
+  ]);
+  assertActiveGame(gameId, game);
+
+  if (!session) {
+    return null;
+  }
+
+  const participants = await Promise.all(
+    memberships.map(async (membership) => {
+      const [profile, character] = await Promise.all([
+        db.playerRepository.getPlayerProfile(membership.playerId),
+        db.characterRepository.findOwnedCharacterInGame(gameId, membership.playerId),
+      ]);
+      return {
+        playerId: membership.playerId,
+        displayName: character?.draft.identity.name.trim() || profile?.displayName?.trim() || membership.playerId,
+        role: membership.roles.includes('GM') ? 'GM' : 'PLAYER',
+        characterId: character?.characterId ?? null,
+      } as const;
+    })
+  );
+
+  const sortedParticipants = participants.sort((left, right) => {
+    if (left.role !== right.role) {
+      return left.role === 'GM' ? -1 : 1;
+    }
+    return left.displayName.localeCompare(right.displayName);
+  });
+
+  return {
+    gameId: game.gameId,
+    gameName: game.name,
+    view,
+    graph: gameplayLoopGraph,
+    participants: sortedParticipants,
+    session: session.state,
+    publicEvents: publicEvents.map(toGameplayEventRecord),
+    ...(view === 'GM' ? { gmOnlyEvents: gmOnlyEvents.map(toGameplayEventRecord) } : {}),
+  };
+}
+
+function toGameplayEventRecord(event: Awaited<ReturnType<DbAccess['gameplayRepository']['queryEvents']>>[number]) {
+  return {
+    eventId: event.eventId,
+    gameId: event.gameId,
+    audience: event.audience,
+    eventKind: event.eventKind,
+    nodeId: event.nodeId,
+    actorId: event.actorId,
+    title: event.title,
+    body: event.body,
+    detail: event.detail,
+    createdAt: event.createdAt,
+  };
 }

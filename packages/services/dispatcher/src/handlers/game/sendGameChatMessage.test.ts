@@ -60,6 +60,12 @@ function makeDb(overrides?: Partial<DbAccess>): DbAccess {
     chatRepository: {
       queryMessages: vi.fn(async () => []),
     },
+    gameplayRepository: {
+      getSession: vi.fn(async () => null),
+      putSession: vi.fn(),
+      addEvent: vi.fn(),
+      queryEvents: vi.fn(async () => []),
+    },
     inviteRepository: {
       getInvite: vi.fn(async () => null),
       listInvitesForGame: vi.fn(async () => []),

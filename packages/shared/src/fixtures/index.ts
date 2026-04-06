@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import { z } from 'zod';
 import { engineErrorCodeSchema, type EngineErrorCode } from '../contracts/errors.js';
+export * from './gameplayLoop.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const FIXTURES_PATH = resolve(HERE, '../../../../fixtures/vertical-slice.character-creation.fixtures.yaml');

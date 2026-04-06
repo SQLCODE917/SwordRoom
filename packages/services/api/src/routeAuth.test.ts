@@ -312,6 +312,20 @@ function makeDb(input?: {
         return [];
       },
     },
+    gameplayRepository: {
+      async getSession() {
+        return null;
+      },
+      async putSession() {
+        throw new Error('not implemented in routeAuth test mock');
+      },
+      async addEvent() {
+        throw new Error('not implemented in routeAuth test mock');
+      },
+      async queryEvents() {
+        return [];
+      },
+    },
     inviteRepository: {
       async getInvite() {
         return null;

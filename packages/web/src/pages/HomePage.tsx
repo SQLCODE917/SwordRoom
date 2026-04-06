@@ -294,10 +294,14 @@ function MyGamesTable(input: {
                   >
                     New Character
                   </ButtonLink>
+                  <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/play`}>Play</ButtonLink>
                   <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
                   <ButtonLink to="/me/inbox">Player Inbox</ButtonLink>
                   {input.gmGameIds.has(game.gameId) ? (
-                    <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
+                    <>
+                      <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/play`}>GM Play</ButtonLink>
+                      <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
+                    </>
                   ) : null}
                   {canDelete ? (
                     <button

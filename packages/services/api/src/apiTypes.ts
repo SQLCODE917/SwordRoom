@@ -3,6 +3,7 @@ import type {
   CharacterItem,
   CommandStatus,
   GameChatSenderRole,
+  GameplayViewResponse as SharedGameplayViewResponse,
   GameMetadataItem,
   GMInboxItem,
   PlayerInboxItem,
@@ -57,6 +58,8 @@ export interface GameChatResponse {
   messages: GameChatMessageResponse[];
 }
 
+export type GameplayViewResponse = SharedGameplayViewResponse;
+
 export interface PostCommandRequest {
   envelope: Omit<AnyCommandEnvelope, 'actorId'> & { actorId?: string };
   authHeader?: string;
@@ -94,4 +97,6 @@ export interface ReadApis {
   getGameActorContext(gameId: string, actorId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getGameChat(gameId: string): Promise<GameChatResponse>;
+  getPlayerGameplayView(gameId: string): Promise<GameplayViewResponse | null>;
+  getGmGameplayView(gameId: string): Promise<GameplayViewResponse | null>;
 }

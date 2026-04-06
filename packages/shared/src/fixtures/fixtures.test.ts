@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getGameplayLoopFixture,
+  loadGameplayLoopFixtures,
+  loadGameplayLoopFixturesYamlText,
   loadVerticalSliceFixtures,
   loadVerticalSliceFixturesYamlText,
   normalizeFixtures,
@@ -11,6 +14,12 @@ describe('fixture loader', () => {
     const raw = loadVerticalSliceFixturesYamlText();
     expect(raw).toContain('doc_type: fixtures');
     expect(raw).toContain('fixtures:');
+  });
+
+  it('loads gameplay-loop YAML text from /fixtures source-of-truth', () => {
+    const raw = loadGameplayLoopFixturesYamlText();
+    expect(raw).toContain('slice: gameplay_loop_vertical_slice');
+    expect(raw).toContain('Tavern At Sundown');
   });
 
   it('parses YAML into structured object with runtime schema validation', () => {
@@ -38,5 +47,13 @@ describe('fixture loader', () => {
     expect(normalized.byId['bad.sorcerer_only_discount_when_neither'].expectedErrorCodes).toContain(
       'SORCERER_SAGE_BUNDLE_REQUIRED'
     );
+  });
+
+  it('loads the gameplay tavern seed fixture', () => {
+    const doc = loadGameplayLoopFixtures();
+    expect(doc.fixtures.length).toBeGreaterThan(0);
+    const fixture = getGameplayLoopFixture('rpg_sample_tavern');
+    expect(fixture.scene.title).toBe('Tavern At Sundown');
+    expect(fixture.gm_only_transcript_contains).toContain('Brando family');
   });
 });

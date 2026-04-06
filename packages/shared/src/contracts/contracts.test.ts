@@ -8,14 +8,16 @@ import { ENGINE_ERROR_CODES, engineErrorSchema } from './errors.js';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const ASYNC_DOC_PATH = resolve(HERE, '../../../../docs/vertical-slice.character-creation.async-layer.yaml');
+const GAMEPLAY_ASYNC_DOC_PATH = resolve(HERE, '../../../../docs/vertical-slice.gameplay-loop.async-layer.yaml');
 const ENGINE_DOC_PATH = resolve(HERE, '../../../../docs/vertical-slice.character-creation.engine.yaml');
 const FIXTURE_DOC_PATH = resolve(HERE, '../../../../fixtures/vertical-slice.character-creation.fixtures.yaml');
 
 describe('contract constants', () => {
   it('command types align with async-layer contract', () => {
     const asyncDoc = readFileSync(ASYNC_DOC_PATH, 'utf8');
+    const gameplayAsyncDoc = readFileSync(GAMEPLAY_ASYNC_DOC_PATH, 'utf8');
     for (const commandType of COMMAND_TYPES) {
-      expect(asyncDoc).toContain(`type: ${commandType}`);
+      expect(asyncDoc.includes(`type: ${commandType}`) || gameplayAsyncDoc.includes(`type: ${commandType}`)).toBe(true);
     }
   });
 

@@ -57,6 +57,12 @@ export function createDispatcher(deps: DispatcherDependencies) {
         });
 
         if (
+          parsed.type === 'GMFrameGameplayScene' ||
+          parsed.type === 'GMSelectGameplayProcedure' ||
+          parsed.type === 'GMResolveGameplayCheck' ||
+          parsed.type === 'GMOpenCombatRound' ||
+          parsed.type === 'GMResolveCombatTurn' ||
+          parsed.type === 'GMCloseCombat' ||
           parsed.type === 'GMReviewCharacter' ||
           parsed.type === 'ArchiveGame' ||
           parsed.type === 'SetGameVisibility' ||
@@ -219,6 +225,47 @@ function toTransactWriteItem(
             senderCharacterId: effect.input.senderCharacterId,
             senderNameSnapshot: effect.input.senderNameSnapshot,
             body: effect.input.body,
+            createdAt: effect.input.createdAt,
+          },
+          ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',
+        },
+      };
+    }
+    case 'PUT_GAMEPLAY_SESSION': {
+      return {
+        Put: {
+          TableName: db.tables.gameStateTableName,
+          Item: {
+            ...db.keyBuilders.gameState.gameplaySession(effect.input.gameId),
+            type: 'GameplaySession',
+            gameId: effect.input.gameId,
+            state: effect.input.state,
+            createdAt: effect.input.createdAt,
+            updatedAt: effect.input.updatedAt,
+          },
+        },
+      };
+    }
+    case 'PUT_GAMEPLAY_EVENT': {
+      return {
+        Put: {
+          TableName: db.tables.gameStateTableName,
+          Item: {
+            ...db.keyBuilders.gameState.gameplayEvent(
+              effect.input.gameId,
+              effect.input.createdAt,
+              effect.input.eventId
+            ),
+            type: 'GameplayEvent',
+            eventId: effect.input.eventId,
+            gameId: effect.input.gameId,
+            audience: effect.input.audience,
+            eventKind: effect.input.eventKind,
+            nodeId: effect.input.nodeId,
+            actorId: effect.input.actorId,
+            title: effect.input.title,
+            body: effect.input.body,
+            detail: effect.input.detail,
             createdAt: effect.input.createdAt,
           },
           ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',
