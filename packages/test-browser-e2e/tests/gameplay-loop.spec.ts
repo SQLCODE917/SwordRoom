@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
 import {
   applyToJoinWithNewCharacter,
   approvePendingCharacter,
@@ -14,10 +15,12 @@ import {
   openAuthenticatedPage,
   openGmPlay,
   openPlayerPlay,
+  postCommandAsCurrentActor,
   sendChatMessage,
   setGameVisibility,
   submitCombatActionFromPlay,
   submitIntentFromPlay,
+  waitForCommandStatus,
 } from './support/app';
 
 test.describe.configure({ mode: 'parallel' });
@@ -198,5 +201,81 @@ test('executes public checks, hidden checks, combat declarations, and combat res
     await expect(aPage.getByLabel('Public Transcript')).toContainText(closeSummary);
   } finally {
     await Promise.all([gmContext.close(), aContext.close(), bContext.close(), cContext.close()]);
+  }
+});
+
+test('keeps a GM without a character out of player-character actions while preserving GM NPC control', async ({
+  browser,
+}, testInfo) => {
+  const gm = createSyntheticActor('gm-no-character', testInfo);
+  const token = Date.now().toString(36);
+  const gameName = `Gameplay GM Limits ${testInfo.parallelIndex} ${token}`;
+  const blockedIntent = `blocked-intent-${token}`;
+  const gmNpcSummary = `Brando Boss circles the room and sizes up the exits ${token}.`;
+
+  const { context: gmContext, page: gmPage } = await openAuthenticatedPage(browser, gm);
+  const gmPlayerPage = await gmContext.newPage();
+
+  try {
+    const gameId = await createGame(gmPage, gameName);
+
+    await openGmPlay(gmPage, gameId);
+    await loadRpgSample(gmPage);
+
+    await openPlayerPlay(gmPlayerPage, gameId);
+
+    const intentPanel = gmPlayerPage
+      .locator('.c-gameplay-ops__panel')
+      .filter({ has: gmPlayerPage.getByRole('heading', { name: 'Intent' }) })
+      .first();
+    const combatPanel = gmPlayerPage
+      .locator('.c-gameplay-ops__panel')
+      .filter({ has: gmPlayerPage.getByRole('heading', { name: 'Combat Action' }) })
+      .first();
+
+    await expect(intentPanel).toContainText('Join this game with an approved character to submit intents.');
+    await expect(intentPanel.getByRole('textbox', { name: 'What does your character do?' })).toBeDisabled();
+    await expect(intentPanel.getByRole('button', { name: 'Submit Intent' })).toBeDisabled();
+
+    const blockedCommandId = randomUUID();
+    await postCommandAsCurrentActor(gmPlayerPage, {
+      commandId: blockedCommandId,
+      gameId,
+      type: 'SubmitGameplayIntent',
+      schemaVersion: 1,
+      createdAt: new Date().toISOString(),
+      payload: {
+        body: blockedIntent,
+        characterId: null,
+      },
+    });
+    const blockedStatus = await waitForCommandStatus(gmPlayerPage, blockedCommandId, 20_000);
+    expect(blockedStatus).toMatchObject({
+      status: 'FAILED',
+      errorCode: 'GAMEPLAY_CHARACTER_REQUIRED',
+    });
+
+    await gmPlayerPage.reload();
+    await expect(gmPlayerPage.getByLabel('Public Transcript').getByText(blockedIntent, { exact: true })).toHaveCount(0);
+
+    await gmOpenCombat(gmPage, 'The Brando family fans out while the GM stays out of player-character action.');
+    await gmPlayerPage.reload();
+
+    await expect(combatPanel.getByRole('button', { name: 'Declare Combat Action' })).toBeDisabled();
+    await expect(combatPanel.getByRole('textbox', { name: 'Summary', exact: true })).toBeDisabled();
+
+    await gmDeclareCombatAction(gmPage, {
+      actorName: 'Brando Boss',
+      actionType: 'MOVE',
+      summary: gmNpcSummary,
+    });
+
+    await gmPage.reload();
+    await expect(gmPage.getByLabel('Combat control status')).toContainText(gmNpcSummary);
+
+    await gmPlayerPage.reload();
+    await expect(gmPlayerPage.getByLabel('Public Transcript')).toContainText(gmNpcSummary);
+  } finally {
+    await gmContext.close();
   }
 });

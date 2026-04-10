@@ -178,6 +178,61 @@ describe('character rules', () => {
     });
   });
 
+  it('allows SaveCharacterDraft when a STR 16 rune master equips the STR 10 mage_staff', async () => {
+    const db = makeDb();
+
+    const effects = await saveDraftHandler(
+      { db, nowIso: () => '2026-03-01T00:05:00.000Z' },
+      {
+        commandId: '29f61013-8f47-4f5f-9456-9f07a88e5894a',
+        gameId: 'game-1',
+        actorId: 'player-aaa',
+        type: 'SaveCharacterDraft',
+        schemaVersion: 1,
+        createdAt: '2026-03-01T00:00:00.000Z',
+        payload: {
+          characterId: 'char-rune-master',
+          expectedVersion: null,
+          race: 'HUMAN',
+          raisedBy: null,
+          subAbility: { A: 6, B: 8, C: 5, D: 5, E: 9, F: 7, G: 3, H: 4 },
+          backgroundRoll2dTotal: 3,
+          startingMoneyRoll2dTotal: 9,
+          identity: {
+            name: 'Ducard Sample II',
+            age: 24,
+            gender: 'M',
+          },
+          purchases: [{ skill: 'Priest', targetLevel: 1 }],
+          cart: {
+            weapons: ['mage_staff'],
+            armor: [],
+            shields: [],
+            gear: [],
+          },
+          noteToGm: 'Ready for review',
+        },
+      }
+    );
+
+    expect(effects.writes).toEqual([
+      expect.objectContaining({
+        kind: 'PUT_CHARACTER_DRAFT',
+        input: expect.objectContaining({
+          gameId: 'game-1',
+          characterId: 'char-rune-master',
+          ownerPlayerId: 'player-aaa',
+          status: 'DRAFT',
+          draft: expect.objectContaining({
+            purchases: expect.objectContaining({
+              weapons: [{ itemId: 'mage_staff', reqStr: 10, costGamels: 200 }],
+            }),
+          }),
+        }),
+      }),
+    ]);
+  });
+
   it('deletes the character, plain player membership, and pending GM inbox items together', async () => {
     const base = makeDb();
     const db = makeDb({

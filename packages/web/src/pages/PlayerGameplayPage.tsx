@@ -33,10 +33,20 @@ export function PlayerGameplayPage() {
   const gameplay = gameplayState.gameplay;
   const currentRound = gameplay?.session.combat?.rounds[gameplay.session.combat.rounds.length - 1] ?? null;
   const ownParticipant = gameplay?.participants.find((participant) => participant.playerId === auth.actorId) ?? null;
+  const ownParticipantCharacterId = ownParticipant?.characterId ?? null;
   const ownCombatant =
-    gameplay?.session.combatants.find((combatant) => combatant.actorId === auth.actorId) ??
-    gameplay?.session.combatants.find((combatant) => combatant.characterId === ownParticipant?.characterId) ??
-    null;
+    gameplay?.session.combatants.find((combatant) => combatant.actorId === auth.actorId && combatant.side === 'PLAYER') ??
+    (ownParticipantCharacterId
+      ? gameplay?.session.combatants.find(
+          (combatant) => combatant.characterId === ownParticipantCharacterId && combatant.side === 'PLAYER'
+        ) ?? null
+      : null);
+  const canSubmitIntent = Boolean(ownCombatant) && gameplay?.session.status !== 'IN_COMBAT';
+  const intentAvailabilityText = !ownCombatant
+    ? 'Join this game with an approved character to submit intents.'
+    : gameplay?.session.status === 'IN_COMBAT'
+      ? 'Combat is open, so character actions are declared in the combat panel.'
+      : 'Describe what your character does next.';
   const availableTargets = useMemo(
     () =>
       (gameplay?.session.combatants ?? []).filter(
@@ -103,8 +113,14 @@ export function PlayerGameplayPage() {
                 <PlayerActionPanel
                   intentBody={intentBody}
                   setIntentBody={setIntentBody}
-                  canSubmitIntent={gameplay.session.status !== 'IN_COMBAT'}
+                  canSubmitIntent={canSubmitIntent}
                   canSubmitCombatAction={Boolean(currentRound && ownCombatant)}
+                  intentAvailabilityText={intentAvailabilityText}
+                  intentPlaceholder={
+                    ownCombatant
+                      ? 'Step between the thugs and the poster girl.'
+                      : 'Join this game with an approved character to submit intents.'
+                  }
                   combatActorCombatantId={combatActorCombatantId}
                   setCombatActorCombatantId={setCombatActorCombatantId}
                   combatTargetCombatantId={combatTargetCombatantId}
@@ -179,7 +195,7 @@ export function PlayerGameplayPage() {
       createdAt: new Date().toISOString(),
       payload: {
         body,
-        characterId: ownParticipant?.characterId ?? null,
+        characterId: ownCombatant?.characterId ?? ownParticipant?.characterId ?? null,
       },
     } satisfies CommandEnvelopeInput<'SubmitGameplayIntent'>);
     setIntentBody('');
@@ -246,6 +262,8 @@ function PlayerActionPanel(input: {
   setIntentBody: (value: string) => void;
   canSubmitIntent: boolean;
   canSubmitCombatAction: boolean;
+  intentAvailabilityText: string;
+  intentPlaceholder: string;
   combatActorCombatantId: string;
   setCombatActorCombatantId: (value: string) => void;
   combatTargetCombatantId: string;
@@ -283,6 +301,9 @@ function PlayerActionPanel(input: {
           }}
         >
           <h4 className="t-h4">Intent</h4>
+          <div className="c-note c-note--info">
+            <span className="t-small">{input.intentAvailabilityText}</span>
+          </div>
           <label className="c-field">
             <span className="c-field__label">What does your character do?</span>
             <textarea
@@ -290,7 +311,7 @@ function PlayerActionPanel(input: {
               value={input.intentBody}
               disabled={input.isRunning || !input.canSubmitIntent}
               onChange={(event) => input.setIntentBody(event.target.value)}
-              placeholder="Step between the thugs and the poster girl."
+              placeholder={input.intentPlaceholder}
             />
           </label>
           <button

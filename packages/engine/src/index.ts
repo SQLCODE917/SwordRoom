@@ -348,6 +348,11 @@ export function purchaseEquipment(
 ): EngineResult {
   const charStr = state.ability?.str ?? 0;
   const errors: EngineError[] = [];
+  const hasSorcerer = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'sorcerer');
+  const hasShaman = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'shaman');
+  const hasThief = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'thief');
+  const hasRanger = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'ranger');
+  const thiefArmorLimit = divideAndRound(charStr, 2);
 
   const allItemIds = [...input.cart.weapons, ...input.cart.armor, ...input.cart.shields, ...input.cart.gear];
   const totalCost = allItemIds.reduce((sum, itemId) => {
@@ -365,11 +370,27 @@ export function purchaseEquipment(
       continue;
     }
 
-    if (!isCatalogStrengthWithinRange(item, charStr)) {
+    if (hasAnyTag(item, ['SORCERER_REQUIRED']) && !hasSorcerer) {
       errors.push({
         code: 'EQUIPMENT_RESTRICTED_BY_SKILL',
-        message: 'item required strength range must include character STR',
-        details: { reason: 'REQ_STR_RANGE_MISMATCH', itemId, charStr },
+        message: `equipment "${itemId}" requires Sorcerer skill`,
+        details: { reason: 'SORCERER_REQUIRED_ITEM', itemId },
+      });
+      continue;
+    }
+
+    if (!isCatalogStrengthCompatible(item, charStr, { hasSorcerer })) {
+      const reqStrRange = resolveCatalogStrengthRange(item);
+      errors.push({
+        code: 'EQUIPMENT_RESTRICTED_BY_SKILL',
+        message: `equipment "${itemId}" requires STR within ${formatStrengthRange(reqStrRange)} (character STR ${charStr})`,
+        details: {
+          reason: 'REQ_STR_RANGE_MISMATCH',
+          itemId,
+          charStr,
+          reqStrMin: reqStrRange.min,
+          reqStrMax: reqStrRange.max,
+        },
       });
       continue;
     }
@@ -400,12 +421,6 @@ export function purchaseEquipment(
       details: { totalCost, moneyAvailable },
     });
   }
-
-  const hasSorcerer = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'sorcerer');
-  const hasShaman = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'shaman');
-  const hasThief = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'thief');
-  const hasRanger = state.skills.some((skill) => normalizeSkillName(skill.skill) === 'ranger');
-  const thiefArmorLimit = divideAndRound(charStr, 2);
 
   if (hasSorcerer) {
     if (input.cart.shields.length > 0) {
@@ -694,16 +709,72 @@ function isCatalogStrengthWithinRange(item: ItemCatalogEntry | undefined, charac
   if (!item) {
     return true;
   }
-  if (typeof item.req_str === 'number' && item.req_str_min === undefined && item.req_str_max === undefined) {
+  const requiredStrength = toCatalogRequiredStrengthSpec(item);
+  return isStrengthWithinRequiredRange(requiredStrength, characterStrength);
+}
+
+function isCatalogStrengthCompatible(
+  item: ItemCatalogEntry | undefined,
+  characterStrength: number,
+  input: { hasSorcerer: boolean }
+): boolean {
+  if (!item) {
     return true;
   }
-  const requiredStrength =
-    item.req_str_min !== undefined
-      ? item.req_str_max === null || item.req_str_max === undefined
-        ? `${item.req_str_min}~`
-        : `${item.req_str_min}~${item.req_str_max}`
-      : item.req_str ?? 0;
-  return isStrengthWithinRequiredRange(requiredStrength, characterStrength);
+
+  if (hasAnyTag(item, ['SORCERER_REQUIRED']) && input.hasSorcerer) {
+    const range = resolveCatalogStrengthRange(item);
+    return characterStrength >= range.min;
+  }
+
+  return isCatalogStrengthWithinRange(item, characterStrength);
+}
+
+function resolveCatalogStrengthRange(item: ItemCatalogEntry | undefined): { min: number; max: number | null } {
+  if (!item) {
+    return { min: 0, max: null };
+  }
+
+  if (typeof item.req_str === 'number' && item.req_str_min === undefined && item.req_str_max === undefined) {
+    return { min: item.req_str, max: item.req_str };
+  }
+
+  if (item.req_str_min !== undefined) {
+    return {
+      min: item.req_str_min,
+      max: item.req_str_max ?? null,
+    };
+  }
+
+  if (typeof item.req_str === 'number') {
+    return { min: item.req_str, max: item.req_str };
+  }
+
+  return { min: 0, max: null };
+}
+
+function toCatalogRequiredStrengthSpec(item: ItemCatalogEntry): string | number {
+  if (typeof item.req_str === 'number' && item.req_str_min === undefined && item.req_str_max === undefined) {
+    return item.req_str;
+  }
+
+  if (item.req_str_min !== undefined) {
+    return item.req_str_max === null || item.req_str_max === undefined
+      ? `${item.req_str_min}~`
+      : `${item.req_str_min}~${item.req_str_max}`;
+  }
+
+  return item.req_str ?? 0;
+}
+
+function formatStrengthRange(input: { min: number; max: number | null }): string {
+  if (input.max === null) {
+    return `${input.min}+`;
+  }
+  if (input.min === input.max) {
+    return `${input.min}`;
+  }
+  return `${input.min}-${input.max}`;
 }
 
 function zeroAbility(): AbilityScores {

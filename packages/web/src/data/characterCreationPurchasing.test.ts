@@ -89,6 +89,31 @@ describe('computeEquipmentPreview', () => {
     expect(equipment.totalCost).toBe(100);
     expect(equipment.moneyRemaining).toBe(1700);
   });
+
+  it('allows a high-STR rune master to buy the STR 10 mage_staff version', () => {
+    const starting = computeStartingPackagePreview({
+      characterId: 'char-rune-master-heavy',
+      race: 'HUMAN',
+      raisedBy: 'HUMANS',
+      subAbility: { A: 6, B: 8, C: 5, D: 5, E: 9, F: 7, G: 3, H: 4 },
+      backgroundRoll2dTotal: 3,
+      startingMoneyRoll2dTotal: 9,
+    });
+    const purchased = computeSkillPurchasePreview(starting.state, [{ skill: 'Priest', targetLevel: 1 }]);
+
+    const equipment = computeEquipmentPreview(
+      purchased.state,
+      toSingleSelectCart({
+        weapon: 'mage_staff',
+        armor: '',
+        shield: '',
+      })
+    );
+
+    expect(equipment.errors).toEqual([]);
+    expect(equipment.totalCost).toBe(200);
+    expect(equipment.moneyRemaining).toBe(1600);
+  });
 });
 
 describe('roll2dTotal', () => {

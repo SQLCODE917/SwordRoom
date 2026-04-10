@@ -10,6 +10,19 @@ export interface DevActor {
   displayName?: string;
 }
 
+export interface BrowserPostedCommand {
+  accepted: true;
+  commandId: string;
+  status: string;
+}
+
+export interface BrowserCommandStatus {
+  commandId: string;
+  status: 'ACCEPTED' | 'PROCESSING' | 'PROCESSED' | 'FAILED';
+  errorCode: string | null;
+  errorMessage: string | null;
+}
+
 export const builtinPlayer: DevActor = {
   username: 'player-aaa',
   actorId: 'player-aaa',
@@ -370,6 +383,89 @@ export async function gmCloseCombat(page: Page, summary: string): Promise<void> 
   const panel = gameplayPanel(page, 'Close Combat');
   await panel.getByRole('textbox', { name: 'Aftermath summary', exact: true }).fill(summary);
   await panel.getByRole('button', { name: 'Close Combat' }).click();
+}
+
+export async function postCommandAsCurrentActor(
+  page: Page,
+  envelope: Record<string, unknown>
+): Promise<BrowserPostedCommand> {
+  return page.evaluate(
+    async ({ envelope, sessionKey }) => {
+      const raw = window.localStorage.getItem(sessionKey);
+      if (!raw) {
+        throw new Error('missing dev session');
+      }
+      const parsed = JSON.parse(raw) as { actorId?: unknown };
+      if (typeof parsed.actorId !== 'string' || parsed.actorId.trim() === '') {
+        throw new Error('missing actorId in dev session');
+      }
+
+      const response = await fetch('/api/commands', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-dev-actor-id': parsed.actorId,
+        },
+        body: JSON.stringify({
+          envelope,
+          bypassActorId: parsed.actorId,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`command post failed with status ${response.status}`);
+      }
+      return (await response.json()) as BrowserPostedCommand;
+    },
+    {
+      envelope,
+      sessionKey: DEV_SESSION_KEY,
+    }
+  );
+}
+
+export async function waitForCommandStatus(
+  page: Page,
+  commandId: string,
+  timeoutMs = 15_000
+): Promise<BrowserCommandStatus> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    const status = await page.evaluate(
+      async ({ commandId, sessionKey }) => {
+        const raw = window.localStorage.getItem(sessionKey);
+        if (!raw) {
+          throw new Error('missing dev session');
+        }
+        const parsed = JSON.parse(raw) as { actorId?: unknown };
+        if (typeof parsed.actorId !== 'string' || parsed.actorId.trim() === '') {
+          throw new Error('missing actorId in dev session');
+        }
+
+        const response = await fetch(`/api/commands/${encodeURIComponent(commandId)}`, {
+          headers: {
+            'x-dev-actor-id': parsed.actorId,
+          },
+        });
+        if (!response.ok) {
+          throw new Error(`command status failed with status ${response.status}`);
+        }
+        return (await response.json()) as BrowserCommandStatus;
+      },
+      {
+        commandId,
+        sessionKey: DEV_SESSION_KEY,
+      }
+    );
+
+    if (status.status === 'PROCESSED' || status.status === 'FAILED') {
+      return status;
+    }
+
+    await page.waitForTimeout(250);
+  }
+
+  throw new Error(`command ${commandId} did not reach a terminal status within ${timeoutMs}ms`);
 }
 
 export async function ensureSignedIn(page: Page): Promise<void> {

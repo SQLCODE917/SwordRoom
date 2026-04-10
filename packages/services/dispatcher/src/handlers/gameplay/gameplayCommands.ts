@@ -8,6 +8,7 @@ import {
   seedGameplaySession,
   selectGameplayProcedure,
 } from '@starter/engine';
+import type { CharacterItem } from '@starter/shared';
 import { getGameplayLoopFixture } from '@starter/shared/fixtures';
 import type { CommandHandler } from '../types.js';
 import { requireActiveGame } from '../game/shared.js';
@@ -103,19 +104,15 @@ export const gmFrameGameplaySceneHandler: CommandHandler<'GMFrameGameplayScene'>
 
 export const submitGameplayIntentHandler: CommandHandler<'SubmitGameplayIntent'> = async (ctx, envelope) => {
   await requireActiveGame(ctx.db, envelope.gameId);
-  const membership = await ctx.db.membershipRepository.getMembership(envelope.gameId, envelope.actorId);
-  if (!membership) {
-    const error = new Error(`game access required for actor "${envelope.actorId}" and game "${envelope.gameId}"`);
-    (error as Error & { code?: string }).code = 'GAME_ACCESS_REQUIRED';
-    throw error;
-  }
-
+  await requireGameplayMembership(ctx, envelope.gameId, envelope.actorId);
   const existing = await requireGameplaySession(ctx, envelope.gameId);
   const profile = await ctx.db.playerRepository.getPlayerProfile(envelope.actorId);
-  const character = envelope.payload.characterId
-    ? await ctx.db.characterRepository.getCharacter(envelope.gameId, envelope.payload.characterId)
-    : await ctx.db.characterRepository.findOwnedCharacterInGame(envelope.gameId, envelope.actorId);
-  const speaker = character?.draft.identity.name.trim() || profile?.displayName?.trim() || envelope.actorId;
+  const character = await requirePlayableCharacter(ctx, {
+    gameId: envelope.gameId,
+    actorId: envelope.actorId,
+    characterId: envelope.payload.characterId ?? null,
+  });
+  const speaker = character.draft.identity.name.trim() || profile?.displayName?.trim() || character.characterId;
 
   return {
     writes: [
@@ -146,7 +143,7 @@ export const submitGameplayIntentHandler: CommandHandler<'SubmitGameplayIntent'>
           title: `${speaker} declares an intent`,
           body: envelope.payload.body,
           detail: {
-            characterId: character?.characterId ?? envelope.payload.characterId ?? null,
+            characterId: character.characterId,
           },
           createdAt: envelope.createdAt,
         },
@@ -352,26 +349,38 @@ export const gmOpenCombatRoundHandler: CommandHandler<'GMOpenCombatRound'> = asy
 
 export const submitCombatActionHandler: CommandHandler<'SubmitCombatAction'> = async (ctx, envelope) => {
   await requireActiveGame(ctx.db, envelope.gameId);
-  const membership = await ctx.db.membershipRepository.getMembership(envelope.gameId, envelope.actorId);
-  if (!membership) {
-    const error = new Error(`game access required for actor "${envelope.actorId}" and game "${envelope.gameId}"`);
-    (error as Error & { code?: string }).code = 'GAME_ACCESS_REQUIRED';
-    throw error;
-  }
-
-  const ownedCharacter = await ctx.db.characterRepository.findOwnedCharacterInGame(envelope.gameId, envelope.actorId);
-  if (
-    !membership.roles.includes('GM') &&
-    envelope.payload.actorCombatantId !== ownedCharacter?.characterId
-  ) {
-    const error = new Error(
-      `combat action actor "${envelope.payload.actorCombatantId}" is not owned by "${envelope.actorId}"`
-    );
-    (error as Error & { code?: string }).code = 'COMBAT_ACTION_OWNER_REQUIRED';
-    throw error;
-  }
-
+  const membership = await requireGameplayMembership(ctx, envelope.gameId, envelope.actorId);
   const existing = await requireGameplaySession(ctx, envelope.gameId);
+  const actingCombatant =
+    existing.state.combatants.find((combatant) => combatant.combatantId === envelope.payload.actorCombatantId) ?? null;
+  if (!actingCombatant) {
+    throw codedError(
+      `combatant "${envelope.payload.actorCombatantId}" is not part of gameplay session "${envelope.gameId}"`,
+      'COMBAT_ACTION_ACTOR_NOT_FOUND'
+    );
+  }
+
+  if (actingCombatant.side === 'NPC') {
+    if (!membership.roles.includes('GM')) {
+      throw codedError(
+        `combat action actor "${envelope.payload.actorCombatantId}" requires GM authority`,
+        'COMBAT_ACTION_GM_REQUIRED'
+      );
+    }
+  } else {
+    const ownedCharacter = await requirePlayableCharacter(ctx, {
+      gameId: envelope.gameId,
+      actorId: envelope.actorId,
+      characterId: actingCombatant.characterId,
+    });
+    if (envelope.payload.actorCombatantId !== ownedCharacter.characterId) {
+      throw codedError(
+        `combat action actor "${envelope.payload.actorCombatantId}" is not owned by "${envelope.actorId}"`,
+        'COMBAT_ACTION_OWNER_REQUIRED'
+      );
+    }
+  }
+
   const declared = declareCombatAction(existing.state, {
     roundNumber: envelope.payload.roundNumber,
     actorCombatantId: envelope.payload.actorCombatantId,
@@ -562,14 +571,65 @@ export const gmCloseCombatHandler: CommandHandler<'GMCloseCombat'> = async (ctx,
 };
 
 async function requireGameplaySession(
-  ctx: Parameters<CommandHandler<'GMFrameGameplayScene'>>[0],
+  ctx: GameplayHandlerContext,
   gameId: string
 ) {
   const session = await ctx.db.gameplayRepository.getSession(gameId);
   if (!session) {
-    const error = new Error(`gameplay session not found for game "${gameId}"`);
-    (error as Error & { code?: string }).code = 'GAMEPLAY_SESSION_NOT_FOUND';
-    throw error;
+    throw codedError(`gameplay session not found for game "${gameId}"`, 'GAMEPLAY_SESSION_NOT_FOUND');
   }
   return session;
+}
+
+type GameplayHandlerContext = Parameters<CommandHandler<'GMFrameGameplayScene'>>[0];
+
+async function requireGameplayMembership(
+  ctx: GameplayHandlerContext,
+  gameId: string,
+  actorId: string
+) {
+  const membership = await ctx.db.membershipRepository.getMembership(gameId, actorId);
+  if (!membership) {
+    throw codedError(`game access required for actor "${actorId}" and game "${gameId}"`, 'GAME_ACCESS_REQUIRED');
+  }
+  return membership;
+}
+
+async function requirePlayableCharacter(
+  ctx: GameplayHandlerContext,
+  input: {
+    gameId: string;
+    actorId: string;
+    characterId?: string | null;
+  }
+): Promise<CharacterItem> {
+  const character = input.characterId
+    ? await ctx.db.characterRepository.getCharacter(input.gameId, input.characterId)
+    : await ctx.db.characterRepository.findOwnedCharacterInGame(input.gameId, input.actorId);
+
+  if (!character) {
+    throw codedError(
+      `approved character required for actor "${input.actorId}" in game "${input.gameId}"`,
+      'GAMEPLAY_CHARACTER_REQUIRED'
+    );
+  }
+  if (character.ownerPlayerId !== input.actorId) {
+    throw codedError(
+      `character "${character.characterId}" is not owned by "${input.actorId}"`,
+      'GAMEPLAY_CHARACTER_OWNER_REQUIRED'
+    );
+  }
+  if (character.status !== 'APPROVED') {
+    throw codedError(
+      `character "${character.characterId}" is not approved for gameplay`,
+      'GAMEPLAY_CHARACTER_NOT_APPROVED'
+    );
+  }
+  return character;
+}
+
+function codedError(message: string, code: string): Error {
+  const error = new Error(message);
+  (error as Error & { code?: string }).code = code;
+  return error;
 }

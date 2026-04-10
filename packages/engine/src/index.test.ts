@@ -328,6 +328,67 @@ describe('6 - Restrictions on weapons/armor based on skills', () => {
     });
   });
 
+  it('rejects mage_staff for non-sorcerers even when their STR is in range', () => {
+    const result = purchaseEquipment(
+      makeEquipmentState({
+        characterId: 'char-priest-staff',
+        strength: 8,
+        skills: [{ skill: 'Priest', level: 1 }],
+      }),
+      {
+        cart: {
+          weapons: ['mage_staff'],
+          armor: [],
+          shields: [],
+          gear: [],
+        },
+      },
+      itemCatalog
+    );
+
+    expect(result.errors).toContainEqual(
+      expect.objectContaining({
+        code: 'EQUIPMENT_RESTRICTED_BY_SKILL',
+        message: 'equipment "mage_staff" requires Sorcerer skill',
+        details: expect.objectContaining({
+          reason: 'SORCERER_REQUIRED_ITEM',
+          itemId: 'mage_staff',
+        }),
+      })
+    );
+  });
+
+  it('allows mage_staff for sorcerers above STR 10 by using the STR 10 version', () => {
+    const result = purchaseEquipment(
+      makeEquipmentState({
+        characterId: 'char-rune-master-heavy',
+        strength: 16,
+        skills: [
+          { skill: 'Sorcerer', level: 1 },
+          { skill: 'Sage', level: 1 },
+          { skill: 'Priest', level: 1 },
+        ],
+      }),
+      {
+        cart: {
+          weapons: ['mage_staff'],
+          armor: [],
+          shields: [],
+          gear: [],
+        },
+      },
+      itemCatalog
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(result.state.equipmentCart).toEqual({
+      weapons: ['mage_staff'],
+      armor: [],
+      shields: [],
+      gear: [],
+    });
+  });
+
   it('limits shamans to cloth, soft leather, or hard leather and forbids shields', () => {
     const result = purchaseEquipment(
       makeEquipmentState({
