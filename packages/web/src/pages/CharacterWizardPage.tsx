@@ -604,8 +604,8 @@ function CharacterWizardPageContent({
           <fieldset className="l-col" disabled={isExecutingCommand}>
             {skillOptions.map((option) => {
               const baseLevel = findSkillLevel(startingPreview.startingSkills, option.skill);
-              const currentTarget = findPurchaseTargetLevel(state.purchases, option.skill) || baseLevel;
-              const levels = Array.from({ length: option.maxLevel - baseLevel + 1 }, (_, index) => baseLevel + index);
+              const currentTarget = findPurchaseTargetLevel(state.purchases, option.skill) ?? baseLevel;
+              const levels = Array.from({ length: option.maxLevel + 1 }, (_, index) => index);
               const levelCosts = describeSkillLevelCosts(startingPreview.state, option.skill, option.maxLevel);
               const costSchedule = formatSkillCostSchedule(levelCosts);
 
@@ -616,14 +616,12 @@ function CharacterWizardPageContent({
                   value={String(currentTarget)}
                   options={levels.map((level) => ({
                     value: String(level),
-                    label:
-                      level === baseLevel
-                        ? `${level} (starting)`
-                        : formatSkillLevelOptionLabel(
-                            level,
-                            levelCosts.find((entry) => entry.level === level)?.costExp ?? null,
-                            levelCosts.find((entry) => entry.level === level)?.note
-                          ),
+                    label: formatSkillTargetOptionLabel({
+                      level,
+                      baseLevel,
+                      costExp: levelCosts.find((entry) => entry.level === level)?.costExp ?? null,
+                      note: levelCosts.find((entry) => entry.level === level)?.note,
+                    }),
                     disabled: level !== baseLevel && !isSkillTargetAffordable(option.skill, level, baseLevel),
                   }))}
                   onChange={(value) => updateSkillPurchase(option.skill, Number(value), baseLevel)}
@@ -942,7 +940,7 @@ function CharacterWizardPageContent({
     setState((prev) => ({
       ...prev,
       purchases:
-        targetLevel <= baseLevel
+        targetLevel === baseLevel
           ? prev.purchases.filter((entry) => entry.skill !== skill)
           : [...prev.purchases.filter((entry) => entry.skill !== skill), { skill, targetLevel }].sort((left, right) =>
               left.skill.localeCompare(right.skill)
@@ -978,7 +976,7 @@ function CharacterWizardPageContent({
     }
 
     const candidatePurchases =
-      targetLevel <= baseLevel
+      targetLevel === baseLevel
         ? state.purchases.filter((entry) => entry.skill !== skill)
         : [...state.purchases.filter((entry) => entry.skill !== skill), { skill, targetLevel }];
     const candidatePreview = computeSkillPurchasePreview(startingPreview.state, candidatePurchases);
@@ -1663,7 +1661,7 @@ function deriveSkillPurchases(
     .map((option) => {
       const baseLevel = findSkillLevel(startingSkills, option.skill);
       const currentLevel = findSkillLevel(skills, option.skill);
-      return currentLevel > baseLevel ? { skill: option.skill, targetLevel: currentLevel } : null;
+      return currentLevel !== baseLevel ? { skill: option.skill, targetLevel: currentLevel } : null;
     })
     .filter((entry): entry is { skill: string; targetLevel: number } => entry !== null);
 }
@@ -1671,10 +1669,8 @@ function deriveSkillPurchases(
 function findPurchaseTargetLevel(
   purchases: Array<{ skill: string; targetLevel: number }>,
   skillName: string
-): number {
-  return (
-    purchases.find((purchase) => purchase.skill.trim().toLowerCase() === skillName.trim().toLowerCase())?.targetLevel ?? 0
-  );
+): number | null {
+  return purchases.find((purchase) => purchase.skill.trim().toLowerCase() === skillName.trim().toLowerCase())?.targetLevel ?? null;
 }
 
 function inferCraftsmanSkill(
@@ -1736,7 +1732,7 @@ function normalizePurchasesForBaseSkills(
   purchases: Array<{ skill: string; targetLevel: number }>,
   baseSkills: Array<{ skill: string; level: number }>
 ): Array<{ skill: string; targetLevel: number }> {
-  return purchases.filter((purchase) => purchase.targetLevel > findSkillLevel(baseSkills, purchase.skill));
+  return purchases.filter((purchase) => purchase.targetLevel !== findSkillLevel(baseSkills, purchase.skill));
 }
 
 function formatSkillList(skills: Array<{ skill: string; level: number }>): string {
@@ -1773,9 +1769,26 @@ function formatSkillCostSchedule(
 
 function formatSkillLevelOptionLabel(level: number, costExp: number | null, note?: string): string {
   if (costExp === null) {
-    return `Lv${level} (n/a)`;
+    return `Level ${level} (n/a)`;
   }
-  return note ? `Lv${level} (${costExp} EXP, ${note})` : `Lv${level} (${costExp} EXP)`;
+  return note ? `Level ${level} (${costExp} EXP, ${note})` : `Level ${level} (${costExp} EXP)`;
+}
+
+function formatSkillTargetOptionLabel(input: {
+  level: number;
+  baseLevel: number;
+  costExp: number | null;
+  note?: string;
+}): string {
+  if (input.level === 0) {
+    return input.baseLevel > 0 ? 'Level 0 (deselect)' : 'Level 0';
+  }
+
+  if (input.level === input.baseLevel && input.baseLevel > 0) {
+    return `Level ${input.level} (starting)`;
+  }
+
+  return formatSkillLevelOptionLabel(input.level, input.costExp, input.note);
 }
 
 function formatStrengthRequirement(

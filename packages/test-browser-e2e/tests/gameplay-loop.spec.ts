@@ -8,6 +8,8 @@ import {
   gmCloseCombat,
   gmDeclareCombatAction,
   gmOpenCombat,
+  openGmControlPanel,
+  openGmUtility,
   gmResolveCheck,
   gmResolveCombatTurn,
   gmSelectProcedure,
@@ -20,10 +22,50 @@ import {
   setGameVisibility,
   submitCombatActionFromPlay,
   submitIntentFromPlay,
+  switchGmPlayMode,
   waitForCommandStatus,
 } from './support/app';
 
 test.describe.configure({ mode: 'parallel' });
+
+test('keeps GM play focused on Current Step while preserving mobile chat, graph, and utilities', async ({
+  browser,
+}, testInfo) => {
+  const gm = createSyntheticActor('gm-play-redesign', testInfo);
+  const token = Date.now().toString(36);
+  const gameName = `Gameplay Redesign ${testInfo.parallelIndex} ${token}`;
+
+  const { context: gmContext, page: gmPage } = await openAuthenticatedPage(browser, gm);
+
+  try {
+    const gameId = await createGame(gmPage, gameName);
+
+    await gmPage.setViewportSize({ width: 390, height: 844 });
+    await openGmPlay(gmPage, gameId);
+    await loadRpgSample(gmPage);
+
+    await expect(gmPage.getByRole('heading', { name: 'Current Step' })).toBeVisible();
+    await expect(gmPage).toHaveURL(/mode=control/);
+    await expect(gmPage).toHaveURL(/panel=step/);
+
+    const transcriptSheet = await openGmUtility(gmPage, 'transcript');
+    await expect(transcriptSheet.getByLabel('Transcript view')).toBeVisible();
+    await transcriptSheet.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(gmPage).not.toHaveURL(/utility=/);
+
+    await openGmControlPanel(gmPage, 'graph');
+    await expect(gmPage.getByRole('list', { name: 'Gameplay stages' })).toBeVisible();
+    await gmPage.reload();
+    await expect(gmPage.getByRole('list', { name: 'Gameplay stages' })).toBeVisible();
+
+    await switchGmPlayMode(gmPage, 'chat');
+    await expect(gmPage.getByRole('button', { name: 'Back to Control Center' })).toBeVisible();
+    await gmPage.reload();
+    await expect(gmPage.getByRole('button', { name: 'Back to Control Center' })).toBeVisible();
+  } finally {
+    await gmContext.close();
+  }
+});
 
 test('seeds the tavern sample in GM and player play views with integrated chat and adaptive graph', async ({
   browser,
@@ -47,9 +89,12 @@ test('seeds the tavern sample in GM and player play views with integrated chat a
 
     await openGmPlay(gmPage, gameId);
     await loadRpgSample(gmPage);
-    await expect(gmPage.getByLabel('Gameplay graph')).toBeVisible();
+    await expect(gmPage.getByRole('heading', { name: 'Current Step' })).toBeVisible();
+    await openGmControlPanel(gmPage, 'graph');
+    await expect(gmPage.getByLabel('Gameplay graph', { exact: true })).toBeVisible();
 
     await gmPage.setViewportSize({ width: 390, height: 844 });
+    await openGmControlPanel(gmPage, 'graph');
     await expect(gmPage.getByRole('list', { name: 'Gameplay stages' })).toBeVisible();
 
     await openPlayerPlay(playerPage, gameId);
@@ -57,6 +102,7 @@ test('seeds the tavern sample in GM and player play views with integrated chat a
     await expect(playerPage.getByRole('heading', { name: 'Game Chat' })).toBeVisible();
 
     await sendChatMessage(playerPage, chatBody);
+    await switchGmPlayMode(gmPage, 'chat');
     await gmPage.reload();
     await expect(gmPage.getByText(chatBody, { exact: true })).toBeVisible({ timeout: 15_000 });
   } finally {
@@ -111,7 +157,9 @@ test('executes public checks, hidden checks, combat declarations, and combat res
     await submitIntentFromPlay(cPage, `${charC} shifts toward a chair and readies for trouble.`);
 
     await gmPage.reload();
-    await expect(gmPage.getByLabel('Public Transcript')).toContainText('declares an intent');
+    const publicTranscript = await openGmUtility(gmPage, 'transcript');
+    await expect(publicTranscript).toContainText('declares an intent');
+    await gmPage.getByRole('button', { name: 'Close' }).click();
 
     await gmSelectProcedure(gmPage, {
       procedure: 'STANDARD_CHECK',
@@ -131,6 +179,8 @@ test('executes public checks, hidden checks, combat declarations, and combat res
     await aPage.reload();
     await expect(aPage.getByLabel('Public Transcript')).toContainText(standardNarration);
 
+    await submitIntentFromPlay(bPage, `${charB} leans in and studies Brando Boss for a hidden tell.`);
+    await gmPage.reload();
     await gmSelectProcedure(gmPage, {
       procedure: 'DIFFICULTY_CHECK',
       actionLabel: 'Read the Brando family',
@@ -150,8 +200,21 @@ test('executes public checks, hidden checks, combat declarations, and combat res
     await aPage.reload();
     await expect(aPage.getByLabel('Public Transcript')).toContainText(hiddenNarration);
     await expect(aPage.getByText(gmHiddenNarration)).toHaveCount(0);
-    await expect(gmPage.getByLabel('GM Transcript')).toContainText(gmHiddenNarration);
+    const gmTranscript = await openGmUtility(gmPage, 'transcript');
+    await gmTranscript.getByRole('tab', { name: 'GM' }).click();
+    await expect(gmTranscript).toContainText(gmHiddenNarration);
+    await gmPage.getByRole('button', { name: 'Close' }).click();
 
+    await submitIntentFromPlay(aPage, `${charA} draws steel as the Brando family closes in.`);
+    await gmPage.reload();
+    await gmSelectProcedure(gmPage, {
+      procedure: 'COMBAT',
+      actionLabel: 'Tavern brawl erupts',
+      baselineScore: '0',
+      modifiers: '0',
+      publicPrompt: 'Weapons flash and tavern tables scatter.',
+      gmPrompt: 'Escalate the tavern sample into combat timing.',
+    });
     await gmOpenCombat(gmPage, 'Weapons flash and tavern tables scatter.');
     await Promise.all([aPage.reload(), bPage.reload(), cPage.reload()]);
 
@@ -175,7 +238,8 @@ test('executes public checks, hidden checks, combat declarations, and combat res
     });
 
     await gmPage.reload();
-    await expect(gmPage.getByLabel('Combat control status')).toContainText(`${charA} charges Brando Boss.`);
+    await expect(gmPage.getByRole('heading', { name: 'Round Control' })).toBeVisible();
+    await expect(gmPage.getByText(`${charA} charges Brando Boss.`).first()).toBeVisible();
 
     await gmResolveCombatTurn(gmPage, {
       actionSummary: `${charA} charges Brando Boss.`,
@@ -212,6 +276,7 @@ test('keeps a GM without a character out of player-character actions while prese
   const gameName = `Gameplay GM Limits ${testInfo.parallelIndex} ${token}`;
   const blockedIntent = `blocked-intent-${token}`;
   const gmNpcSummary = `Brando Boss circles the room and sizes up the exits ${token}.`;
+  const openCombatCommandId = randomUUID();
 
   const { context: gmContext, page: gmPage } = await openAuthenticatedPage(browser, gm);
   const gmPlayerPage = await gmContext.newPage();
@@ -258,7 +323,21 @@ test('keeps a GM without a character out of player-character actions while prese
     await gmPlayerPage.reload();
     await expect(gmPlayerPage.getByLabel('Public Transcript').getByText(blockedIntent, { exact: true })).toHaveCount(0);
 
-    await gmOpenCombat(gmPage, 'The Brando family fans out while the GM stays out of player-character action.');
+    await postCommandAsCurrentActor(gmPage, {
+      commandId: openCombatCommandId,
+      gameId,
+      type: 'GMOpenCombatRound',
+      schemaVersion: 1,
+      createdAt: new Date().toISOString(),
+      payload: {
+        summary: 'The Brando family fans out while the GM stays out of player-character action.',
+      },
+    });
+    const combatOpenedStatus = await waitForCommandStatus(gmPage, openCombatCommandId, 20_000);
+    expect(combatOpenedStatus).toMatchObject({
+      status: 'PROCESSED',
+    });
+    await gmPage.reload();
     await gmPlayerPage.reload();
 
     await expect(combatPanel.getByRole('button', { name: 'Declare Combat Action' })).toBeDisabled();
@@ -271,7 +350,8 @@ test('keeps a GM without a character out of player-character actions while prese
     });
 
     await gmPage.reload();
-    await expect(gmPage.getByLabel('Combat control status')).toContainText(gmNpcSummary);
+    await expect(gmPage.getByRole('heading', { name: 'Round Control' })).toBeVisible();
+    await expect(gmPage.getByText(gmNpcSummary).first()).toBeVisible();
 
     await gmPlayerPage.reload();
     await expect(gmPlayerPage.getByLabel('Public Transcript')).toContainText(gmNpcSummary);

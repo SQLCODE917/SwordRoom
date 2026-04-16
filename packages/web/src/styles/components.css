@@ -655,6 +655,10 @@
   gap: var(--s-2);
 }
 
+.c-gameplay-card--compact .c-gameplay-card__prompt {
+  padding: var(--s-2);
+}
+
 .c-gameplay-card__eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -920,9 +924,233 @@
   gap: var(--s-2);
 }
 
+.c-gm-play {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-gm-play-nav {
+  position: sticky;
+  bottom: var(--page-pad);
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 92%, white 8%);
+}
+
+.c-gm-play-nav__button,
+.c-gm-control-tabs__button,
+.c-gm-transcript__button {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  padding: var(--s-2) var(--s-3);
+  font: inherit;
+  cursor: pointer;
+}
+
+.c-gm-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-gm-workspace__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-gm-control-tabs {
+  position: sticky;
+  top: var(--page-pad);
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 96%, white 4%);
+}
+
+.c-gm-panel,
+.c-gm-step-section,
+.c-gm-rules,
+.c-gm-node-inspector,
+.c-gm-utility-dock,
+.c-gm-chat-mode {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--panel-pad);
+}
+
+.c-gm-step-actions,
+.c-gm-next-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-gm-step-actions__grid,
+.c-gm-next-steps__grid,
+.c-gm-procedure-grid,
+.c-gm-unresolved-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-2);
+}
+
+.c-gm-step-actions__grid.is-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.c-gm-step-actions__card,
+.c-gm-next-steps__card,
+.c-gm-procedure-card,
+.c-gm-unresolved-list__item {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+  padding: var(--s-3);
+  text-align: left;
+}
+
+.c-gm-step-actions__title,
+.c-gm-next-steps__title,
+.c-gm-procedure-card__title {
+  font-weight: 600;
+}
+
+.c-gm-rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-gm-rules__list,
+.c-gm-node-inspector__list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.c-gm-node-inspector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.c-gm-node-inspector__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-gm-utility {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.c-gm-timeseries__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.c-gm-badge {
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+  font-size: var(--fs-1);
+}
+
+.c-gm-badge--public {
+  border-color: var(--focus);
+  background: #eef5ff;
+}
+
+.c-gm-badge--gm_only {
+  border-color: var(--warn);
+  background: #fff4e8;
+}
+
+.c-gm-badge--neutral {
+  background: var(--panel);
+}
+
+.c-gm-transcript__toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+}
+
+.c-gm-command-status__history {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-gm-step-sections__anchor {
+  display: contents;
+}
+
+.c-gm-chat-mode {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-gm-utility-sheet__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  border: 0;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.c-gm-utility-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  max-height: 80vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--panel-pad);
+}
+
+.c-gm-utility-dock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
 @media (min-width: 640px) {
   .c-gameplay-feed-grid,
   .c-gameplay-status__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .c-gm-step-actions__grid,
+  .c-gm-next-steps__grid,
+  .c-gm-procedure-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -945,6 +1173,31 @@
 }
 
 @media (min-width: 1024px) {
+  .c-gm-play-nav {
+    position: static;
+  }
+
+  .c-gm-workspace {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .c-gm-workspace__main {
+    flex: 1 1 auto;
+  }
+
+  .c-gm-workspace.has-utility-dock .c-gm-workspace__main {
+    min-width: 0;
+  }
+
+  .c-gm-utility-dock {
+    flex: 0 0 min(380px, 34vw);
+    position: sticky;
+    top: var(--page-pad);
+    max-height: calc(100vh - (var(--page-pad) * 2));
+    overflow: auto;
+  }
+
   .c-gameplay__layout {
     flex-direction: row;
     align-items: flex-start;
@@ -969,6 +1222,16 @@
   }
 
   .c-gameplay-ops__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .c-gm-step-actions__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .c-gm-next-steps__grid,
+  .c-gm-procedure-grid,
+  .c-gm-unresolved-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -997,6 +1260,11 @@
   .c-chat__mobile-controls,
   .c-chat__mobile-backdrop,
   .c-chat__mobile-sheet {
+    display: none;
+  }
+
+  .c-gm-utility-sheet,
+  .c-gm-utility-sheet__backdrop {
     display: none;
   }
 }

@@ -215,6 +215,27 @@ export async function openGmPlay(page: Page, gameId: string): Promise<void> {
   await expect(page.getByRole('heading', { name: 'GM Play' })).toBeVisible();
 }
 
+export async function switchGmPlayMode(page: Page, mode: 'control' | 'chat'): Promise<void> {
+  await page.getByRole('button', { name: mode === 'control' ? 'Control Center' : 'Chat' }).click();
+}
+
+export async function openGmControlPanel(page: Page, panel: 'step' | 'graph'): Promise<void> {
+  await page.getByRole('tab', { name: panel === 'step' ? 'Current Step' : 'Whole Graph' }).click();
+}
+
+export async function openGmUtility(page: Page, utility: 'transcript' | 'timeseries' | 'status'): Promise<Locator> {
+  const labelByUtility = {
+    transcript: 'Open Transcript',
+    timeseries: 'Open Timeseries',
+    status: 'Open Status',
+  } as const;
+
+  await page.getByRole('button', { name: labelByUtility[utility] }).click();
+  const container = page.locator('[role="dialog"][aria-label="GM utility panel"], [aria-label="GM utility dock"]').first();
+  await expect(container).toBeVisible();
+  return container;
+}
+
 export async function loadRpgSample(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Load RPG Sample' }).first().click();
   await expect(page.getByRole('heading', { name: 'Tavern At Sundown' })).toBeVisible();
@@ -266,8 +287,8 @@ export async function gmSelectProcedure(
     gmPrompt?: string;
   }
 ): Promise<void> {
-  const panel = gameplayPanel(page, 'Procedure');
-  await panel.getByRole('combobox', { name: 'Procedure', exact: true }).selectOption(input.procedure);
+  const panel = gmStepSection(page, 'Choose Procedure');
+  await panel.locator('.c-gm-procedure-card').filter({ hasText: input.procedure }).first().click();
   await panel.getByRole('textbox', { name: 'Action label', exact: true }).fill(input.actionLabel);
   await panel.getByRole('textbox', { name: 'Baseline', exact: true }).fill(input.baselineScore);
   await panel.getByRole('textbox', { name: 'Modifiers', exact: true }).fill(input.modifiers);
@@ -291,7 +312,7 @@ export async function gmResolveCheck(
     gmNarration?: string;
   }
 ): Promise<void> {
-  const panel = gameplayPanel(page, 'Resolve Check');
+  const panel = gmStepSection(page, 'Resolve Check');
   if (input.playerRollTotal !== undefined) {
     await panel.getByRole('textbox', { name: 'Player roll', exact: true }).fill(input.playerRollTotal);
   }
@@ -304,7 +325,7 @@ export async function gmResolveCheck(
 }
 
 export async function gmOpenCombat(page: Page, summary: string): Promise<void> {
-  const panel = gameplayPanel(page, 'Open Combat');
+  const panel = gmStepSection(page, 'Open Combat Round');
   await panel.getByRole('textbox', { name: 'Combat summary', exact: true }).fill(summary);
   await panel.getByRole('button', { name: 'Open Combat Round' }).click();
 }
@@ -320,7 +341,7 @@ export async function gmDeclareCombatAction(
     delayToOrderZero?: boolean;
   }
 ): Promise<void> {
-  const panel = gameplayPanel(page, 'GM Combat Declaration');
+  const panel = gmStepSection(page, 'Declare GM/NPC Action');
   await panel.getByRole('combobox', { name: 'Actor combatant', exact: true }).selectOption({ label: input.actorName });
   if (input.targetName) {
     await panel.getByRole('combobox', { name: 'Target combatant', exact: true }).selectOption({ label: input.targetName });
@@ -357,7 +378,7 @@ export async function gmResolveCombatTurn(
     narration: string;
   }
 ): Promise<void> {
-  const panel = gameplayPanel(page, 'Resolve Combat Turn');
+  const panel = gmStepSection(page, 'Resolve Combat Turn');
   await panel.getByRole('combobox', { name: 'Action', exact: true }).selectOption({ label: input.actionSummary });
   await panel.getByRole('combobox', { name: 'Actor combatant', exact: true }).selectOption({ label: input.actorName });
   await panel.getByRole('combobox', { name: 'Target combatant', exact: true }).selectOption({ label: input.targetName });
@@ -380,7 +401,7 @@ export async function gmResolveCombatTurn(
 }
 
 export async function gmCloseCombat(page: Page, summary: string): Promise<void> {
-  const panel = gameplayPanel(page, 'Close Combat');
+  const panel = gmStepSection(page, 'Close Combat');
   await panel.getByRole('textbox', { name: 'Aftermath summary', exact: true }).fill(summary);
   await panel.getByRole('button', { name: 'Close Combat' }).click();
 }
@@ -501,6 +522,10 @@ function rowInTable(page: Page, tableName: string, text: string): Locator {
 
 function gameplayPanel(page: Page, heading: string): Locator {
   return page.locator('.c-gameplay-ops__panel').filter({ has: page.getByRole('heading', { name: heading }) }).first();
+}
+
+function gmStepSection(page: Page, heading: string): Locator {
+  return page.locator('.c-gm-step-section').filter({ has: page.getByRole('heading', { name: heading }) }).first();
 }
 
 async function autofillCharacterWizard(page: Page, name: string): Promise<void> {

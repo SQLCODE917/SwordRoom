@@ -4,6 +4,7 @@ import type { GameplayCombatActionType, GameplayMovementMode } from '@starter/sh
 import { type CommandEnvelopeInput } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { GameChatPanel } from '../components/GameChatPanel';
+import { GameplayCard } from '../components/GameplayCard';
 import { GameplayEventFeed } from '../components/GameplayEventFeed';
 import { GameplayGraph } from '../components/GameplayGraph';
 import { Panel } from '../components/Panel';
@@ -240,20 +241,21 @@ function SceneSummaryCard(input: {
   roundNumber: number | null;
 }) {
   return (
-    <section className="c-gameplay-card" aria-label="Current scene">
-      <div className="c-gameplay-card__eyebrow t-small">Scene</div>
-      <h3 className="t-h3">{input.sceneTitle}</h3>
-      <p className="t-small">{input.sceneSummary}</p>
-      <div className="c-gameplay-card__prompt">{input.focusPrompt}</div>
-      <div className="c-gameplay-card__facts">
-        <span className="c-gameplay-card__fact">State: {input.currentNodeId}</span>
-        <span className="c-gameplay-card__fact">Status: {input.status}</span>
-        {input.selectedProcedure ? <span className="c-gameplay-card__fact">Procedure: {input.selectedProcedure}</span> : null}
-        {input.activeCheckLabel ? <span className="c-gameplay-card__fact">Check: {input.activeCheckLabel}</span> : null}
-        {input.activeCheckOutcome ? <span className="c-gameplay-card__fact">Outcome: {input.activeCheckOutcome}</span> : null}
-        {input.roundNumber ? <span className="c-gameplay-card__fact">Round: {input.roundNumber}</span> : null}
-      </div>
-    </section>
+    <GameplayCard
+      eyebrow="Scene"
+      title={input.sceneTitle}
+      summary={input.sceneSummary}
+      focusPrompt={input.focusPrompt}
+      ariaLabel="Current scene"
+      facts={[
+        `State: ${input.currentNodeId}`,
+        `Status: ${input.status}`,
+        ...(input.selectedProcedure ? [`Procedure: ${input.selectedProcedure}`] : []),
+        ...(input.activeCheckLabel ? [`Check: ${input.activeCheckLabel}`] : []),
+        ...(input.activeCheckOutcome ? [`Outcome: ${input.activeCheckOutcome}`] : []),
+        ...(input.roundNumber ? [`Round: ${input.roundNumber}`] : []),
+      ]}
+    />
   );
 }
 

@@ -62,6 +62,26 @@ describe('computeSkillPurchasePreview', () => {
       { skill: 'Fighter', level: 1 },
     ]);
   });
+
+  it('treats target level 0 as deselecting a starting skill', () => {
+    const starting = computeStartingPackagePreview({
+      characterId: 'char-rune-master-zero',
+      race: 'HUMAN',
+      raisedBy: 'HUMANS',
+      subAbility: humanRuneMasterSubAbility,
+      backgroundRoll2dTotal: 3,
+      startingMoneyRoll2dTotal: 9,
+    });
+
+    const preview = computeSkillPurchasePreview(starting.state, [
+      { skill: 'Sorcerer', targetLevel: 0 },
+      { skill: 'Sage', targetLevel: 0 },
+    ]);
+
+    expect(preview.errors).toEqual([]);
+    expect(preview.expUnspent).toBe(2000);
+    expect(preview.skills).toEqual([]);
+  });
 });
 
 describe('computeEquipmentPreview', () => {

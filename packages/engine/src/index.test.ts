@@ -229,6 +229,34 @@ describe('4 - Character Creation Procedure', () => {
     expect(sorcererTwo.errors[0]?.code).toBe('GENERAL_SKILL_NOT_ALLOWED_WITH_STARTING_EXP');
   });
 
+  it('allows target level 0 to deselect a starting skill from the applied package', () => {
+    const runeMaster = applyStartingPackage(
+      computeAbilitiesAndBonuses(
+        createDraftState({
+          characterId: 'char-rune-master-zero',
+          race: 'HUMAN',
+          subAbility: { A: 9, B: 8, C: 6, D: 7, E: 7, F: 12, G: 8, H: 6 },
+        })
+      ).state,
+      {
+        backgroundRoll2dTotal: 3,
+        startingMoneyRoll2dTotal: 9,
+      },
+      startingPackageTables
+    );
+
+    const removedSorcererAndSage = spendStartingExp(runeMaster.state, {
+      purchases: [
+        { skill: 'Sorcerer', targetLevel: 0 },
+        { skill: 'Sage', targetLevel: 0 },
+      ],
+    });
+
+    expect(removedSorcererAndSage.errors).toEqual([]);
+    expect(removedSorcererAndSage.state.startingPackage?.expUnspent).toBe(2000);
+    expect(removedSorcererAndSage.state.skills).toEqual([]);
+  });
+
   it('rejects adventurer skills blocked by race restrictions during EXP spending', () => {
     const elf = createDraftState({
       characterId: 'char-elf-priest',

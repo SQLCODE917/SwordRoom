@@ -254,7 +254,7 @@ export function spendStartingExp(
       });
     }
     const maxLevel = getCharacterCreationSkillMaxLevel(purchase.skill);
-    if (maxLevel === null || purchase.targetLevel > maxLevel) {
+    if (maxLevel === null || purchase.targetLevel < 0 || purchase.targetLevel > maxLevel) {
       return withError(
         state,
         'GENERAL_SKILL_NOT_ALLOWED_WITH_STARTING_EXP',
@@ -318,8 +318,10 @@ export function spendStartingExp(
 
   for (const [normalized, targetLevel] of targetBySkill.entries()) {
     const existing = skillMap.get(normalized);
-    if (existing) {
-      existing.level = Math.max(existing.level, targetLevel);
+    if (targetLevel <= 0) {
+      skillMap.delete(normalized);
+    } else if (existing) {
+      existing.level = targetLevel;
     } else {
       skillMap.set(normalized, { skill: toDisplaySkillName(normalized), level: targetLevel });
     }

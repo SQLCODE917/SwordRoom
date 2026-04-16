@@ -5,5 +5,6 @@ export * from './contracts/errors.js';
 export * from './auth/devAuth.js';
 export * from './auth/localOidc.js';
 export * from './gameplayLoopGraph.js';
+export * from './gameplayStepDescriptors.js';
 export * from './rules/equipmentRoster.js';
 export * from './rules/characterCreation.js';
