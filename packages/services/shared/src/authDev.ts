@@ -8,7 +8,6 @@ export interface ResolvedDevAuth {
 }
 
 export function resolveDevAuth(input: DevAuthInput = {}): ResolvedDevAuth {
-  const env = input.env ?? process.env;
-  const actorId = input.actorIdOverride ?? env.DEV_ACTOR_ID ?? 'player-aaa';
+  const actorId = input.actorIdOverride ?? input.env?.DEV_ACTOR_ID ?? 'player-aaa';
   return { actorId };
 }

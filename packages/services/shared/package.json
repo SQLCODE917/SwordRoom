@@ -21,9 +21,11 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1000.0",
     "@aws-sdk/lib-dynamodb": "^3.1000.0",
-    "@starter/shared": "workspace:*"
+    "@starter/shared": "workspace:*",
+    "jose": "^6.1.3"
   },
   "devDependencies": {
+    "@types/node": "^20.10.6",
     "dynalite": "^4.0.0",
     "typescript": "^5.3.3",
     "vitest": "^1.1.0"

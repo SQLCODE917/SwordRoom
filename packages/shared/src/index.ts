@@ -2,8 +2,6 @@ export * from './contracts/db.js';
 export * from './contracts/commands.js';
 export * from './contracts/gameplay.js';
 export * from './contracts/errors.js';
-export * from './auth/devAuth.js';
-export * from './auth/localOidc.js';
 export * from './gameplayLoopGraph.js';
 export * from './gameplayStepDescriptors.js';
 export * from './rules/equipmentRoster.js';

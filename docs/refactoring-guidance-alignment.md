@@ -45,8 +45,8 @@ This creates instruction conflicts before any code is touched.
 
 The package contract says shared content must be stable, side-effect free, and must not contain network access or environment-specific behavior. Current examples conflict with that:
 
-- [`packages/shared/src/auth/devAuth.ts`](/workspaces/hello-world-monorepo/packages/shared/src/auth/devAuth.ts)
-- [`packages/shared/src/auth/localOidc.ts`](/workspaces/hello-world-monorepo/packages/shared/src/auth/localOidc.ts)
+- [`packages/services/shared/src/authDev.ts`](/workspaces/hello-world-monorepo/packages/services/shared/src/authDev.ts)
+- [`packages/services/shared/src/authOidc.ts`](/workspaces/hello-world-monorepo/packages/services/shared/src/authOidc.ts)
 
 These belong in service-side or app-side adapter layers, not shared contracts.
 

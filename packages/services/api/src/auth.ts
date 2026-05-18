@@ -1,4 +1,5 @@
-import { createRemoteJWKSet, jwtVerify, type JWTPayload } from 'jose';
+import type { JWTPayload } from 'jose';
+import { resolveDevAuth, verifyLocalOidcJwt } from '@starter/services-shared';
 
 export type AuthMode = 'dev' | 'oidc';
 export type ResolvedIdentityRole = 'PLAYER' | 'GM' | 'ADMIN';
@@ -27,7 +28,6 @@ export interface ResolveActorIdInput {
 }
 
 const discoveryCache = new Map<string, Promise<OidcDiscoveryDocument>>();
-const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 export async function resolveActorId(input: ResolveActorIdInput): Promise<string> {
   return (await resolveActorIdentity(input)).actorId;
@@ -89,13 +89,14 @@ function assertDevAuthAllowed(env: Record<string, string | undefined>): void {
 }
 
 function readDevActorId(input: ResolveActorIdInput): string {
-  if (typeof input.bypassActorId === 'string' && input.bypassActorId.trim() !== '') {
-    return input.bypassActorId.trim();
-  }
-  if (typeof input.devActorIdHeader === 'string' && input.devActorIdHeader.trim() !== '') {
-    return input.devActorIdHeader.trim();
-  }
-  return '';
+  const actorIdOverride =
+    typeof input.bypassActorId === 'string' && input.bypassActorId.trim() !== ''
+      ? input.bypassActorId.trim()
+      : typeof input.devActorIdHeader === 'string' && input.devActorIdHeader.trim() !== ''
+        ? input.devActorIdHeader.trim()
+        : undefined;
+
+  return actorIdOverride ? resolveDevAuth({ actorIdOverride, env: {} }).actorId : '';
 }
 
 function createDevIdentity(actorId: string): ResolvedActorIdentity {
@@ -115,7 +116,6 @@ async function verifyOidcIdentity(
   issuer: string,
   audience?: string
 ): Promise<ResolvedActorIdentity> {
-  const token = extractBearerToken(authorizationHeader);
   const metadata = await loadOidcDiscovery(issuer);
   const normalizedIssuer = normalizeUrl(issuer);
   const resolvedIssuer = normalizeUrl(metadata.issuer ?? normalizedIssuer);
@@ -124,17 +124,13 @@ async function verifyOidcIdentity(
     throw new Error(`OIDC discovery metadata is missing jwks_uri for issuer ${normalizedIssuer}`);
   }
 
-  const jwks = getOrCreateJwks(jwksUri);
-  const verification = await jwtVerify(token, jwks, {
+  const verification = await verifyLocalOidcJwt({
+    authorizationHeader,
     issuer: resolvedIssuer,
-    audience: audience || undefined,
+    audience,
+    jwksUri,
   });
-
-  if (!verification.payload.sub) {
-    throw new Error('OIDC JWT payload missing sub');
-  }
-
-  return toOidcIdentity(verification.payload);
+  return toOidcIdentity(verification.claims);
 }
 
 async function loadOidcDiscovery(issuer: string): Promise<OidcDiscoveryDocument> {
@@ -152,15 +148,6 @@ async function loadOidcDiscovery(issuer: string): Promise<OidcDiscoveryDocument>
     discoveryCache.set(normalizedIssuer, discovery);
   }
   return discovery;
-}
-
-function getOrCreateJwks(jwksUri: string) {
-  let jwks = jwksCache.get(jwksUri);
-  if (!jwks) {
-    jwks = createRemoteJWKSet(new URL(jwksUri));
-    jwksCache.set(jwksUri, jwks);
-  }
-  return jwks;
 }
 
 export function resolveActorIdentityFromAuthorizerClaims(
@@ -234,18 +221,6 @@ function requireBooleanishClaim(claims: Record<string, unknown>, name: string): 
     return false;
   }
   throw new Error(`OIDC authorizer claims missing ${name}`);
-}
-
-function extractBearerToken(authorizationHeader?: string): string {
-  if (!authorizationHeader) {
-    throw new Error('missing Authorization header');
-  }
-
-  const token = authorizationHeader.replace(/^Bearer\s+/i, '').trim();
-  if (!token || token === authorizationHeader) {
-    throw new Error('invalid Authorization header');
-  }
-  return token;
 }
 
 function normalizeUrl(value: string): string {
