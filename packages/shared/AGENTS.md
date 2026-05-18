@@ -1,4 +1,4 @@
-# AGENTS.md
+# Shared Package Conventions
 
 ## Scope
 
@@ -6,12 +6,15 @@
 
 ## Allowed content
 
-- domain types
+- domain types and shared value objects
 - API contracts and DTO types under `src/contracts`
+- command, DB, and error contracts
 - validation schemas
 - user-defined type guards
 - pure utilities
 - pure mapping helpers that are shared across packages
+- pure shared rule tables and helpers
+- shared fixtures that are part of the working system
 
 ## Forbidden content
 
@@ -21,13 +24,15 @@
 - filesystem access
 - network access
 - environment-specific behavior
-- code promoted into `core` only to avoid duplication once
+- auth implementations that talk to external systems
+- code promoted into `shared` only to avoid duplication once
 
 ## Rules
 
-- Keep `core` side-effect free.
+- Keep `shared` side-effect free.
 - Export explicit contracts.
 - Prefer named exports.
 - Validate and narrow at boundaries.
 - Do not hide unsafe casts in shared helpers.
-- Keep contract families aligned with the product routes: session, explorer, shares, uploads, downloads, and events.
+- Keep contract families aligned with the product routes and workflows they support.
+- Do not place service adapters, web orchestration, or engine-owned rule execution in `shared`.
