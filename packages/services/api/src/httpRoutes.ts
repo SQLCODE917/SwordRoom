@@ -1,162 +1,25 @@
-import { randomUUID } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
-import { assertCharacterOwnerOrGameMaster, assertGameMasterActor, type DbAccess } from '@starter/services-shared';
+import type { DbAccess } from '@starter/services-shared';
 import type { ResolvedActorIdentity } from './auth.js';
 import type { ApiRoute } from './apiTypes.js';
 import type { ApiRouteDefinition, ApiRouteDispatchInput } from './httpRouteTypes.js';
+import { adminRouteDefinitions } from './features/admin/routes.js';
+import { characterRouteDefinitions } from './features/characters/routes.js';
 import { commandRouteDefinitions } from './features/commands/routes.js';
 import { gameRouteDefinitions } from './features/games/routes.js';
+import { gmRouteDefinitions } from './features/gm/routes.js';
 import { gameplayRouteDefinitions } from './features/gameplay/routes.js';
 import { meRouteDefinitions } from './features/me/routes.js';
 import { requireActor, requireCommandAccess, requireGameAccess, requireRole } from './routeAuth.js';
 
 const routeDefinitions: ApiRouteDefinition[] = [
+  ...adminRouteDefinitions,
+  ...characterRouteDefinitions,
   ...commandRouteDefinitions,
   ...gameRouteDefinitions,
+  ...gmRouteDefinitions,
   ...gameplayRouteDefinitions,
   ...meRouteDefinitions,
-  {
-    method: 'POST',
-    path: '/games/{gameId}/characters/{characterId}/appearance/upload-url',
-    auth: 'required',
-    handler: async (context) => {
-      const gameId = context.params.gameId!;
-      const characterId = context.params.characterId!;
-      await assertCharacterOwnerOrGameMaster(context.runtime.db, {
-        gameId,
-        characterId,
-        actorId: context.identity.actorId,
-      });
-
-      const body = (await context.readJsonBody()) as {
-        contentType?: unknown;
-        fileName?: unknown;
-        fileSizeBytes?: unknown;
-      };
-      const contentType = typeof body.contentType === 'string' ? body.contentType : '';
-      const fileName = typeof body.fileName === 'string' ? body.fileName : '';
-      const fileSizeBytes = typeof body.fileSizeBytes === 'number' ? body.fileSizeBytes : 0;
-
-      if (!context.runtime.allowedContentTypes.has(contentType)) {
-        context.logFlow('API_APPEARANCE_UPLOAD_URL_REJECTED', {
-          requestId: context.requestId,
-          gameId,
-          characterId,
-          reason: 'UNSUPPORTED_CONTENT_TYPE',
-          contentType,
-        });
-        context.sendJson(400, { error: 'unsupported contentType' });
-        return;
-      }
-
-      if (!fileName) {
-        context.logFlow('API_APPEARANCE_UPLOAD_URL_REJECTED', {
-          requestId: context.requestId,
-          gameId,
-          characterId,
-          reason: 'MISSING_FILE_NAME',
-        });
-        context.sendJson(400, { error: 'fileName is required' });
-        return;
-      }
-
-      if (fileSizeBytes <= 0 || fileSizeBytes > context.runtime.maxUploadBytes) {
-        context.logFlow('API_APPEARANCE_UPLOAD_URL_REJECTED', {
-          requestId: context.requestId,
-          gameId,
-          characterId,
-          reason: 'INVALID_FILE_SIZE_BYTES',
-          fileSizeBytes,
-        });
-        context.sendJson(400, { error: 'fileSizeBytes exceeds max size' });
-        return;
-      }
-
-      const uploadId = randomUUID();
-      const extension = contentTypeToExtension(contentType);
-      const s3Key = `games/${gameId}/characters/${characterId}/appearance/${uploadId}.${extension}`;
-      const putUrl = await context.runtime.uploads.createSignedUploadUrl({
-        key: s3Key,
-        contentType,
-        expiresInSeconds: 900,
-      });
-      const getUrl = await context.runtime.uploads.createSignedDownloadUrl({
-        key: s3Key,
-        expiresInSeconds: 900,
-      });
-
-      context.logFlow('API_APPEARANCE_UPLOAD_URL_ISSUED', {
-        requestId: context.requestId,
-        actorId: context.identity.actorId,
-        uploadId,
-        gameId,
-        characterId,
-        s3Key,
-        contentType,
-        fileSizeBytes,
-      });
-      context.sendJson(200, { uploadId, s3Key, putUrl, getUrl, expiresInSeconds: 900 });
-    },
-  },
-  {
-    method: 'GET',
-    path: '/gm/games',
-    auth: 'required',
-    handler: async (context) => {
-      const games = await context.runtime.service.readApis.listGamesForGm(context.identity.actorId);
-      context.logFlow('API_GET_GM_GAMES', {
-        requestId: context.requestId,
-        actorId: context.identity.actorId,
-        count: games.length,
-      });
-      context.sendJson(200, games);
-    },
-  },
-  {
-    method: 'GET',
-    path: '/gm/{gameId}/inbox',
-    auth: 'gm_required',
-    handler: async (context) => {
-      const gameId = context.params.gameId!;
-      await assertGameMasterActor(context.runtime.db, { gameId, actorId: context.identity.actorId });
-      const inbox = await context.runtime.service.readApis.getGmInbox(gameId);
-      context.logFlow('API_GET_GM_INBOX', {
-        requestId: context.requestId,
-        actorId: context.identity.actorId,
-        gameId,
-        count: inbox.length,
-      });
-      context.sendJson(200, inbox);
-    },
-  },
-  {
-    method: 'GET',
-    path: '/admin/users',
-    auth: 'admin_required',
-    handler: async (context) => {
-      const users = await context.runtime.service.readApis.listUsers();
-      context.logFlow('API_GET_ADMIN_USERS', {
-        requestId: context.requestId,
-        actorId: context.identity.actorId,
-        count: users.length,
-      });
-      context.sendJson(200, users);
-    },
-  },
-  {
-    method: 'GET',
-    path: '/admin/games',
-    auth: 'admin_required',
-    handler: async (context) => {
-      const games = await context.runtime.service.readApis.listAllGames();
-      context.logFlow('API_GET_ADMIN_GAMES', {
-        requestId: context.requestId,
-        actorId: context.identity.actorId,
-        count: games.length,
-      });
-      context.sendJson(200, games);
-    },
-  },
 ];
 
 export function listContractRoutes(): ApiRoute[] {
@@ -273,14 +136,4 @@ function matchPath(template: string, pathname: string): Record<string, string> |
   }
 
   return params;
-}
-
-function contentTypeToExtension(contentType: string): string {
-  if (contentType === 'image/png') {
-    return 'png';
-  }
-  if (contentType === 'image/webp') {
-    return 'webp';
-  }
-  return 'jpg';
 }

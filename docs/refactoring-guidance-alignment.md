@@ -353,7 +353,10 @@ Status:
 
 - started
 - `packages/services/api/src/httpRoutes.ts` is now being decomposed into feature route modules
-- extracted feature route slices now include `commands`, `me`, `gameplay`, and core `games` reads
+- extracted feature route slices now include `admin`, `characters`, `commands`, `games`, `gameplay`, `gm`, and `me`
+- `httpRoutes.ts` now acts as a route-composition and shared-dispatch module rather than the primary home of route definitions
+- next in this workstream:
+  split feature-owned read/orchestration logic out of [`packages/services/api/src/index.ts`](/workspaces/hello-world-monorepo/packages/services/api/src/index.ts) before beginning Workstream 5
 - continue this workstream before starting Workstream 5
 
 ### Workstream 5: Move web behavior into feature modules and ViewModels
@@ -411,6 +414,9 @@ This order minimizes churn because the package boundaries become trustworthy bef
 - Start Workstream 4 only after Workstream 3 is fully complete.
   Recommendation:
   begin with `packages/services/api/src/httpRoutes.ts` because it is the broadest remaining service boundary file and will benefit most from feature extraction once engine APIs are stable.
+- Continue Workstream 4 immediately after route extraction by moving feature-owned read/orchestration logic out of [`packages/services/api/src/index.ts`](/workspaces/hello-world-monorepo/packages/services/api/src/index.ts).
+  Recommendation:
+  extract the `readApis` methods feature by feature, starting with the same route families already split out of `httpRoutes.ts` so route and orchestration ownership converge together.
 - Start Workstream 5 only after the first API and dispatcher feature folders exist.
   Recommendation:
   begin with [`packages/web/src/pages/CharacterWizardPage.tsx`](/workspaces/hello-world-monorepo/packages/web/src/pages/CharacterWizardPage.tsx) because it is the clearest high-risk example of page-heavy orchestration and direct command coupling.
