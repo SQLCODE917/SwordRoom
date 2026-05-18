@@ -359,9 +359,10 @@ Status:
 - command intake orchestration has been extracted into the commands feature so `createApiService()` is now primarily composition
 - dispatcher gameplay handlers now have an explicit engine-facing mapper module for fixture and character translation
 - dispatcher character-creation handlers now have an explicit mapper module for persistence-to-engine and engine-to-draft translation
+- dispatcher character helper logic is now split between mapper-free repository helpers and mapper-free engine execution helpers
 - next in this workstream:
-  continue immediately with dispatcher-side feature extraction around the remaining character helper logic so API and dispatcher boundaries both match the service guidance before beginning Workstream 5
-- do not begin Workstream 5 until that dispatcher character slice is complete
+  Workstream 4 can now hand off immediately to Workstream 5, starting with the character wizard feature extraction in `packages/web`
+- begin Workstream 5 next
 
 ### Workstream 5: Move web behavior into feature modules and ViewModels
 
@@ -430,6 +431,9 @@ This order minimizes churn because the package boundaries become trustworthy bef
 - Continue Workstream 4 immediately after the character mapper extraction by splitting the remaining dispatcher character helper file into mapper-free service/helpers.
   Recommendation:
   do that next, because `packages/services/dispatcher/src/handlers/character/shared.ts` still bundles repository checks with engine execution wrappers, and finishing that split will close the last major dispatcher boundary gap before Workstream 5.
+- Start Workstream 5 immediately after the dispatcher character helper split is complete.
+  Recommendation:
+  begin with [`packages/web/src/pages/CharacterWizardPage.tsx`](/workspaces/hello-world-monorepo/packages/web/src/pages/CharacterWizardPage.tsx), extracting feature state, command building, and derived display logic into `features/character-wizard` while keeping the page as a route shell.
 - Start Workstream 5 only after the first API and dispatcher feature folders exist.
   Recommendation:
   begin with [`packages/web/src/pages/CharacterWizardPage.tsx`](/workspaces/hello-world-monorepo/packages/web/src/pages/CharacterWizardPage.tsx) because it is the clearest high-risk example of page-heavy orchestration and direct command coupling.

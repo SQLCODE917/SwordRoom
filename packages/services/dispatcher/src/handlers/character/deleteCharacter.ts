@@ -1,7 +1,7 @@
 import { isPlayerCharacterLibraryGameId } from '@starter/shared';
 import { assertGameMasterActor } from '@starter/services-shared';
 import type { CommandHandler } from '../types.js';
-import { requireCharacter } from './shared.js';
+import { requireCharacter } from './repository.js';
 
 export const deleteCharacterHandler: CommandHandler<'DeleteCharacter'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);

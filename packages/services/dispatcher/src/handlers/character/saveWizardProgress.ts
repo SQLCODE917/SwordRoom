@@ -2,12 +2,12 @@ import type { CharacterDraft, CharacterItem } from '@starter/shared';
 import type { CommandHandler } from '../types.js';
 import {
   applyStartingAndValidate,
-  assertActorCanCreateCharacterInGame,
   computeAndValidate,
   purchaseAndValidate,
   spendExpAndValidate,
-} from './shared.js';
+} from './engineHelpers.js';
 import { emptyCharacterDraft, toCharacterDraft, toEngineState, toEquipmentCart } from './mappers.js';
+import { assertActorCanCreateCharacterInGame } from './repository.js';
 
 export const saveDraftHandler: CommandHandler<'SaveCharacterDraft'> = async (ctx, envelope) => {
   const existing = await ctx.db.characterRepository.getCharacter(envelope.gameId, envelope.payload.characterId);

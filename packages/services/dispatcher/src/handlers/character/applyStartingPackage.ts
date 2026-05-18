@@ -1,6 +1,7 @@
 import type { CommandHandler } from '../types.js';
+import { applyStartingAndValidate } from './engineHelpers.js';
 import { toCharacterDraft, toEngineState } from './mappers.js';
-import { applyStartingAndValidate, requireCharacter } from './shared.js';
+import { requireCharacter } from './repository.js';
 
 export const applyStartingPackageHandler: CommandHandler<'ApplyStartingPackage'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);

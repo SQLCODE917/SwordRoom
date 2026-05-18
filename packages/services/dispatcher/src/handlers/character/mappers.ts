@@ -1,7 +1,7 @@
 import type { CharacterCreationState, EquipmentCart } from '@starter/engine';
 import type { CharacterDraft, CharacterItem, CharacterRace, RaisedBy } from '@starter/shared';
 import { resolveEquipmentRosterItem } from '@starter/shared';
-import { loadItemCatalog } from './shared.js';
+import { loadItemCatalog } from './engineHelpers.js';
 
 export function toCharacterDraft(previous: CharacterItem, state: CharacterCreationState): CharacterDraft {
   return {

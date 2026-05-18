@@ -1,6 +1,7 @@
 import type { CommandHandler } from '../types.js';
+import { spendExpAndValidate } from './engineHelpers.js';
 import { toCharacterDraft, toEngineState } from './mappers.js';
-import { requireCharacter, spendExpAndValidate } from './shared.js';
+import { requireCharacter } from './repository.js';
 
 export const spendStartingExpHandler: CommandHandler<'SpendStartingExp'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);

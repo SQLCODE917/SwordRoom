@@ -1,6 +1,7 @@
 import type { CommandHandler } from '../types.js';
+import { computeAndValidate } from './engineHelpers.js';
 import { toCharacterDraft, toEngineState } from './mappers.js';
-import { computeAndValidate, requireCharacter } from './shared.js';
+import { requireCharacter } from './repository.js';
 
 export const setSubAbilitiesHandler: CommandHandler<'SetCharacterSubAbilities'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);

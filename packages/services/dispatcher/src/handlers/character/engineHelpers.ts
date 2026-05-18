@@ -8,36 +8,6 @@ import {
   type EquipmentCart,
   type StartingPackageTables,
 } from '@starter/engine';
-import { isPlayerCharacterLibraryGameId, type CharacterItem } from '@starter/shared';
-import type { DbAccess } from '@starter/services-shared';
-
-export async function requireCharacter(db: DbAccess, gameId: string, characterId: string): Promise<CharacterItem> {
-  const character = await db.characterRepository.getCharacter(gameId, characterId);
-  if (!character) {
-    throw new Error(`character not found: ${gameId}/${characterId}`);
-  }
-  return character;
-}
-
-export async function assertActorCanCreateCharacterInGame(
-  db: DbAccess,
-  input: { gameId: string; actorId: string; existingCharacterId?: string | null }
-): Promise<void> {
-  if (isPlayerCharacterLibraryGameId(input.gameId)) {
-    return;
-  }
-
-  const existing = await db.characterRepository.findOwnedCharacterInGame(input.gameId, input.actorId);
-  if (!existing || existing.characterId === input.existingCharacterId) {
-    return;
-  }
-
-  const error = new Error(
-    `player "${input.actorId}" already has character "${existing.characterId}" in game "${input.gameId}"`
-  );
-  (error as Error & { code?: string }).code = 'PLAYER_ALREADY_HAS_CHARACTER_IN_GAME';
-  throw error;
-}
 
 export function throwOnEngineErrors(errors: Array<{ code: string; message: string }>): void {
   if (errors.length > 0) {
@@ -52,7 +22,7 @@ export function loadStartingPackageTables(): StartingPackageTables {
   return sharedStartingPackageTables as StartingPackageTables;
 }
 
-function loadItemCatalogRaw(): Record<string, { category: string; req_str?: number; req_str_min?: number; req_str_max?: number | null; cost_g?: number; price_spec?: string | number; tags?: string[]; usage?: string; used_for?: string }> {
+export function loadItemCatalog(): Record<string, { category: string; req_str?: number; req_str_min?: number; req_str_max?: number | null; cost_g?: number; price_spec?: string | number; tags?: string[]; usage?: string; used_for?: string }> {
   return Object.fromEntries(
     Object.values(equipmentRosterById).map((item) => {
       const resolved = resolveEquipmentRosterItem(item.itemId, 10);
@@ -72,10 +42,6 @@ function loadItemCatalogRaw(): Record<string, { category: string; req_str?: numb
       ];
     })
   );
-}
-
-export function loadItemCatalog(): Record<string, { category: string; req_str?: number; req_str_min?: number; req_str_max?: number | null; cost_g?: number; price_spec?: string | number; tags?: string[]; usage?: string; used_for?: string }> {
-  return loadItemCatalogRaw();
 }
 
 export function computeAndValidate(state: CharacterCreationState): CharacterCreationState {
