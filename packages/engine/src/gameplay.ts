@@ -1,6 +1,5 @@
 import {
   gameplayLoopGraphVersion,
-  type CharacterItem,
   type GameplayActiveCheck,
   type GameplayAttackContext,
   type GameplayAutomaticResult,
@@ -12,7 +11,6 @@ import {
   type GameplayProcedure,
   type GameplaySessionState,
 } from '@starter/shared';
-import type { GameplayLoopFixture } from '@starter/shared/fixtures';
 
 export interface GameplayDomainError {
   code: string;
@@ -24,48 +22,79 @@ export interface GameplayResult<TState = GameplaySessionState> {
   errors: GameplayDomainError[];
 }
 
-export function deriveCombatantFromCharacter(input: {
+export interface GameplayCharacterCombatProfile {
   actorId: string;
-  character: CharacterItem;
+  characterId: string;
   fallbackDisplayName?: string | null;
-}): GameplayCombatant {
-  const { character } = input;
-  const skillMap = new Map(character.draft.skills.map((skill) => [skill.skill.toLowerCase(), skill.level]));
+  identityName?: string | null;
+  abilities: {
+    agi: number;
+    int: number;
+    lf: number;
+  };
+  bonuses: {
+    dex: number;
+    agi: number;
+    str: number;
+  };
+  skills: Array<{
+    skill: string;
+    level: number;
+  }>;
+}
+
+export interface GameplaySceneEnemyInput {
+  combatantId: string;
+  displayName: string;
+  lifePoints: number;
+  stats: GameplayCombatant['stats'];
+}
+
+export interface GameplaySceneSeedInput {
+  scenarioId: string;
+  sceneTitle: string;
+  sceneSummary: string;
+  focusPrompt: string;
+  enemies: GameplaySceneEnemyInput[];
+}
+
+export function deriveCombatantFromProfile(input: GameplayCharacterCombatProfile): GameplayCombatant {
+  const skillMap = new Map(input.skills.map((skill) => [skill.skill.toLowerCase(), skill.level]));
   const martialLevel = Math.max(skillMap.get('fighter') ?? 0, skillMap.get('ranger') ?? 0, skillMap.get('thief') ?? 0);
-  const highestSkillLevel = character.draft.skills.reduce((max, skill) => Math.max(max, skill.level), 0);
-  const name = character.draft.identity.name.trim() || input.fallbackDisplayName?.trim() || input.actorId;
-  const lifePoints = Math.max(character.draft.ability.lf, 1);
+  const highestSkillLevel = input.skills.reduce((max, skill) => Math.max(max, skill.level), 0);
+  const name = input.identityName?.trim() || input.fallbackDisplayName?.trim() || input.actorId;
+  const lifePoints = Math.max(input.abilities.lf, 1);
 
   return {
-    combatantId: character.characterId,
+    combatantId: input.characterId,
     actorId: input.actorId,
-    characterId: character.characterId,
+    characterId: input.characterId,
     displayName: name,
     side: 'PLAYER',
     status: 'READY',
     lifePoints,
     maxLifePoints: lifePoints,
     stats: {
-      intelligence: character.draft.ability.int,
-      agility: character.draft.ability.agi,
-      attackBase: martialLevel + character.draft.bonus.dex,
-      evasionBase: martialLevel + character.draft.bonus.agi,
-      bonusDamage: martialLevel + character.draft.bonus.str,
+      intelligence: input.abilities.int,
+      agility: input.abilities.agi,
+      attackBase: martialLevel + input.bonuses.dex,
+      evasionBase: martialLevel + input.bonuses.agi,
+      bonusDamage: martialLevel + input.bonuses.str,
       damageReduction: highestSkillLevel,
-      strikeBase: Math.max(4, martialLevel + character.draft.bonus.str + 4),
-      defenseValue: Math.max(0, character.draft.bonus.agi - 1),
+      strikeBase: Math.max(4, martialLevel + input.bonuses.str + 4),
+      defenseValue: Math.max(0, input.bonuses.agi - 1),
     },
   };
 }
 
 export function seedGameplaySession(input: {
-  fixture: GameplayLoopFixture;
+  scene: GameplaySceneSeedInput;
   createdAt: string;
   playerCombatants: GameplayCombatant[];
 }): GameplayResult {
   const combatants: GameplayCombatant[] = [
     ...input.playerCombatants,
-    ...input.fixture.enemies.map((enemy) => ({
+    ...input.scene.enemies.map((enemy) => ({
       combatantId: enemy.combatantId,
       actorId: null,
       characterId: null,
@@ -81,13 +110,13 @@ export function seedGameplaySession(input: {
   return {
     state: {
       sessionId: 'main',
-      scenarioId: input.fixture.seedId,
+      scenarioId: input.scene.scenarioId,
       graphVersion: gameplayLoopGraphVersion,
       currentNodeId: 'PLAYER_INTENT',
       status: 'ACTIVE',
-      sceneTitle: input.fixture.scene.title,
-      sceneSummary: input.fixture.scene.summary,
-      focusPrompt: input.fixture.scene.focus_prompt,
+      sceneTitle: input.scene.sceneTitle,
+      sceneSummary: input.scene.sceneSummary,
+      focusPrompt: input.scene.focusPrompt,
       selectedProcedure: null,
       pendingIntentId: null,
       activeCheck: null,

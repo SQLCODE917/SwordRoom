@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { gameplayLoopGraph, type CharacterItem } from '@starter/shared';
+import { gameplayLoopGraph } from '@starter/shared';
 import { getGameplayLoopFixture } from '@starter/shared/fixtures';
 import {
   closeCombat,
   computeAttackResolution,
   computeCheckResolution,
   declareCombatAction,
-  deriveCombatantFromCharacter,
+  deriveCombatantFromProfile,
   openCombatRound,
   resolveCombatTurn,
   resolveGameplayCheck,
@@ -14,36 +14,33 @@ import {
   selectGameplayProcedure,
 } from './gameplay.js';
 
-function makeCharacter(overrides?: Partial<CharacterItem>): CharacterItem {
+function makeCombatProfile(
+  overrides?: Partial<Parameters<typeof deriveCombatantFromProfile>[0]>
+): Parameters<typeof deriveCombatantFromProfile>[0] {
   return {
-    pk: 'GAME#game-1',
-    sk: 'CHAR#char-1',
-    type: 'Character',
-    gameId: 'game-1',
+    actorId: 'player-1',
     characterId: 'char-1',
-    ownerPlayerId: 'player-1',
-    status: 'APPROVED',
-    draft: {
-      race: 'HUMAN',
-      raisedBy: null,
-      subAbility: { A: 6, B: 4, C: 5, D: 4, E: 4, F: 6, G: 4, H: 5 },
-      ability: { dex: 10, agi: 9, int: 8, str: 10, lf: 12, mp: 9 },
-      bonus: { dex: 2, agi: 1, int: 1, str: 2, lf: 2, mp: 1 },
-      background: { kind: 'RUNE_MASTER', roll2d: 3 },
-      starting: { expTotal: 2000, expUnspent: 1000, moneyGamels: 1800, moneyRoll2d: 9, startingSkills: [] },
-      skills: [{ skill: 'Fighter', level: 2 }, { skill: 'Sage', level: 1 }],
-      purchases: { weapons: [], armor: [], shields: [], gear: [] },
-      appearance: { imageKey: null, imageUrl: null, updatedAt: null },
-      identity: { name: 'Ducard Sample II', age: 24, gender: 'M' },
-      noteToGm: null,
-      gmNote: null,
-    },
-    submittedAt: null,
-    submittedDraftVersion: null,
-    createdAt: '2026-04-01T00:00:00.000Z',
-    updatedAt: '2026-04-01T00:00:00.000Z',
-    version: 1,
+    identityName: 'Ducard Sample II',
+    abilities: { agi: 9, int: 8, lf: 12 },
+    bonuses: { dex: 2, agi: 1, str: 2 },
+    skills: [{ skill: 'Fighter', level: 2 }, { skill: 'Sage', level: 1 }],
+    fallbackDisplayName: null,
     ...overrides,
+  };
+}
+
+function toSceneSeed(fixture = getGameplayLoopFixture('rpg_sample_tavern')) {
+  return {
+    scenarioId: fixture.seedId,
+    sceneTitle: fixture.scene.title,
+    sceneSummary: fixture.scene.summary,
+    focusPrompt: fixture.scene.focus_prompt,
+    enemies: fixture.enemies.map((enemy) => ({
+      combatantId: enemy.combatantId,
+      displayName: enemy.displayName,
+      lifePoints: enemy.lifePoints,
+      stats: enemy.stats,
+    })),
   };
 }
 
@@ -105,15 +102,10 @@ describe('gameplay checks', () => {
 });
 
 describe('gameplay session', () => {
-  it('seeds the tavern scene from fixtures and derives player combatants', () => {
-    const fixture = getGameplayLoopFixture('rpg_sample_tavern');
-    const playerCombatant = deriveCombatantFromCharacter({
-      actorId: 'player-1',
-      character: makeCharacter(),
-      fallbackDisplayName: 'Player One',
-    });
+  it('seeds the tavern scene from host-provided scene data and derives player combatants', () => {
+    const playerCombatant = deriveCombatantFromProfile(makeCombatProfile());
     const seeded = seedGameplaySession({
-      fixture,
+      scene: toSceneSeed(),
       createdAt: '2026-04-01T00:00:00.000Z',
       playerCombatants: [playerCombatant],
     });
@@ -127,11 +119,10 @@ describe('gameplay session', () => {
   });
 
   it('selects and resolves a public check', () => {
-    const fixture = getGameplayLoopFixture('rpg_sample_tavern');
     const seeded = seedGameplaySession({
-      fixture,
+      scene: toSceneSeed(),
       createdAt: '2026-04-01T00:00:00.000Z',
-      playerCombatants: [deriveCombatantFromCharacter({ actorId: 'player-1', character: makeCharacter() })],
+      playerCombatants: [deriveCombatantFromProfile(makeCombatProfile())],
     }).state;
     const selected = selectGameplayProcedure(seeded, {
       procedure: 'STANDARD_CHECK',
@@ -160,25 +151,21 @@ describe('gameplay session', () => {
 
 describe('combat flow', () => {
   it('orders announcements by Intelligence and resolution by Agility with delay support', () => {
-    const fixture = getGameplayLoopFixture('rpg_sample_tavern');
     const seeded = seedGameplaySession({
-      fixture,
+      scene: toSceneSeed(),
       createdAt: '2026-04-01T00:00:00.000Z',
       playerCombatants: [
-        deriveCombatantFromCharacter({ actorId: 'player-1', character: makeCharacter() }),
-        deriveCombatantFromCharacter({
-          actorId: 'player-2',
-          character: makeCharacter({
+        deriveCombatantFromProfile(makeCombatProfile()),
+        deriveCombatantFromProfile(
+          makeCombatProfile({
+            actorId: 'player-2',
             characterId: 'char-2',
-            draft: {
-              ...makeCharacter().draft,
-              identity: { name: 'Borin', age: 21, gender: 'M' },
-              ability: { dex: 8, agi: 12, int: 6, str: 10, lf: 11, mp: 6 },
-              bonus: { dex: 1, agi: 2, int: 1, str: 2, lf: 1, mp: 1 },
-              skills: [{ skill: 'Fighter', level: 1 }],
-            },
-          }),
-        }),
+            identityName: 'Borin',
+            abilities: { agi: 12, int: 6, lf: 11 },
+            bonuses: { dex: 1, agi: 2, str: 2 },
+            skills: [{ skill: 'Fighter', level: 1 }],
+          })
+        ),
       ],
     }).state;
 
@@ -231,11 +218,10 @@ describe('combat flow', () => {
       })
     ).toEqual({ hit: true, damage: 8 });
 
-    const fixture = getGameplayLoopFixture('rpg_sample_tavern');
     const seeded = seedGameplaySession({
-      fixture,
+      scene: toSceneSeed(),
       createdAt: '2026-04-01T00:00:00.000Z',
-      playerCombatants: [deriveCombatantFromCharacter({ actorId: 'player-1', character: makeCharacter() })],
+      playerCombatants: [deriveCombatantFromProfile(makeCombatProfile())],
     }).state;
     const opened = openCombatRound(seeded, { updatedAt: '2026-04-01T00:03:00.000Z' }).state;
     const acted = declareCombatAction(opened, {

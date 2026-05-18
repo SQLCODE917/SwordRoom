@@ -1,7 +1,7 @@
 import {
   closeCombat,
   declareCombatAction,
-  deriveCombatantFromCharacter,
+  deriveCombatantFromProfile,
   openCombatRound,
   resolveCombatTurn,
   resolveGameplayCheck,
@@ -17,6 +17,7 @@ export const gmFrameGameplaySceneHandler: CommandHandler<'GMFrameGameplayScene'>
   await requireActiveGame(ctx.db, envelope.gameId);
   const existing = await ctx.db.gameplayRepository.getSession(envelope.gameId);
   const fixture = getGameplayLoopFixture(envelope.payload.seedId);
+  const scene = toGameplaySceneSeed(fixture);
   const memberships = await ctx.db.membershipRepository.listMembershipsForGame(envelope.gameId);
 
   const playerCombatants = (
@@ -27,17 +28,15 @@ export const gmFrameGameplaySceneHandler: CommandHandler<'GMFrameGameplayScene'>
           return null;
         }
         const profile = await ctx.db.playerRepository.getPlayerProfile(membership.playerId);
-        return deriveCombatantFromCharacter({
-          actorId: membership.playerId,
-          character,
-          fallbackDisplayName: profile?.displayName ?? membership.playerId,
-        });
+        return deriveCombatantFromProfile(
+          toGameplayCharacterCombatProfile(character, membership.playerId, profile?.displayName ?? membership.playerId)
+        );
       })
     )
   ).filter((combatant): combatant is NonNullable<typeof combatant> => combatant !== null);
 
   const seeded = seedGameplaySession({
-    fixture,
+    scene,
     createdAt: envelope.createdAt,
     playerCombatants,
   });
@@ -101,6 +100,45 @@ export const gmFrameGameplaySceneHandler: CommandHandler<'GMFrameGameplayScene'>
     notifications: [],
   };
 };
+
+function toGameplaySceneSeed(fixture: ReturnType<typeof getGameplayLoopFixture>) {
+  return {
+    scenarioId: fixture.seedId,
+    sceneTitle: fixture.scene.title,
+    sceneSummary: fixture.scene.summary,
+    focusPrompt: fixture.scene.focus_prompt,
+    enemies: fixture.enemies.map((enemy) => ({
+      combatantId: enemy.combatantId,
+      displayName: enemy.displayName,
+      lifePoints: enemy.lifePoints,
+      stats: enemy.stats,
+    })),
+  };
+}
+
+function toGameplayCharacterCombatProfile(
+  character: CharacterItem,
+  actorId: string,
+  fallbackDisplayName?: string | null
+) {
+  return {
+    actorId,
+    characterId: character.characterId,
+    fallbackDisplayName,
+    identityName: character.draft.identity.name,
+    abilities: {
+      agi: character.draft.ability.agi,
+      int: character.draft.ability.int,
+      lf: character.draft.ability.lf,
+    },
+    bonuses: {
+      dex: character.draft.bonus.dex,
+      agi: character.draft.bonus.agi,
+      str: character.draft.bonus.str,
+    },
+    skills: character.draft.skills,
+  };
+}
 
 export const submitGameplayIntentHandler: CommandHandler<'SubmitGameplayIntent'> = async (ctx, envelope) => {
   await requireActiveGame(ctx.db, envelope.gameId);
