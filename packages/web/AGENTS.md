@@ -1,5 +1,23 @@
 # Web Package Conventions
 
+`web` owns React rendering, hooks, selectors, view models, and feature-level orchestration.
+
+## Rules
+
+- Prefer one connected boundary per route or feature container.
+- Most leaf components should receive props only.
+- Components render view models; hooks orchestrate work.
+- Use at most one selector per connected component, and have that selector return the component ViewModel.
+- Keep state-machine transitions and ViewModel selection outside JSX.
+- Keep selectors narrow and stable.
+- Do not fetch data in leaf components.
+- Centralize screen-level data loading.
+- Reuse shared UI primitives before creating new components.
+- Use CSS Modules.
+- Prefer semantic HTML and minimal DOM.
+- Add component tests for rendering behavior and interaction behavior.
+- Add browser tests for full feature flows.
+
 ## Commands
 - Use [`src/hooks/useCommandStatus.ts`](/workspaces/hello-world-monorepo/packages/web/src/hooks/useCommandStatus.ts) as the definitive command workflow API.
 - In React code, submit commands through `useCommandWorkflow()`.
