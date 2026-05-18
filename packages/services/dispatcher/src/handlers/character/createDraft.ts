@@ -1,5 +1,6 @@
 import type { CommandHandler } from '../types.js';
-import { assertActorCanCreateCharacterInGame, emptyCharacterDraft } from './shared.js';
+import { emptyCharacterDraft } from './mappers.js';
+import { assertActorCanCreateCharacterInGame } from './shared.js';
 
 export const createDraftHandler: CommandHandler<'CreateCharacterDraft'> = async (ctx, envelope) => {
   const payload = envelope.payload;
