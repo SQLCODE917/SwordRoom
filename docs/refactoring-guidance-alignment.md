@@ -389,8 +389,9 @@ Status:
 - the old `packages/web/src/flows/characterWizardCommands.ts` helper has been removed
 - `packages/web/src/features/character-wizard/useCharacterWizardRouteContext.ts` now owns route validation and saved-character loading for the wizard route
 - `packages/web/src/features/character-wizard/viewModel.ts` now owns the wizard’s derived preview and action-state calculations
+- `packages/web/src/features/character-wizard/useCharacterWizardWorkflow.ts` now owns save/submit orchestration, snapshot refresh, and save-button workflow state, with direct unit coverage for payload shaping and snapshot mapping
 - next in this workstream:
-  continue immediately by extracting save/submit orchestration and snapshot refresh into a character-wizard feature hook so `CharacterWizardPage.tsx` stops owning as much command workflow behavior directly
+  continue immediately by extracting the remaining step-panel and autofill rendering into props-driven `features/character-wizard/components/` modules so `CharacterWizardPage.tsx` becomes a route shell plus feature wiring layer instead of the main UI implementation
 - keep Workstream 5 active before moving to a later cleanup pass
 
 ### Workstream 6: Align tests with seams
