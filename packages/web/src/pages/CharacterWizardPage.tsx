@@ -31,58 +31,28 @@ import {
   skillOptions,
 } from '../data/characterCreationPurchasing';
 import {
+  buildSubmitCharacterForApprovalEnvelope,
+  buildSaveCharacterDraftEnvelope,
+  buildEquipmentCart,
+  buildInitialState,
+  CharacterSnapshot,
+  createCharacterId,
+  FieldOption,
   goodHumanRuneMasterAutofill,
-  submitCharacterForApproval,
-  submitSaveCharacterDraft,
-} from '../flows/characterWizardCommands';
+  hydrateWizardStateFromCharacter,
+  InventoryCategory,
+  InventoryQuantitiesKey,
+  normalizePurchasesForBaseSkills,
+  readCharacterIdentityName,
+  SaveButtonState,
+  serializeWizardState,
+  toInventoryQuantitiesFromIds,
+  WizardMode,
+  WizardState,
+  WizardStepKey,
+} from '../features/character-wizard';
 import { describeFailure, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
-
-interface CharacterSnapshot {
-  status: string;
-  version: number | null;
-  subAbility: SubAbilityScores | null;
-  ability: Record<string, number> | null;
-  skills: Array<{ skill: string; level: number }>;
-}
-
-interface WizardState {
-  gameId: string;
-  characterId: string;
-  race: Race;
-  raisedBy: HalfElfRaisedBy;
-  subAbility: SubAbilityScores;
-  backgroundRoll2dTotal: number;
-  moneyRoll2dTotal: number;
-  craftsmanSkill: string;
-  merchantScholarChoice: '' | 'MERCHANT' | 'SAGE';
-  generalSkillName: string;
-  name: string;
-  gender: string;
-  age: string;
-  purchases: Array<{ skill: string; targetLevel: number }>;
-  equipment: {
-    weaponQuantities: Record<string, number>;
-    armorQuantities: Record<string, number>;
-    shieldQuantities: Record<string, number>;
-    gearQuantities: Record<string, number>;
-  };
-  submitNoteToGm: string;
-}
-
-type WizardMode = 'apply' | 'library';
-
-type WizardStepKey = 'race' | 'dice' | 'background' | 'identity' | 'exp' | 'equipment' | 'submit';
-type SaveButtonState = 'idle' | 'saving' | 'saved';
-
-interface FieldOption {
-  value: string;
-  label: string;
-  disabled?: boolean;
-}
-
-type InventoryCategory = 'weapon' | 'armor' | 'shield' | 'gear';
-type InventoryQuantitiesKey = 'weaponQuantities' | 'armorQuantities' | 'shieldQuantities' | 'gearQuantities';
 
 const stepTitles = ['Race', 'Dice A-H', 'Background rolls', 'Name/identity', 'EXP spend', 'Equipment cart', 'Submit'];
 
@@ -108,32 +78,6 @@ const merchantScholarOptions: FieldOption[] = [
   { value: 'MERCHANT', label: 'Merchant 3' },
   { value: 'SAGE', label: 'Sage 1' },
 ];
-
-function buildInitialState(gameId: string, characterId: string): WizardState {
-  return {
-    gameId,
-    characterId,
-    race: 'HUMAN',
-    raisedBy: 'HUMANS',
-    subAbility: rollSubAbilitiesForRace('HUMAN'),
-    backgroundRoll2dTotal: 3,
-    moneyRoll2dTotal: 9,
-    craftsmanSkill: '',
-    merchantScholarChoice: '',
-    generalSkillName: '',
-    name: '',
-    gender: '',
-    age: '',
-    purchases: [],
-    equipment: {
-      weaponQuantities: {},
-      armorQuantities: {},
-      shieldQuantities: {},
-      gearQuantities: {},
-    },
-    submitNoteToGm: 'Ready for review',
-  };
-}
 
 export function CharacterWizardPage() {
   const params = useParams<{ gameId?: string; playerId?: string; characterId?: string }>();
@@ -171,7 +115,7 @@ function CharacterWizardPageContent({
   const [saveStateByStep, setSaveStateByStep] = useState<Record<WizardStepKey, SaveButtonState>>(
     () => initialSaveButtonState
   );
-  const { status: commandStatus, isRunning: isExecutingCommand, submitAndAwait } = useCommandWorkflow();
+  const { status: commandStatus, isRunning: isExecutingCommand, submitEnvelopeAndAwait } = useCommandWorkflow();
   const saveResetTimersRef = useRef<Record<WizardStepKey, ReturnType<typeof setTimeout> | null>>({
     race: null,
     dice: null,
@@ -1020,9 +964,9 @@ function CharacterWizardPageContent({
         }
 
         const expectedVersion = nextSnapshot.version;
-        await submitCommandAndAwait('Submit for approval', () =>
-          submitCharacterForApproval({
-            api,
+        await submitCommandAndAwait(
+          'Submit for approval',
+          buildSubmitCharacterForApprovalEnvelope({
             gameId: state.gameId,
             characterId: state.characterId,
             expectedVersion,
@@ -1115,33 +1059,19 @@ function CharacterWizardPageContent({
     }, 180);
   }
 
-  async function submitCommandAndAwait(label: string, submit: () => Promise<string>) {
+  async function submitCommandAndAwait(label: string, envelope: Parameters<typeof submitEnvelopeAndAwait>[1]) {
     logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_START', {
       gameId: state.gameId,
       characterId: state.characterId,
       label,
     });
-    let acceptedCommandId: string | null = null;
-    const terminal = await submitAndAwait({
-      label,
-      submit: async () => {
-        const commandId = await submit();
-        acceptedCommandId = commandId;
-        logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_ACCEPTED', {
-          gameId: state.gameId,
-          characterId: state.characterId,
-          label,
-          commandId,
-        });
-        return commandId;
-      },
-    });
+    const terminal = await submitEnvelopeAndAwait(label, envelope);
     if (terminal.status === 'PROCESSED') {
       logWebFlow('WEB_CHARACTER_WIZARD_STEP_SUBMIT_OK', {
         gameId: state.gameId,
         characterId: state.characterId,
         label,
-        commandId: acceptedCommandId,
+        commandId: terminal.commandId,
       });
       return;
     }
@@ -1150,7 +1080,7 @@ function CharacterWizardPageContent({
       gameId: state.gameId,
       characterId: state.characterId,
       label,
-      commandId: acceptedCommandId,
+      commandId: terminal.commandId,
       errorCode: terminal.errorCode,
       errorMessage: terminal.errorMessage,
     });
@@ -1190,26 +1120,12 @@ function CharacterWizardPageContent({
 
   async function saveCurrentDraft(stepKey: WizardStepKey): Promise<CharacterSnapshot> {
     const payload = buildSaveProgressPayload(stepKey);
-    let acceptedCommandId: string | null = null;
-    const terminal = await submitAndAwait({
-      label: `Save ${stepKey}`,
-      submit: async () => {
-        const commandId = await submitSaveCharacterDraft({
-          api,
-          gameId: state.gameId,
-          characterId: state.characterId,
-          ...payload,
-        });
-        acceptedCommandId = commandId;
-        logWebFlow('WEB_CHARACTER_WIZARD_SAVE_ACCEPTED', {
-          gameId: state.gameId,
-          characterId: state.characterId,
-          stepKey,
-          commandId,
-        });
-        return commandId;
-      },
+    const envelope = buildSaveCharacterDraftEnvelope({
+      gameId: state.gameId,
+      characterId: state.characterId,
+      ...payload,
     });
+    const terminal = await submitEnvelopeAndAwait(`Save ${stepKey}`, envelope);
     if (terminal.status !== 'PROCESSED') {
       throw new Error(describeFailure(terminal));
     }
@@ -1222,14 +1138,14 @@ function CharacterWizardPageContent({
       gameId: state.gameId,
       characterId: state.characterId,
       stepKey,
-      commandId: acceptedCommandId,
+      commandId: terminal.commandId,
     });
     return refreshed;
   }
 
   function buildSaveProgressPayload(stepKey: WizardStepKey): Omit<
-    Parameters<typeof submitSaveCharacterDraft>[0],
-    'api' | 'gameId' | 'characterId'
+    Parameters<typeof buildSaveCharacterDraftEnvelope>[0],
+    'gameId' | 'characterId'
   > {
     logWebFlow('WEB_CHARACTER_WIZARD_SAVE_PAYLOAD_BUILT', {
       gameId: state.gameId,
@@ -1242,7 +1158,7 @@ function CharacterWizardPageContent({
       cart: equipmentCart,
     });
 
-    const payload: Omit<Parameters<typeof submitSaveCharacterDraft>[0], 'api' | 'gameId' | 'characterId'> = {
+    const payload: Omit<Parameters<typeof buildSaveCharacterDraftEnvelope>[0], 'gameId' | 'characterId'> = {
       expectedVersion: snapshot?.version ?? null,
       race: state.race,
       raisedBy: state.raisedBy,
@@ -1559,111 +1475,10 @@ function parseOptionalNumber(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function createCharacterId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return `char-${crypto.randomUUID().slice(0, 8)}`;
-  }
-  return `char-${Date.now().toString(16).slice(-8)}`;
-}
-
-function serializeWizardState(state: WizardState): string {
-  return JSON.stringify({
-    race: state.race,
-    raisedBy: state.raisedBy,
-    subAbility: state.subAbility,
-    backgroundRoll2dTotal: state.backgroundRoll2dTotal,
-    moneyRoll2dTotal: state.moneyRoll2dTotal,
-    craftsmanSkill: state.craftsmanSkill,
-    merchantScholarChoice: state.merchantScholarChoice,
-    generalSkillName: state.generalSkillName,
-    name: state.name,
-    gender: state.gender,
-    age: state.age,
-    purchases: state.purchases,
-    equipment: state.equipment,
-    submitNoteToGm: state.submitNoteToGm,
-  });
-}
-
-function hydrateWizardStateFromCharacter(item: CharacterItem, fallback: WizardState): WizardState {
-  const record = item as Record<string, unknown>;
-  const draft = record.draft && typeof record.draft === 'object' ? (record.draft as Record<string, unknown>) : {};
-  const identity = draft.identity && typeof draft.identity === 'object' ? (draft.identity as Record<string, unknown>) : {};
-  const background = draft.background && typeof draft.background === 'object' ? (draft.background as Record<string, unknown>) : {};
-  const starting = draft.starting && typeof draft.starting === 'object' ? (draft.starting as Record<string, unknown>) : {};
-  const purchases = draft.purchases && typeof draft.purchases === 'object' ? (draft.purchases as Record<string, unknown>) : {};
-  const startingSkills = Array.isArray(starting.startingSkills)
-    ? ((starting.startingSkills as Array<Record<string, unknown>>).map((skill) => ({
-        skill: String(skill.skill),
-        level: Number(skill.level),
-      })) as Array<{ skill: string; level: number }>)
-    : [];
-  const skills = Array.isArray(draft.skills)
-    ? ((draft.skills as Array<Record<string, unknown>>).map((skill) => ({
-        skill: String(skill.skill),
-        level: Number(skill.level),
-      })) as Array<{ skill: string; level: number }>)
-    : [];
-  const weaponItems = Array.isArray(purchases.weapons) ? purchases.weapons : [];
-  const armorItems = Array.isArray(purchases.armor) ? purchases.armor : [];
-  const shieldItems = Array.isArray(purchases.shields) ? purchases.shields : [];
-  const gearItems = Array.isArray(purchases.gear) ? purchases.gear : [];
-  const backgroundRoll = typeof background.roll2d === 'number' ? background.roll2d : fallback.backgroundRoll2dTotal;
-  const backgroundKind = typeof background.kind === 'string' ? background.kind : null;
-
-  return {
-    ...fallback,
-    gameId: typeof record.gameId === 'string' ? record.gameId : fallback.gameId,
-    characterId: typeof record.characterId === 'string' ? record.characterId : fallback.characterId,
-    race: typeof draft.race === 'string' ? (draft.race as Race) : fallback.race,
-    raisedBy: typeof draft.raisedBy === 'string' ? (draft.raisedBy as HalfElfRaisedBy) : fallback.raisedBy,
-    subAbility:
-      draft.subAbility && typeof draft.subAbility === 'object'
-        ? (draft.subAbility as SubAbilityScores)
-        : fallback.subAbility,
-    backgroundRoll2dTotal: backgroundRoll,
-    moneyRoll2dTotal: typeof starting.moneyRoll2d === 'number' ? starting.moneyRoll2d : fallback.moneyRoll2dTotal,
-    craftsmanSkill: inferCraftsmanSkill(draft.race, startingSkills),
-    merchantScholarChoice: inferMerchantScholarChoice(backgroundKind, startingSkills),
-    generalSkillName: inferGeneralSkillName(backgroundRoll, startingSkills),
-    name: typeof identity.name === 'string' ? identity.name : fallback.name,
-    gender: typeof identity.gender === 'string' ? identity.gender : fallback.gender,
-    age: typeof identity.age === 'number' ? String(identity.age) : fallback.age,
-    purchases: deriveSkillPurchases(startingSkills, skills),
-    equipment: {
-      weaponQuantities: readPurchasedQuantities(weaponItems),
-      armorQuantities: readPurchasedQuantities(armorItems),
-      shieldQuantities: readPurchasedQuantities(shieldItems),
-      gearQuantities: readPurchasedQuantities(gearItems),
-    },
-    submitNoteToGm: typeof draft.noteToGm === 'string' ? draft.noteToGm : fallback.submitNoteToGm,
-  };
-}
-
-function readCharacterIdentityName(item: CharacterItem): string {
-  const record = item as Record<string, unknown>;
-  const draft = record.draft && typeof record.draft === 'object' ? (record.draft as Record<string, unknown>) : {};
-  const identity = draft.identity && typeof draft.identity === 'object' ? (draft.identity as Record<string, unknown>) : {};
-  return typeof identity.name === 'string' ? identity.name.trim() : '';
-}
-
 function findSkillLevel(skills: Array<{ skill: string; level: number }>, skillName: string): number {
   return (
     skills.find((skill) => skill.skill.trim().toLowerCase() === skillName.trim().toLowerCase())?.level ?? 0
   );
-}
-
-function deriveSkillPurchases(
-  startingSkills: Array<{ skill: string; level: number }>,
-  skills: Array<{ skill: string; level: number }>
-): Array<{ skill: string; targetLevel: number }> {
-  return skillOptions
-    .map((option) => {
-      const baseLevel = findSkillLevel(startingSkills, option.skill);
-      const currentLevel = findSkillLevel(skills, option.skill);
-      return currentLevel !== baseLevel ? { skill: option.skill, targetLevel: currentLevel } : null;
-    })
-    .filter((entry): entry is { skill: string; targetLevel: number } => entry !== null);
 }
 
 function findPurchaseTargetLevel(
@@ -1671,68 +1486,6 @@ function findPurchaseTargetLevel(
   skillName: string
 ): number | null {
   return purchases.find((purchase) => purchase.skill.trim().toLowerCase() === skillName.trim().toLowerCase())?.targetLevel ?? null;
-}
-
-function inferCraftsmanSkill(
-  race: unknown,
-  startingSkills: Array<{ skill: string; level: number }>
-): string {
-  if (race !== 'DWARF') {
-    return '';
-  }
-  const craftsman = startingSkills.find((skill) => skill.level === 5);
-  return craftsman?.skill === 'CraftsmanSkill_CHOSEN' ? '' : (craftsman?.skill ?? '');
-}
-
-function inferMerchantScholarChoice(
-  backgroundKind: string | null,
-  startingSkills: Array<{ skill: string; level: number }>
-): WizardState['merchantScholarChoice'] {
-  if (backgroundKind === 'MERCHANT') {
-    return 'MERCHANT';
-  }
-  if (backgroundKind === 'SCHOLAR') {
-    return 'SAGE';
-  }
-  if (startingSkills.some((skill) => skill.skill === 'Merchant')) {
-    return 'MERCHANT';
-  }
-  return '';
-}
-
-function inferGeneralSkillName(
-  backgroundRoll: number,
-  startingSkills: Array<{ skill: string; level: number }>
-): string {
-  if (backgroundRoll !== 7) {
-    return '';
-  }
-
-  const generalSkill = startingSkills[0]?.skill ?? '';
-  return generalSkill === 'GeneralSkill_CHOSEN_BY_GM' ? '' : generalSkill;
-}
-
-function readPurchasedQuantities(items: unknown[]): Record<string, number> {
-  const quantities: Record<string, number> = {};
-  for (const item of items) {
-    if (!item || typeof item !== 'object') {
-      continue;
-    }
-    const record = item as Record<string, unknown>;
-    if (typeof record.itemId !== 'string') {
-      continue;
-    }
-    const qty = typeof record.qty === 'number' ? record.qty : 1;
-    quantities[record.itemId] = (quantities[record.itemId] ?? 0) + qty;
-  }
-  return quantities;
-}
-
-function normalizePurchasesForBaseSkills(
-  purchases: Array<{ skill: string; targetLevel: number }>,
-  baseSkills: Array<{ skill: string; level: number }>
-): Array<{ skill: string; targetLevel: number }> {
-  return purchases.filter((purchase) => purchase.targetLevel !== findSkillLevel(baseSkills, purchase.skill));
 }
 
 function formatSkillList(skills: Array<{ skill: string; level: number }>): string {
@@ -1890,23 +1643,6 @@ function calculateEquipmentTotalCost(
   }, 0);
 }
 
-function buildEquipmentCart(selection: WizardState['equipment']): {
-  weapons: string[];
-  armor: string[];
-  shields: string[];
-  gear: string[];
-} {
-  const toItems = (quantities: Record<string, number>) =>
-    Object.entries(quantities).flatMap(([itemId, qty]) => Array.from({ length: qty }, () => itemId));
-
-  return {
-    weapons: toItems(selection.weaponQuantities),
-    armor: toItems(selection.armorQuantities),
-    shields: toItems(selection.shieldQuantities),
-    gear: toItems(selection.gearQuantities),
-  };
-}
-
 function renderInventorySections(input: {
   category: InventoryCategory;
   title: string;
@@ -1993,14 +1729,6 @@ function formatInventoryItemHint(
     return `Used for: ${formatGroupLabel(option.usedFor)}.`;
   }
   return ' ';
-}
-
-function toInventoryQuantitiesFromIds(itemIds: string[]): Record<string, number> {
-  const quantities: Record<string, number> = {};
-  for (const itemId of itemIds) {
-    quantities[itemId] = (quantities[itemId] ?? 0) + 1;
-  }
-  return quantities;
 }
 
 function resolveMaxAffordableQuantity(
