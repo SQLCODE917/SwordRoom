@@ -12,7 +12,7 @@ import {
   resolveGameplayCheck,
   seedGameplaySession,
   selectGameplayProcedure,
-} from './gameplay.js';
+} from './index.js';
 
 function makeCombatProfile(
   overrides?: Partial<Parameters<typeof deriveCombatantFromProfile>[0]>

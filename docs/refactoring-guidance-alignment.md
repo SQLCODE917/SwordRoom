@@ -41,27 +41,35 @@ When existing code conflicts with the guidance, refactor the code unless the gui
 
 This creates instruction conflicts before any code is touched.
 
-### 2. `packages/shared` contains environment and network behavior
+### 2. `packages/shared` no longer contains service-side auth adapters, but the package boundary still needs guarding
 
-The package contract says shared content must be stable, side-effect free, and must not contain network access or environment-specific behavior. Current examples conflict with that:
+The package contract says shared content must be stable, side-effect free, and must not contain network access or environment-specific behavior. The service-side auth helpers have already been moved out of `shared`, but this boundary should now be enforced consistently in future refactors.
+
+The completed move established the correct home in:
 
 - [`packages/services/shared/src/authDev.ts`](/workspaces/hello-world-monorepo/packages/services/shared/src/authDev.ts)
 - [`packages/services/shared/src/authOidc.ts`](/workspaces/hello-world-monorepo/packages/services/shared/src/authOidc.ts)
 
-These belong in service-side or app-side adapter layers, not shared contracts.
+The remaining task here is preventative: keep new environment-aware helpers out of `shared` and add package-level enforcement if this class of mistake reappears.
 
-### 3. `packages/engine` is still coupled to app-shaped shared models
+### 3. `packages/engine` has started shedding app-shaped inputs, but character-creation structure is still flat
 
 The engine contract now says engine APIs should remain standalone and host-agnostic. Current examples still depend on app-specific shared shapes and fixtures:
 
-- [`packages/engine/src/gameplay.ts`](/workspaces/hello-world-monorepo/packages/engine/src/gameplay.ts)
-- [`packages/engine/src/gameplay.test.ts`](/workspaces/hello-world-monorepo/packages/engine/src/gameplay.test.ts)
+- [`packages/engine/src/index.ts`](/workspaces/hello-world-monorepo/packages/engine/src/index.ts)
+- [`packages/engine/src/types.ts`](/workspaces/hello-world-monorepo/packages/engine/src/types.ts)
 
-Examples of coupling:
+The gameplay slice has already been corrected:
 
-- `CharacterItem`
-- `GameplayLoopFixture`
-- gameplay session seeding that assumes app fixture structure rather than engine-owned scenario input
+- gameplay rules now live under [`packages/engine/src/gameplay/`](/workspaces/hello-world-monorepo/packages/engine/src/gameplay)
+- gameplay APIs now accept engine-owned scene and combat-profile inputs
+- dispatcher code now maps app models into engine inputs before calling the engine
+
+The remaining engine work is structural and package-wide:
+
+- split character-creation logic out of the root [`packages/engine/src/index.ts`](/workspaces/hello-world-monorepo/packages/engine/src/index.ts)
+- move game rules and character-creation rules fully into domain folders
+- keep reducing engine reliance on broad shared contract types where narrower engine-owned types are clearer
 
 ### 4. Services are not yet feature-shaped
 
@@ -273,6 +281,11 @@ Outcome:
 - shared becomes safe to import from all packages
 - fewer accidental side effects in packages that depend on shared
 
+Status:
+
+- completed for auth adapter extraction
+- follow-up enforcement should happen only if a future change tries to place environment-aware logic back into `shared`
+
 ### Workstream 3: Decouple engine from app-shaped models
 
 Introduce engine-owned input models and mapping boundaries.
@@ -312,6 +325,12 @@ Outcome:
 
 - engine becomes reusable across multiple host applications
 - engine tests become smaller and more rule-focused
+
+Status:
+
+- gameplay boundary extraction is completed
+- engine folder restructuring has started with `games/` and `gameplay/`
+- character-creation extraction is still required to finish this workstream
 
 ### Workstream 4: Introduce service feature folders and mapping layers
 
@@ -376,6 +395,21 @@ Recommended order:
 6. Follow-up doc refresh and dead-code removal.
 
 This order minimizes churn because the package boundaries become trustworthy before broad code motion begins.
+
+## Execution recommendations
+
+- Finish Workstream 3 immediately before starting Workstream 4.
+  Recommendation:
+  extract character-creation logic from [`packages/engine/src/index.ts`](/workspaces/hello-world-monorepo/packages/engine/src/index.ts) into a dedicated `characterCreation/` domain folder in the next engine-focused refactor slice.
+- Start Workstream 4 only after Workstream 3 is fully complete.
+  Recommendation:
+  begin with `packages/services/api/src/httpRoutes.ts` because it is the broadest remaining service boundary file and will benefit most from feature extraction once engine APIs are stable.
+- Start Workstream 5 only after the first API and dispatcher feature folders exist.
+  Recommendation:
+  begin with [`packages/web/src/pages/CharacterWizardPage.tsx`](/workspaces/hello-world-monorepo/packages/web/src/pages/CharacterWizardPage.tsx) because it is the clearest high-risk example of page-heavy orchestration and direct command coupling.
+- Revisit test-architecture cleanup during each workstream, not as a separate final sweep.
+  Recommendation:
+  add or move narrow tests in the same slice that introduces each new seam.
 
 ## Migration strategy
 

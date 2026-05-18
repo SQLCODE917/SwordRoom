@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { acceptInvite, createGame, createInvite, rejectInvite, setGameVisibility } from './games.js';
+import { acceptInvite, createGame, createInvite, rejectInvite, setGameVisibility } from './index.js';
 
 describe('games domain', () => {
   it('creates a private game with trimmed name', () => {
