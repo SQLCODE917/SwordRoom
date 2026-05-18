@@ -349,6 +349,13 @@ Outcome:
 - easier review of feature-specific changes
 - clearer boundary between orchestration and rules
 
+Status:
+
+- started
+- `packages/services/api/src/httpRoutes.ts` is now being decomposed into feature route modules
+- extracted feature route slices now include `commands`, `me`, `gameplay`, and core `games` reads
+- continue this workstream before starting Workstream 5
+
 ### Workstream 5: Move web behavior into feature modules and ViewModels
 
 Refactor broad pages into feature containers, selectors, and smaller hooks.
