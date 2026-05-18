@@ -12,6 +12,10 @@ import type { CharacterItem } from '@starter/shared';
 import { getGameplayLoopFixture } from '@starter/shared/fixtures';
 import type { CommandHandler } from '../types.js';
 import { requireActiveGame } from '../game/shared.js';
+import {
+  toGameplayCharacterCombatProfile,
+  toGameplaySceneSeed,
+} from './mappers.js';
 
 export const gmFrameGameplaySceneHandler: CommandHandler<'GMFrameGameplayScene'> = async (ctx, envelope) => {
   await requireActiveGame(ctx.db, envelope.gameId);
@@ -100,45 +104,6 @@ export const gmFrameGameplaySceneHandler: CommandHandler<'GMFrameGameplayScene'>
     notifications: [],
   };
 };
-
-function toGameplaySceneSeed(fixture: ReturnType<typeof getGameplayLoopFixture>) {
-  return {
-    scenarioId: fixture.seedId,
-    sceneTitle: fixture.scene.title,
-    sceneSummary: fixture.scene.summary,
-    focusPrompt: fixture.scene.focus_prompt,
-    enemies: fixture.enemies.map((enemy) => ({
-      combatantId: enemy.combatantId,
-      displayName: enemy.displayName,
-      lifePoints: enemy.lifePoints,
-      stats: enemy.stats,
-    })),
-  };
-}
-
-function toGameplayCharacterCombatProfile(
-  character: CharacterItem,
-  actorId: string,
-  fallbackDisplayName?: string | null
-) {
-  return {
-    actorId,
-    characterId: character.characterId,
-    fallbackDisplayName,
-    identityName: character.draft.identity.name,
-    abilities: {
-      agi: character.draft.ability.agi,
-      int: character.draft.ability.int,
-      lf: character.draft.ability.lf,
-    },
-    bonuses: {
-      dex: character.draft.bonus.dex,
-      agi: character.draft.bonus.agi,
-      str: character.draft.bonus.str,
-    },
-    skills: character.draft.skills,
-  };
-}
 
 export const submitGameplayIntentHandler: CommandHandler<'SubmitGameplayIntent'> = async (ctx, envelope) => {
   await requireActiveGame(ctx.db, envelope.gameId);

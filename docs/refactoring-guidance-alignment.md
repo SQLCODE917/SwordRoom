@@ -355,9 +355,12 @@ Status:
 - `packages/services/api/src/httpRoutes.ts` is now being decomposed into feature route modules
 - extracted feature route slices now include `admin`, `characters`, `commands`, `games`, `gameplay`, `gm`, and `me`
 - `httpRoutes.ts` now acts as a route-composition and shared-dispatch module rather than the primary home of route definitions
+- feature-owned `readApis` have been extracted from [`packages/services/api/src/index.ts`](/workspaces/hello-world-monorepo/packages/services/api/src/index.ts) into feature service modules
+- command intake orchestration has been extracted into the commands feature so `createApiService()` is now primarily composition
+- dispatcher gameplay handlers now have an explicit engine-facing mapper module for fixture and character translation
 - next in this workstream:
-  split feature-owned read/orchestration logic out of [`packages/services/api/src/index.ts`](/workspaces/hello-world-monorepo/packages/services/api/src/index.ts) before beginning Workstream 5
-- continue this workstream before starting Workstream 5
+  continue immediately with dispatcher-side feature mapper extraction so API and dispatcher boundaries both match the service guidance before beginning Workstream 5
+- do not begin Workstream 5 until that dispatcher extraction slice is complete
 
 ### Workstream 5: Move web behavior into feature modules and ViewModels
 
@@ -417,6 +420,12 @@ This order minimizes churn because the package boundaries become trustworthy bef
 - Continue Workstream 4 immediately after route extraction by moving feature-owned read/orchestration logic out of [`packages/services/api/src/index.ts`](/workspaces/hello-world-monorepo/packages/services/api/src/index.ts).
   Recommendation:
   extract the `readApis` methods feature by feature, starting with the same route families already split out of `httpRoutes.ts` so route and orchestration ownership converge together.
+- Continue Workstream 4 immediately after API service extraction by introducing explicit engine-facing mappers in the dispatcher feature handlers.
+  Recommendation:
+  start with the gameplay handler path first, because gameplay already has the clearest engine boundary and will let the dispatcher adopt feature-local mapping with the lowest behavior risk.
+- Continue Workstream 4 immediately after the gameplay mapper extraction by applying the same pattern to character creation handlers.
+  Recommendation:
+  do that in the next dispatcher-focused slice, because character handlers still mix shared persistence shapes with engine transition calls and are the next most important boundary to make explicit before Workstream 5.
 - Start Workstream 5 only after the first API and dispatcher feature folders exist.
   Recommendation:
   begin with [`packages/web/src/pages/CharacterWizardPage.tsx`](/workspaces/hello-world-monorepo/packages/web/src/pages/CharacterWizardPage.tsx) because it is the clearest high-risk example of page-heavy orchestration and direct command coupling.
