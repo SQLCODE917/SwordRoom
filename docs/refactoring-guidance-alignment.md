@@ -390,8 +390,9 @@ Status:
 - `packages/web/src/features/character-wizard/useCharacterWizardRouteContext.ts` now owns route validation and saved-character loading for the wizard route
 - `packages/web/src/features/character-wizard/viewModel.ts` now owns the wizard’s derived preview and action-state calculations
 - `packages/web/src/features/character-wizard/useCharacterWizardWorkflow.ts` now owns save/submit orchestration, snapshot refresh, and save-button workflow state, with direct unit coverage for payload shaping and snapshot mapping
+- `packages/web/src/features/character-wizard/components/CharacterWizardPanels.tsx` now owns the wizard step panels, autofill controls, snapshot rendering, and inventory row rendering as props-driven feature components, with direct rendering coverage for the autofill boundary
 - next in this workstream:
-  continue immediately by extracting the remaining step-panel and autofill rendering into props-driven `features/character-wizard/components/` modules so `CharacterWizardPage.tsx` becomes a route shell plus feature wiring layer instead of the main UI implementation
+  continue immediately by extracting stepper assembly, step save-button rendering, and page-level wizard navigation into a feature container or selector so `CharacterWizardPage.tsx` becomes a route shell plus a single character-wizard boundary component
 - keep Workstream 5 active before moving to a later cleanup pass
 
 ### Workstream 6: Align tests with seams
