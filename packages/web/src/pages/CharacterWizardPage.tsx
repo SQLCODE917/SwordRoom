@@ -47,9 +47,11 @@ import {
   SaveButtonState,
   serializeWizardState,
   toInventoryQuantitiesFromIds,
+  useCharacterWizardRouteContext,
   WizardMode,
   WizardState,
   WizardStepKey,
+  createCharacterWizardViewModel,
 } from '../features/character-wizard';
 import { describeFailure, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
@@ -107,10 +109,7 @@ function CharacterWizardPageContent({
   const commandStatusScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stepError, setStepError] = useState<string>(' ');
   const [snapshot, setSnapshot] = useState<CharacterSnapshot | null>(null);
-  const [savedCharacters, setSavedCharacters] = useState<CharacterItem[]>([]);
   const [selectedSavedCharacterId, setSelectedSavedCharacterId] = useState('');
-  const [routeError, setRouteError] = useState<string | null>(null);
-  const [routeReady, setRouteReady] = useState(false);
   const [lastSavedFingerprint, setLastSavedFingerprint] = useState<string | null>(null);
   const [saveStateByStep, setSaveStateByStep] = useState<Record<WizardStepKey, SaveButtonState>>(
     () => initialSaveButtonState
@@ -134,55 +133,14 @@ function CharacterWizardPageContent({
     setStepError(' ');
   }, [routeCharacterId, routeGameId]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadRouteContext = async () => {
-      setRouteReady(false);
-      setRouteError(null);
-      try {
-        if (wizardMode === 'library') {
-          if (!routePlayerId || routePlayerId !== auth.actorId) {
-            throw new Error(`Player "${routePlayerId ?? 'unknown'}" does not match the signed-in actor.`);
-          }
-        } else if (!isEditMode) {
-          const game = (await api.getPublicGames()).find((item) => item.gameId === routeGameId) ?? null;
-          if (!game) {
-            throw new Error(`Game ${routeGameId} was not found.`);
-          }
-          if (game.visibility !== 'PUBLIC') {
-            throw new Error(`${game.name} is not a public game`);
-          }
-        }
-
-        const characters = await api.getMyCharacters();
-        if (cancelled) {
-          return;
-        }
-        if (!isEditMode && wizardMode === 'apply' && characters.some((item) => item.gameId === routeGameId)) {
-          throw new Error('You already have a character in this game. Open it from My Characters or remove it before applying again.');
-        }
-        setSavedCharacters(characters);
-        setRouteError(null);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-        setSavedCharacters([]);
-        setRouteError(error instanceof Error ? error.message : String(error));
-      } finally {
-        if (!cancelled) {
-          setRouteReady(true);
-        }
-      }
-    };
-
-    void loadRouteContext();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [api, auth.actorId, isEditMode, routeGameId, routePlayerId, wizardMode]);
+  const { routeReady, routeError, savedCharacters } = useCharacterWizardRouteContext({
+    actorId: auth.actorId,
+    api,
+    isEditMode,
+    routeGameId,
+    routePlayerId,
+    wizardMode,
+  });
 
   useEffect(() => {
     if (!routeReady || routeError) {
@@ -246,65 +204,17 @@ function CharacterWizardPageContent({
     });
   }, [activeStepIndex]);
 
-  const derived = useMemo(() => computeDerivedAbilities(state.subAbility), [state.subAbility]);
-  const backgroundEligible = resolveBackgroundEligibility(state.race, state.raisedBy);
-  const isDwarfPath = state.race === 'DWARF';
-  const equipmentOptions = useMemo(() => getEquipmentOptionsForStrength(derived.STR), [derived.STR]);
-  const equipmentCart = useMemo(() => buildEquipmentCart(state.equipment), [state.equipment]);
-  const startingPreview = useMemo(
+  const view = useMemo(
     () =>
-      computeStartingPackagePreview({
-        characterId: state.characterId,
-        race: state.race,
-        raisedBy: state.raisedBy,
-        subAbility: state.subAbility,
-        backgroundRoll2dTotal: backgroundEligible ? state.backgroundRoll2dTotal : undefined,
-        startingMoneyRoll2dTotal: state.moneyRoll2dTotal,
-        craftsmanSkill: state.craftsmanSkill.trim() || undefined,
-        merchantScholarChoice: state.merchantScholarChoice || undefined,
-        generalSkillName: state.generalSkillName.trim() || undefined,
+      createCharacterWizardViewModel({
+        state,
+        snapshot,
+        isExecutingCommand,
+        lastSavedFingerprint,
+        wizardMode,
       }),
-    [
-      backgroundEligible,
-      state.backgroundRoll2dTotal,
-      state.characterId,
-      state.craftsmanSkill,
-      state.generalSkillName,
-      state.merchantScholarChoice,
-      state.moneyRoll2dTotal,
-      state.race,
-      state.raisedBy,
-      state.subAbility,
-    ]
+    [state, snapshot, isExecutingCommand, lastSavedFingerprint, wizardMode]
   );
-  const purchasePreview = useMemo(
-    () => computeSkillPurchasePreview(startingPreview.state, state.purchases),
-    [startingPreview.state, state.purchases]
-  );
-  const equipmentPreview = useMemo(
-    () => computeEquipmentPreview(purchasePreview.state, equipmentCart),
-    [equipmentCart, purchasePreview.state]
-  );
-  const nameError = state.name.trim() === '' ? 'Name is required.' : ' ';
-  const stateFingerprint = useMemo(() => serializeWizardState(state), [state]);
-  const isDirty = lastSavedFingerprint === null || lastSavedFingerprint !== stateFingerprint;
-  const canEditDraft = snapshot?.status !== 'PENDING' && snapshot?.status !== 'APPROVED';
-  const previewErrors = [...startingPreview.errors, ...purchasePreview.errors, ...equipmentPreview.errors];
-  const isDraftReadyForSubmit =
-    state.name.trim() !== '' &&
-    startingPreview.state !== null &&
-    purchasePreview.state !== null &&
-    equipmentPreview.state !== null &&
-    previewErrors.length === 0;
-  const canExecuteFinalAction = !isExecutingCommand && canEditDraft && isDraftReadyForSubmit;
-  const backgroundLabel = backgroundsByRoll[state.backgroundRoll2dTotal] ?? 'No background result for this roll.';
-  const availableMoney = purchasePreview.state?.startingPackage?.startingMoneyGamels ?? 0;
-  const finalActionLabel =
-    wizardMode === 'library'
-      ? snapshot ? 'Update Character' : 'Create Character'
-      : snapshot?.status === 'PENDING'
-        ? 'Submitted For Review'
-        : 'Submit Character For Approval';
 
   const steps: StepperItem[] = [
     {
@@ -329,8 +239,8 @@ function CharacterWizardPageContent({
           />
           <InfoList
             lines={[
-              `Background table path: ${backgroundEligible ? 'Table 1-5' : 'Race table 1-6'}`,
-              `Current derived STR / MP preview: ${derived.STR} / ${derived.MP}`,
+              `Background table path: ${view.backgroundEligible ? 'Table 1-5' : 'Race table 1-6'}`,
+              `Current derived STR / MP preview: ${view.derived.STR} / ${view.derived.MP}`,
             ]}
           />
         </WizardStep>
@@ -409,14 +319,14 @@ function CharacterWizardPageContent({
             </fieldset>
             <div className="l-col l-grow">
               <div className="l-split">
-                <StatBox label="DEX" value={derived.DEX} bonus={computeAbilityBonus(derived.DEX)} tone="dex" />
-                <StatBox label="AGI" value={derived.AGI} bonus={computeAbilityBonus(derived.AGI)} tone="agi" />
-                <StatBox label="INT" value={derived.INT} bonus={computeAbilityBonus(derived.INT)} tone="int" />
+                <StatBox label="DEX" value={view.derived.DEX} bonus={computeAbilityBonus(view.derived.DEX)} tone="dex" />
+                <StatBox label="AGI" value={view.derived.AGI} bonus={computeAbilityBonus(view.derived.AGI)} tone="agi" />
+                <StatBox label="INT" value={view.derived.INT} bonus={computeAbilityBonus(view.derived.INT)} tone="int" />
               </div>
               <div className="l-split">
-                <StatBox label="STR" value={derived.STR} bonus={computeAbilityBonus(derived.STR)} tone="str" />
-                <StatBox label="LF" value={derived.LF} bonus={computeAbilityBonus(derived.LF)} tone="lf" />
-                <StatBox label="MP" value={derived.MP} bonus={computeAbilityBonus(derived.MP)} tone="mp" />
+                <StatBox label="STR" value={view.derived.STR} bonus={computeAbilityBonus(view.derived.STR)} tone="str" />
+                <StatBox label="LF" value={view.derived.LF} bonus={computeAbilityBonus(view.derived.LF)} tone="lf" />
+                <StatBox label="MP" value={view.derived.MP} bonus={computeAbilityBonus(view.derived.MP)} tone="mp" />
               </div>
             </div>
           </div>
@@ -427,11 +337,11 @@ function CharacterWizardPageContent({
     {
       id: 'step-background',
       title: stepTitles[2]!,
-      isError: startingPreview.errors.length > 0,
+      isError: view.startingPreview.errors.length > 0,
       panel: (
         <WizardStep title="3) Background rolls" enabled={activeStepIndex === 2}>
           <fieldset className="l-col" disabled={isExecutingCommand}>
-            {backgroundEligible ? (
+            {view.backgroundEligible ? (
               <>
                 <FieldSelect
                   label="Background result"
@@ -459,7 +369,7 @@ function CharacterWizardPageContent({
                       setState((prev) => ({
                         ...prev,
                         merchantScholarChoice: value as WizardState['merchantScholarChoice'],
-                        purchases: normalizePurchasesForBaseSkills(prev.purchases, startingPreview.startingSkills),
+                        purchases: normalizePurchasesForBaseSkills(prev.purchases, view.startingPreview.startingSkills),
                       }))
                     }
                     hint="Merchant 3 or Sage 1 must be selected for background roll 8."
@@ -475,7 +385,7 @@ function CharacterWizardPageContent({
                 ) : null}
               </>
             ) : null}
-            {isDwarfPath ? (
+            {view.isDwarfPath ? (
               <FieldText
                 label="Craftsman skill"
                 value={state.craftsmanSkill}
@@ -501,13 +411,13 @@ function CharacterWizardPageContent({
           </fieldset>
           <InfoList
             lines={[
-              backgroundEligible ? backgroundLabel : 'Background table not applicable for this race path.',
-              `Starting skills: ${formatSkillList(startingPreview.startingSkills)}`,
-              `Starting EXP / remaining EXP: ${startingPreview.expTotal} / ${purchasePreview.expUnspent}`,
-              `Starting money / remaining money: ${startingPreview.moneyGamels} / ${equipmentPreview.moneyRemaining}`,
+              view.backgroundEligible ? view.backgroundLabel : 'Background table not applicable for this race path.',
+              `Starting skills: ${formatSkillList(view.startingPreview.startingSkills)}`,
+              `Starting EXP / remaining EXP: ${view.startingPreview.expTotal} / ${view.purchasePreview.expUnspent}`,
+              `Starting money / remaining money: ${view.startingPreview.moneyGamels} / ${view.equipmentPreview.moneyRemaining}`,
             ]}
           />
-          <ErrorList errors={startingPreview.errors} />
+          <ErrorList errors={view.startingPreview.errors} />
         </WizardStep>
       ),
       action: renderSaveButton('background', activeStepIndex === 2),
@@ -523,7 +433,7 @@ function CharacterWizardPageContent({
               label="Name"
               value={state.name}
               onChange={(value) => setState((prev) => ({ ...prev, name: value }))}
-              errorText={nameError}
+              errorText={view.nameError}
               isError={state.name.trim() === ''}
             />
             <div className="l-split">
@@ -542,15 +452,15 @@ function CharacterWizardPageContent({
     {
       id: 'step-exp',
       title: stepTitles[4]!,
-      isError: purchasePreview.errors.length > 0,
+      isError: view.purchasePreview.errors.length > 0,
       panel: (
         <WizardStep title="5) EXP spend" enabled={activeStepIndex === 4}>
           <fieldset className="l-col" disabled={isExecutingCommand}>
             {skillOptions.map((option) => {
-              const baseLevel = findSkillLevel(startingPreview.startingSkills, option.skill);
+              const baseLevel = findSkillLevel(view.startingPreview.startingSkills, option.skill);
               const currentTarget = findPurchaseTargetLevel(state.purchases, option.skill) ?? baseLevel;
               const levels = Array.from({ length: option.maxLevel + 1 }, (_, index) => index);
-              const levelCosts = describeSkillLevelCosts(startingPreview.state, option.skill, option.maxLevel);
+              const levelCosts = describeSkillLevelCosts(view.startingPreview.state, option.skill, option.maxLevel);
               const costSchedule = formatSkillCostSchedule(levelCosts);
 
               return (
@@ -569,19 +479,19 @@ function CharacterWizardPageContent({
                     disabled: level !== baseLevel && !isSkillTargetAffordable(option.skill, level, baseLevel),
                   }))}
                   onChange={(value) => updateSkillPurchase(option.skill, Number(value), baseLevel)}
-                  hint={`Base ${baseLevel}. Costs: ${costSchedule}. Final skills: ${formatSkillList(purchasePreview.skills)}`}
+                  hint={`Base ${baseLevel}. Costs: ${costSchedule}. Final skills: ${formatSkillList(view.purchasePreview.skills)}`}
                 />
               );
             })}
           </fieldset>
           <InfoList
             lines={[
-              `Starting skills: ${formatSkillList(startingPreview.startingSkills)}`,
-              `Current adventurer skills: ${formatSkillList(purchasePreview.skills)}`,
-              `EXP remaining: ${purchasePreview.expUnspent}`,
+              `Starting skills: ${formatSkillList(view.startingPreview.startingSkills)}`,
+              `Current adventurer skills: ${formatSkillList(view.purchasePreview.skills)}`,
+              `EXP remaining: ${view.purchasePreview.expUnspent}`,
             ]}
           />
-          <ErrorList errors={purchasePreview.errors} />
+          <ErrorList errors={view.purchasePreview.errors} />
         </WizardStep>
       ),
       action: renderSaveButton('exp', activeStepIndex === 4),
@@ -589,55 +499,55 @@ function CharacterWizardPageContent({
     {
       id: 'step-equipment',
       title: stepTitles[5]!,
-      isError: equipmentPreview.errors.length > 0,
+      isError: view.equipmentPreview.errors.length > 0,
       panel: (
         <WizardStep title="6) Equipment cart" enabled={activeStepIndex === 5}>
           <fieldset className="l-col" disabled={isExecutingCommand}>
             {renderInventorySections({
               category: 'weapon',
               title: 'Weapons',
-              options: equipmentOptions,
+              options: view.equipmentOptions,
               quantities: state.equipment.weaponQuantities,
-              availableMoney,
+              availableMoney: view.availableMoney,
               selection: state.equipment,
               onQuantityChange: setInventoryQuantity,
             })}
             {renderInventorySections({
               category: 'armor',
               title: 'Armor',
-              options: equipmentOptions,
+              options: view.equipmentOptions,
               quantities: state.equipment.armorQuantities,
-              availableMoney,
+              availableMoney: view.availableMoney,
               selection: state.equipment,
               onQuantityChange: setInventoryQuantity,
             })}
             {renderInventorySections({
               category: 'shield',
               title: 'Shields',
-              options: equipmentOptions,
+              options: view.equipmentOptions,
               quantities: state.equipment.shieldQuantities,
-              availableMoney,
+              availableMoney: view.availableMoney,
               selection: state.equipment,
               onQuantityChange: setInventoryQuantity,
             })}
             {renderInventorySections({
               category: 'gear',
               title: 'Other Equipment',
-              options: equipmentOptions,
+              options: view.equipmentOptions,
               quantities: state.equipment.gearQuantities,
-              availableMoney,
+              availableMoney: view.availableMoney,
               selection: state.equipment,
               onQuantityChange: setInventoryQuantity,
             })}
           </fieldset>
           <InfoList
             lines={[
-              `Cart: ${formatCartSummary(equipmentCart)}`,
-              `Total cost: ${equipmentPreview.totalCost} G`,
-              `Money remaining: ${equipmentPreview.moneyRemaining} G`,
+              `Cart: ${formatCartSummary(view.equipmentCart)}`,
+              `Total cost: ${view.equipmentPreview.totalCost} G`,
+              `Money remaining: ${view.equipmentPreview.moneyRemaining} G`,
             ]}
           />
-          <ErrorList errors={equipmentPreview.errors} />
+          <ErrorList errors={view.equipmentPreview.errors} />
         </WizardStep>
       ),
       action: renderSaveButton('equipment', activeStepIndex === 5),
@@ -645,7 +555,7 @@ function CharacterWizardPageContent({
     {
       id: 'step-submit',
       title: stepTitles[6]!,
-      isError: !isDraftReadyForSubmit,
+      isError: !view.isDraftReadyForSubmit,
       panel: (
         <WizardStep title={wizardMode === 'library' ? '7) Create Character' : '7) Submit'} enabled={activeStepIndex === 6}>
           <fieldset className="l-col" disabled={isExecutingCommand}>
@@ -660,28 +570,28 @@ function CharacterWizardPageContent({
               }
             />
             <button
-              className={`c-btn ${canExecuteFinalAction ? '' : 'is-disabled'}`.trim()}
+              className={`c-btn ${view.canExecuteFinalAction ? '' : 'is-disabled'}`.trim()}
               type="button"
-              disabled={!canExecuteFinalAction}
+              disabled={!view.canExecuteFinalAction}
               onClick={() => void executeFinalAction()}
             >
-              {finalActionLabel}
+              {view.finalActionLabel}
             </button>
             <InfoList
               lines={[
                 wizardMode === 'library'
-                  ? isDirty || !snapshot || snapshot.version === null
+                  ? view.isDirty || !snapshot || snapshot.version === null
                     ? 'Create will save the current draft to your saved characters.'
                     : 'Create updates the current saved character draft.'
                   : snapshot?.status === 'PENDING'
                     ? 'This character is already pending GM review.'
-                    : isDirty || !snapshot || snapshot.version === null
+                    : view.isDirty || !snapshot || snapshot.version === null
                       ? 'Submit will save the current draft first, then send it for review.'
                       : 'Submit uses the current saved draft revision.',
-                `Ready to ${wizardMode === 'library' ? 'create' : 'submit'}: ${isDraftReadyForSubmit ? 'yes' : 'no'}`,
+                `Ready to ${wizardMode === 'library' ? 'create' : 'submit'}: ${view.isDraftReadyForSubmit ? 'yes' : 'no'}`,
               ]}
             />
-            <ErrorList errors={state.name.trim() === '' ? ['Name is required.'] : previewErrors} />
+            <ErrorList errors={state.name.trim() === '' ? ['Name is required.'] : view.previewErrors} />
           </fieldset>
         </WizardStep>
       ),
@@ -915,7 +825,7 @@ function CharacterWizardPageContent({
     if (targetLevel <= baseLevel) {
       return true;
     }
-    if (!startingPreview.state) {
+    if (!view.startingPreview.state) {
       return false;
     }
 
@@ -923,7 +833,7 @@ function CharacterWizardPageContent({
       targetLevel === baseLevel
         ? state.purchases.filter((entry) => entry.skill !== skill)
         : [...state.purchases.filter((entry) => entry.skill !== skill), { skill, targetLevel }];
-    const candidatePreview = computeSkillPurchasePreview(startingPreview.state, candidatePurchases);
+    const candidatePreview = computeSkillPurchasePreview(view.startingPreview.state, candidatePurchases);
     return !candidatePreview.errors.includes('not enough starting EXP');
   }
 
@@ -939,15 +849,15 @@ function CharacterWizardPageContent({
       backgroundRoll2dTotal: state.backgroundRoll2dTotal,
       moneyRoll2dTotal: state.moneyRoll2dTotal,
       purchases: state.purchases.map((entry) => `${entry.skill}:${entry.targetLevel}`),
-      cart: equipmentCart,
+      cart: view.equipmentCart,
       namePresent: state.name.trim().length > 0,
       noteToGmPresent: state.submitNoteToGm.trim().length > 0,
       expectedVersion: snapshot?.version ?? null,
     });
     try {
-      if (!isDraftReadyForSubmit) {
+      if (!view.isDraftReadyForSubmit) {
         throw new Error(
-          previewErrors[0] ??
+          view.previewErrors[0] ??
             (wizardMode === 'library'
               ? 'Complete the required fields before creating the character.'
               : 'Complete the required fields before submitting for approval.')
@@ -997,7 +907,7 @@ function CharacterWizardPageContent({
     const buttonState = saveStateByStep[stepKey];
     const isSaving = buttonState === 'saving';
     const isSaved = buttonState === 'saved';
-    const canSave = enabled && !isExecutingCommand && canEditDraft;
+    const canSave = enabled && !isExecutingCommand && view.canEditDraft;
 
     return (
       <button
@@ -1152,10 +1062,10 @@ function CharacterWizardPageContent({
       characterId: state.characterId,
       stepKey,
       expectedVersion: snapshot?.version ?? null,
-      backgroundApplied: backgroundEligible || isDwarfPath,
+      backgroundApplied: view.backgroundEligible || view.isDwarfPath,
       noteToGmPresent: state.submitNoteToGm.trim().length > 0,
       purchases: state.purchases.map((entry) => `${entry.skill}:${entry.targetLevel}`),
-      cart: equipmentCart,
+      cart: view.equipmentCart,
     });
 
     const payload: Omit<Parameters<typeof buildSaveCharacterDraftEnvelope>[0], 'gameId' | 'characterId'> = {
@@ -1173,11 +1083,11 @@ function CharacterWizardPageContent({
         gender: state.gender.trim() ? state.gender.trim() : null,
       },
       purchases: state.purchases,
-      cart: equipmentCart,
+      cart: view.equipmentCart,
       noteToGm: state.submitNoteToGm,
     };
 
-    if (backgroundEligible) {
+    if (view.backgroundEligible) {
       payload.backgroundRoll2dTotal = state.backgroundRoll2dTotal;
     }
 

@@ -387,8 +387,10 @@ Status:
 - `packages/web/src/features/character-wizard/` now owns wizard state helpers, hydration/serialization helpers, autofill data, and command-envelope builders
 - `packages/web/src/pages/CharacterWizardPage.tsx` now submits command envelopes through `useCommandWorkflow().submitEnvelopeAndAwait()` instead of using a flow helper that called `api.postCommand()` directly
 - the old `packages/web/src/flows/characterWizardCommands.ts` helper has been removed
+- `packages/web/src/features/character-wizard/useCharacterWizardRouteContext.ts` now owns route validation and saved-character loading for the wizard route
+- `packages/web/src/features/character-wizard/viewModel.ts` now owns the wizard’s derived preview and action-state calculations
 - next in this workstream:
-  continue immediately by extracting a character-wizard selector or feature hook so `CharacterWizardPage.tsx` stops owning as much route orchestration and derived preview wiring directly
+  continue immediately by extracting save/submit orchestration and snapshot refresh into a character-wizard feature hook so `CharacterWizardPage.tsx` stops owning as much command workflow behavior directly
 - keep Workstream 5 active before moving to a later cleanup pass
 
 ### Workstream 6: Align tests with seams
@@ -447,6 +449,9 @@ This order minimizes churn because the package boundaries become trustworthy bef
 - Continue Workstream 5 immediately after the first character-wizard feature extraction by moving route orchestration and derived preview wiring behind a feature hook or selector.
   Recommendation:
   do that next, because the page still owns route loading, snapshot refresh, save/submit orchestration, and large amounts of derived preview state that should become a connected feature boundary before any JSX decomposition.
+- Continue Workstream 5 immediately after the route-context and view-model extraction by moving save/submit orchestration and snapshot refresh behind a feature hook.
+  Recommendation:
+  do that next, because `CharacterWizardPage.tsx` still owns the command-workflow side effects and snapshot sync lifecycle, and extracting that will make the page a much thinner route shell before any component-level decomposition.
 - Start Workstream 5 only after the first API and dispatcher feature folders exist.
   Recommendation:
   begin with [`packages/web/src/pages/CharacterWizardPage.tsx`](/workspaces/hello-world-monorepo/packages/web/src/pages/CharacterWizardPage.tsx) because it is the clearest high-risk example of page-heavy orchestration and direct command coupling.
