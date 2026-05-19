@@ -4,6 +4,7 @@ export interface VerifyLocalOidcJwtInput {
   authorizationHeader?: string;
   issuer: string;
   audience?: string;
+  jwksUri?: string;
 }
 
 export interface VerifiedOidcIdentity {
@@ -15,7 +16,7 @@ const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 export async function verifyLocalOidcJwt(input: VerifyLocalOidcJwtInput): Promise<VerifiedOidcIdentity> {
   const token = extractBearerToken(input.authorizationHeader);
-  const jwks = getOrCreateJwks(input.issuer);
+  const jwks = getOrCreateJwks(input.issuer, input.jwksUri);
 
   const verification = await jwtVerify(token, jwks, {
     issuer: input.issuer,
@@ -45,9 +46,9 @@ function extractBearerToken(authorizationHeader?: string): string {
   return token;
 }
 
-function getOrCreateJwks(issuer: string) {
+function getOrCreateJwks(issuer: string, jwksUriOverride?: string) {
   const normalizedIssuer = issuer.replace(/\/$/, '');
-  const jwksUri = `${normalizedIssuer}/protocol/openid-connect/certs`;
+  const jwksUri = jwksUriOverride?.trim() || `${normalizedIssuer}/protocol/openid-connect/certs`;
 
   let jwks = jwksCache.get(jwksUri);
   if (!jwks) {

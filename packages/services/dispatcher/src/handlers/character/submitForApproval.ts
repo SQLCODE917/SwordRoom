@@ -1,6 +1,8 @@
 import { finalizeCharacter, submitForApproval } from '@starter/engine';
 import type { CommandHandler } from '../types.js';
-import { requireCharacter, throwOnEngineErrors, toCharacterDraft, toEngineState } from './shared.js';
+import { throwOnEngineErrors } from './engineHelpers.js';
+import { toCharacterDraft, toEngineState } from './mappers.js';
+import { requireCharacter } from './repository.js';
 
 export const submitForApprovalHandler: CommandHandler<'SubmitCharacterForApproval'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);

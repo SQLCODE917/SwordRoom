@@ -1,5 +1,7 @@
 import type { CommandHandler } from '../types.js';
-import { purchaseAndValidate, requireCharacter, toCharacterDraft, toEngineState, toEquipmentCart } from './shared.js';
+import { purchaseAndValidate } from './engineHelpers.js';
+import { toCharacterDraft, toEngineState, toEquipmentCart } from './mappers.js';
+import { requireCharacter } from './repository.js';
 
 export const purchaseStarterEquipmentHandler: CommandHandler<'PurchaseStarterEquipment'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);

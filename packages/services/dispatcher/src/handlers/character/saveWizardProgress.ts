@@ -2,14 +2,12 @@ import type { CharacterDraft, CharacterItem } from '@starter/shared';
 import type { CommandHandler } from '../types.js';
 import {
   applyStartingAndValidate,
-  assertActorCanCreateCharacterInGame,
   computeAndValidate,
-  emptyCharacterDraft,
   purchaseAndValidate,
   spendExpAndValidate,
-  toCharacterDraft,
-  toEngineState,
-} from './shared.js';
+} from './engineHelpers.js';
+import { emptyCharacterDraft, toCharacterDraft, toEngineState, toEquipmentCart } from './mappers.js';
+import { assertActorCanCreateCharacterInGame } from './repository.js';
 
 export const saveDraftHandler: CommandHandler<'SaveCharacterDraft'> = async (ctx, envelope) => {
   const existing = await ctx.db.characterRepository.getCharacter(envelope.gameId, envelope.payload.characterId);
@@ -74,12 +72,7 @@ export const saveDraftHandler: CommandHandler<'SaveCharacterDraft'> = async (ctx
     purchases: envelope.payload.purchases,
   });
 
-  engineState = purchaseAndValidate(engineState, {
-    weapons: toStringArray(envelope.payload.cart.weapons),
-    armor: toStringArray(envelope.payload.cart.armor),
-    shields: toStringArray(envelope.payload.cart.shields),
-    gear: toStringArray(envelope.payload.cart.gear),
-  });
+  engineState = purchaseAndValidate(engineState, toEquipmentCart(envelope.payload.cart));
 
   const nextDraft: CharacterDraft = {
     ...toCharacterDraft(previous, engineState),
@@ -203,13 +196,6 @@ function createBaseCharacter(
 
 function isSameDraft(left: CharacterDraft, right: CharacterDraft): boolean {
   return JSON.stringify(left) === JSON.stringify(right);
-}
-
-function toStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.map((item) => String(item));
 }
 
 function toSavedBackgroundKind(

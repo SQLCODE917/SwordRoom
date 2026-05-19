@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  deriveCombatantFromCharacter,
+  deriveCombatantFromProfile,
   openCombatRound,
   seedGameplaySession,
 } from '@starter/engine';
@@ -432,12 +432,35 @@ function createCharacter(input: {
 function createSeededSession(characters: CharacterItem[]): GameplaySessionItem {
   const fixture = getGameplayLoopFixture('rpg_sample_tavern');
   const seeded = seedGameplaySession({
-    fixture,
+    scene: {
+      scenarioId: fixture.seedId,
+      sceneTitle: fixture.scene.title,
+      sceneSummary: fixture.scene.summary,
+      focusPrompt: fixture.scene.focus_prompt,
+      enemies: fixture.enemies.map((enemy) => ({
+        combatantId: enemy.combatantId,
+        displayName: enemy.displayName,
+        lifePoints: enemy.lifePoints,
+        stats: enemy.stats,
+      })),
+    },
     createdAt: '2026-03-01T09:00:00.000Z',
     playerCombatants: characters.map((character) =>
-      deriveCombatantFromCharacter({
+      deriveCombatantFromProfile({
         actorId: character.ownerPlayerId,
-        character,
+        characterId: character.characterId,
+        identityName: character.draft.identity.name,
+        abilities: {
+          agi: character.draft.ability.agi,
+          int: character.draft.ability.int,
+          lf: character.draft.ability.lf,
+        },
+        bonuses: {
+          dex: character.draft.bonus.dex,
+          agi: character.draft.bonus.agi,
+          str: character.draft.bonus.str,
+        },
+        skills: character.draft.skills,
       })
     ),
   });

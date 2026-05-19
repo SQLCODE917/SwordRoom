@@ -1,7 +1,7 @@
 import {
   closeCombat,
   declareCombatAction,
-  deriveCombatantFromCharacter,
+  deriveCombatantFromProfile,
   openCombatRound,
   resolveCombatTurn,
   resolveGameplayCheck,
@@ -12,11 +12,16 @@ import type { CharacterItem } from '@starter/shared';
 import { getGameplayLoopFixture } from '@starter/shared/fixtures';
 import type { CommandHandler } from '../types.js';
 import { requireActiveGame } from '../game/shared.js';
+import {
+  toGameplayCharacterCombatProfile,
+  toGameplaySceneSeed,
+} from './mappers.js';
 
 export const gmFrameGameplaySceneHandler: CommandHandler<'GMFrameGameplayScene'> = async (ctx, envelope) => {
   await requireActiveGame(ctx.db, envelope.gameId);
   const existing = await ctx.db.gameplayRepository.getSession(envelope.gameId);
   const fixture = getGameplayLoopFixture(envelope.payload.seedId);
+  const scene = toGameplaySceneSeed(fixture);
   const memberships = await ctx.db.membershipRepository.listMembershipsForGame(envelope.gameId);
 
   const playerCombatants = (
@@ -27,17 +32,15 @@ export const gmFrameGameplaySceneHandler: CommandHandler<'GMFrameGameplayScene'>
           return null;
         }
         const profile = await ctx.db.playerRepository.getPlayerProfile(membership.playerId);
-        return deriveCombatantFromCharacter({
-          actorId: membership.playerId,
-          character,
-          fallbackDisplayName: profile?.displayName ?? membership.playerId,
-        });
+        return deriveCombatantFromProfile(
+          toGameplayCharacterCombatProfile(character, membership.playerId, profile?.displayName ?? membership.playerId)
+        );
       })
     )
   ).filter((combatant): combatant is NonNullable<typeof combatant> => combatant !== null);
 
   const seeded = seedGameplaySession({
-    fixture,
+    scene,
     createdAt: envelope.createdAt,
     playerCombatants,
   });

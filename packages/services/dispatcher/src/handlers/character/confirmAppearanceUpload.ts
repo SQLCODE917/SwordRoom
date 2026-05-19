@@ -1,6 +1,6 @@
 import type { CharacterDraft } from '@starter/shared';
 import type { CommandHandler } from '../types.js';
-import { requireCharacter } from './shared.js';
+import { requireCharacter } from './repository.js';
 
 export const confirmAppearanceUploadHandler: CommandHandler<'ConfirmCharacterAppearanceUpload'> = async (ctx, envelope) => {
   const character = await requireCharacter(ctx.db, envelope.gameId, envelope.payload.characterId);
