@@ -27,6 +27,7 @@ export interface WizardAutofillValues {
 export const CHARACTER_SHARE_INTENT_OPTIONS: Array<{ value: SharedCharacterDraftIntent; label: string }> = [
   { value: 'DRAFT_SNAPSHOT', label: 'Draft snapshot' },
   { value: 'ASK_QUESTION', label: 'Ask a question' },
+  { value: 'COMPARE_DIRECTIONS', label: 'Compare directions' },
   { value: 'ANSWER_GM_PROMPT', label: 'Answer GM prompt' },
 ];
 

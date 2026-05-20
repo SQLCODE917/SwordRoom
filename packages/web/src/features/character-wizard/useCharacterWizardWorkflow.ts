@@ -347,6 +347,9 @@ export function useCharacterWizardWorkflow(input: {
       if (shareIntent === 'ASK_QUESTION' && contextNote.length === 0) {
         throw new Error('Enter the question you want the party or GM to answer.');
       }
+      if (shareIntent === 'COMPARE_DIRECTIONS' && contextNote.length === 0) {
+        throw new Error('Describe the two directions you want the party to compare.');
+      }
       if (shareIntent === 'ANSWER_GM_PROMPT' && promptId.length === 0) {
         throw new Error('No active GM prompt is available for this share intent.');
       }
@@ -578,6 +581,9 @@ function buildSharedCharacterDraftArtifact(input: {
 function buildSharedDraftChatBody(input: { characterName: string; shareIntent: SharedCharacterDraftIntent }): string {
   if (input.shareIntent === 'ASK_QUESTION') {
     return `${input.characterName} is asking for draft feedback.`;
+  }
+  if (input.shareIntent === 'COMPARE_DIRECTIONS') {
+    return `${input.characterName} is comparing two build directions.`;
   }
   if (input.shareIntent === 'ANSWER_GM_PROMPT') {
     return `${input.characterName} answered the GM prompt with a draft update.`;

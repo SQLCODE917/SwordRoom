@@ -340,6 +340,74 @@ describe('GameChatPage', () => {
     expect(screen.getByRole('link', { name: 'Open Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
   });
 
+  it('renders compare-direction shares with their intent and note', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-1',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-1' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [
+          {
+            messageId: 'msg-1',
+            senderPlayerId: 'player-1',
+            senderDisplayName: 'Borin',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            body: 'Borin is comparing two build directions.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-1',
+              snapshotVersion: 3,
+              characterName: 'Borin',
+              race: 'HUMAN',
+              status: 'DRAFT',
+              shareIntent: 'COMPARE_DIRECTIONS',
+              contextNote: 'Option A keeps Fighter 1. Option B pivots to Priest 2.',
+              abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+              skillSummary: ['Fighter 1'],
+            },
+            createdAt: '2026-03-01T09:16:00.000Z',
+          },
+        ],
+      })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Borin is comparing two build directions.')).toBeTruthy();
+    expect(screen.getByText('Share: Compare directions')).toBeTruthy();
+    expect(screen.getByText('Option A keeps Fighter 1. Option B pivots to Priest 2.')).toBeTruthy();
+  });
+
   it('opens a preview sheet for a shared character artifact and hands reply context to the composer', async () => {
     vi.mocked(useAuthProvider).mockReturnValue(
       createAuth({

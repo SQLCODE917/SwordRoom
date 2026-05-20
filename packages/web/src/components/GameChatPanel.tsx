@@ -294,6 +294,9 @@ function formatCharacterDraftIntent(artifact: SharedCharacterDraftArtifact): str
   if (artifact.shareIntent === 'ASK_QUESTION') {
     return 'Ask a question';
   }
+  if (artifact.shareIntent === 'COMPARE_DIRECTIONS') {
+    return 'Compare directions';
+  }
   if (artifact.shareIntent === 'ANSWER_GM_PROMPT') {
     return 'Answer GM prompt';
   }

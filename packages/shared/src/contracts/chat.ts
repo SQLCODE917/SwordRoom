@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const pregameRoleSchema = z.enum(['FRONTLINE', 'HEALER', 'SCOUT', 'ARCANE']);
 export type PregameRole = z.infer<typeof pregameRoleSchema>;
-export const sharedCharacterDraftIntentSchema = z.enum(['DRAFT_SNAPSHOT', 'ASK_QUESTION', 'ANSWER_GM_PROMPT']);
+export const sharedCharacterDraftIntentSchema = z.enum(['DRAFT_SNAPSHOT', 'ASK_QUESTION', 'COMPARE_DIRECTIONS', 'ANSWER_GM_PROMPT']);
 export type SharedCharacterDraftIntent = z.infer<typeof sharedCharacterDraftIntentSchema>;
 
 export const sharedCharacterDraftArtifactSchema = z.object({

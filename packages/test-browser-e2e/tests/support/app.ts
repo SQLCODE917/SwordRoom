@@ -151,7 +151,7 @@ export async function createLibraryCharacter(page: Page, name: string): Promise<
   await page.goto('/');
   await expect(page.getByRole('table', { name: 'My Characters' })).toBeVisible();
   await page.getByRole('link', { name: 'New Character' }).click();
-  await autofillCharacterWizard(page, name);
+  await autofillCharacterWizardDraft(page, name);
   await openWizardSubmitStep(page);
   await page.getByRole('button', { name: /^Create Character$/ }).click();
   await page.getByRole('link', { name: 'Home' }).click();
@@ -161,7 +161,7 @@ export async function createLibraryCharacter(page: Page, name: string): Promise<
 export async function applyToJoinWithNewCharacter(page: Page, gameName: string, characterName: string): Promise<void> {
   await page.goto('/');
   await publicGamesRow(page, gameName).getByRole('link', { name: 'Apply to Join' }).click();
-  await autofillCharacterWizard(page, characterName);
+  await autofillCharacterWizardDraft(page, characterName);
   await openWizardSubmitStep(page);
   await page.getByRole('button', { name: /^Submit Character For Approval$/ }).click();
   await expect(page.getByRole('button', { name: 'Submitted For Review' })).toBeVisible();
@@ -203,6 +203,12 @@ export async function openLobbyFromMyGames(page: Page, gameName: string): Promis
   await page.goto('/');
   await myGamesRow(page, gameName).getByRole('link', { name: 'Lobby' }).click();
   await expect(page.getByRole('heading', { name: 'Pregame Lobby' })).toBeVisible();
+}
+
+export async function autofillCharacterWizardDraft(page: Page, name: string): Promise<void> {
+  await expect(page.getByRole('heading', { name: /Character Wizard|Create Personal Character|Edit Character Draft/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Autofill from fixture' }).click();
+  await page.getByRole('textbox', { name: /^Name$/ }).fill(name);
 }
 
 export async function sendChatMessage(page: Page, body: string): Promise<void> {
@@ -532,12 +538,6 @@ function gameplayPanel(page: Page, heading: string): Locator {
 
 function gmStepSection(page: Page, heading: string): Locator {
   return page.locator('.c-gm-step-section').filter({ has: page.getByRole('heading', { name: heading }) }).first();
-}
-
-async function autofillCharacterWizard(page: Page, name: string): Promise<void> {
-  await expect(page.getByRole('heading', { name: /Character Wizard|Create Personal Character|Edit Character Draft/ })).toBeVisible();
-  await page.getByRole('button', { name: 'Autofill from fixture' }).click();
-  await page.getByRole('textbox', { name: /^Name$/ }).fill(name);
 }
 
 async function selectSavedCharacter(page: Page, characterName: string): Promise<void> {

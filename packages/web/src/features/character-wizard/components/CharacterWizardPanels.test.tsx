@@ -71,4 +71,24 @@ describe('ShareCheckpointPanel', () => {
     expect(onShareNoteChange).toHaveBeenCalledWith('Does this cover healing well enough?');
     expect(onShare).toHaveBeenCalled();
   });
+
+  it('renders compare-directions copy when that share intent is selected', () => {
+    render(
+      <ShareCheckpointPanel
+        isExecutingCommand={false}
+        shareState="idle"
+        canShare={true}
+        activeStepTitle="EXP spend"
+        shareIntent="COMPARE_DIRECTIONS"
+        shareNote="Option A keeps Priest 2, option B swaps to Fighter 1."
+        activePrompt={null}
+        onShareIntentChange={() => undefined}
+        onShareNoteChange={() => undefined}
+        onShare={() => undefined}
+      />
+    );
+
+    expect(screen.getByLabelText('Directions to compare')).toBeTruthy();
+    expect(screen.getByText('Describe the two directions you want feedback on, such as role, risk, or tone.')).toBeTruthy();
+  });
 });

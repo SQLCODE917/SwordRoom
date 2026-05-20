@@ -576,12 +576,20 @@ export function ShareCheckpointPanel(props: {
       </div>
 
       <FieldTextArea
-        label={props.shareIntent === 'ASK_QUESTION' ? 'Question for chat' : 'Optional note'}
+        label={
+          props.shareIntent === 'ASK_QUESTION'
+            ? 'Question for chat'
+            : props.shareIntent === 'COMPARE_DIRECTIONS'
+              ? 'Directions to compare'
+              : 'Optional note'
+        }
         value={props.shareNote}
         onChange={props.onShareNoteChange}
         hint={
           props.shareIntent === 'ASK_QUESTION'
             ? 'Ask the GM or party something specific about this build.'
+            : props.shareIntent === 'COMPARE_DIRECTIONS'
+              ? 'Describe the two directions you want feedback on, such as role, risk, or tone.'
             : props.shareIntent === 'ANSWER_GM_PROMPT'
               ? 'Add a short note about how this update answers the active prompt.'
               : 'Add a short note if you want to frame what feedback you want.'
