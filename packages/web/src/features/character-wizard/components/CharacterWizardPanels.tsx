@@ -1,5 +1,6 @@
 import { type Dispatch, type ReactNode, type SetStateAction, useId } from 'react';
 import type { CharacterItem } from '../../../api/ApiClient';
+import type { PregamePlanningPrompt } from '../../../api/ApiClient';
 import {
   HALF_ELF_RAISED_BY,
   RACES,
@@ -16,8 +17,8 @@ import {
   skillOptions,
   type EquipmentOption,
 } from '../../../data/characterCreationPurchasing';
-import { goodHumanRuneMasterAutofill, readCharacterIdentityName, toInventoryQuantitiesFromIds } from '../index.js';
-import type { InventoryCategory, InventoryQuantitiesKey, SaveButtonState, WizardMode, WizardState } from '../types.js';
+import { CHARACTER_SHARE_INTENT_OPTIONS, goodHumanRuneMasterAutofill, readCharacterIdentityName, toInventoryQuantitiesFromIds } from '../index.js';
+import type { CharacterShareIntent, InventoryCategory, InventoryQuantitiesKey, SaveButtonState, WizardMode, WizardState } from '../types.js';
 import type { createCharacterWizardViewModel } from '../viewModel.js';
 
 const rollOptions: FieldOption[] = Array.from({ length: 11 }, (_, index) => {
@@ -529,6 +530,85 @@ export function SubmitStepPanel(props: {
   );
 }
 
+export function ShareCheckpointPanel(props: {
+  isExecutingCommand: boolean;
+  shareState: SaveButtonState;
+  canShare: boolean;
+  activeStepTitle: string;
+  shareIntent: CharacterShareIntent;
+  shareNote: string;
+  activePrompt: PregamePlanningPrompt | null;
+  onShareIntentChange: (value: CharacterShareIntent) => void;
+  onShareNoteChange: (value: string) => void;
+  onShare: () => void;
+}) {
+  const isSharing = props.shareState === 'saving';
+  const isShared = props.shareState === 'saved';
+
+  return (
+    <fieldset className="l-col" disabled={props.isExecutingCommand}>
+      <div className="c-note c-note--info c-pregame-planning__summary">
+        <div className="t-small">{`Current checkpoint: ${props.activeStepTitle}`}</div>
+        <div className="t-small">
+          {props.activePrompt ? `GM prompt: ${props.activePrompt.title}` : 'No active GM prompt is available right now.'}
+        </div>
+      </div>
+
+      <div className="l-col" role="radiogroup" aria-label="Share type">
+        {CHARACTER_SHARE_INTENT_OPTIONS.map((option) => {
+          const disabled = option.value === 'ANSWER_GM_PROMPT' && !props.activePrompt;
+
+          return (
+            <label className="c-field__check" key={option.value}>
+              <input
+                aria-label={option.label}
+                className="c-field__control c-field__control--check"
+                type="radio"
+                name="share-intent"
+                checked={props.shareIntent === option.value}
+                disabled={disabled}
+                onChange={() => props.onShareIntentChange(option.value)}
+              />
+              <span className="t-small">{option.label}</span>
+            </label>
+          );
+        })}
+      </div>
+
+      <FieldTextArea
+        label={props.shareIntent === 'ASK_QUESTION' ? 'Question for chat' : 'Optional note'}
+        value={props.shareNote}
+        onChange={props.onShareNoteChange}
+        hint={
+          props.shareIntent === 'ASK_QUESTION'
+            ? 'Ask the GM or party something specific about this build.'
+            : props.shareIntent === 'ANSWER_GM_PROMPT'
+              ? 'Add a short note about how this update answers the active prompt.'
+              : 'Add a short note if you want to frame what feedback you want.'
+        }
+      />
+
+      <button
+        className={`c-btn ${props.canShare ? '' : 'is-disabled'} ${isSharing ? 'is-loading' : ''}`.trim()}
+        type="button"
+        disabled={!props.canShare}
+        onClick={props.onShare}
+      >
+        {isSharing ? 'Sharing...' : isShared ? 'Shared To Chat' : 'Share Update'}
+      </button>
+
+      <InfoList
+        lines={[
+          'Share Update saves the current draft revision first, then posts a structured artifact into game chat.',
+          props.shareIntent === 'ANSWER_GM_PROMPT'
+            ? 'This update will be linked to the active GM prompt.'
+            : 'Shared artifacts preserve this checkpoint even after later edits.',
+        ]}
+      />
+    </fieldset>
+  );
+}
+
 export function SnapshotView({ snapshot }: { snapshot: { status: string; ability: Record<string, number> | null; skills: Array<{ skill: string; level: number }> } | null }) {
   if (!snapshot) {
     return (
@@ -603,6 +683,29 @@ function FieldText(props: {
         onChange={(event) => props.onChange(event.target.value)}
       />
       <span className="c-field__hint">{props.isError ? props.errorText : props.hint ?? ' '}</span>
+    </label>
+  );
+}
+
+function FieldTextArea(props: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  hint?: string;
+}) {
+  const fieldId = useId();
+
+  return (
+    <label className="c-field" htmlFor={fieldId}>
+      <span className="c-field__label">{props.label}</span>
+      <textarea
+        id={fieldId}
+        aria-label={props.label}
+        className="c-field__control c-gameplay__textarea"
+        value={props.value}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+      <span className="c-field__hint">{props.hint ?? ' '}</span>
     </label>
   );
 }

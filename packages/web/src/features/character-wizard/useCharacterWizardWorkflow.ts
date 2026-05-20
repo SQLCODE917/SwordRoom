@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import type { PregameRole, SharedCharacterDraftArtifact, SharedPartyRoleClaimArtifact } from '@starter/shared';
+import type { PregameRole, SharedCharacterDraftArtifact, SharedCharacterDraftIntent, SharedPartyRoleClaimArtifact } from '@starter/shared';
 import type { CharacterItem, CommandEnvelopeInput, CommandStatusResponse, CommandType } from '../../api/ApiClient';
 import { describeFailure } from '../../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../../logging/flowLog';
@@ -322,21 +322,33 @@ export function useCharacterWizardWorkflow(input: {
     }
   }, [input, refreshSnapshot, saveCurrentDraft, setSaveButtonState, submitCommandAndAwait]);
 
-  const shareDraftToChat = useCallback(async () => {
+  const shareDraftToChat = useCallback(async (shareInput?: { intent?: SharedCharacterDraftIntent; contextNote?: string; promptId?: string | null }) => {
     input.setStepError(' ');
     input.revealCommandStatus?.();
+    const shareIntent = shareInput?.intent ?? 'DRAFT_SNAPSHOT';
+    const contextNote = shareInput?.contextNote?.trim() ?? '';
+    const promptId = shareInput?.promptId?.trim() ?? '';
     logWebFlow('WEB_CHARACTER_WIZARD_SHARE_START', {
       gameId: input.state.gameId,
       characterId: input.state.characterId,
       wizardMode: input.wizardMode,
       namePresent: input.state.name.trim().length > 0,
+      shareIntent,
+      hasContextNote: contextNote.length > 0,
+      hasPromptId: promptId.length > 0,
     });
     try {
       if (input.wizardMode !== 'apply') {
         throw new Error('Only game-scoped character drafts can be shared to chat.');
       }
-      if (!input.view.isDraftReadyForSubmit) {
-        throw new Error(input.view.previewErrors[0] ?? 'Complete the required fields before sharing this draft to chat.');
+      if (!input.view.isDraftReadyForCheckpointShare) {
+        throw new Error(input.view.previewErrors[0] ?? 'Complete the current checkpoint before sharing this draft to chat.');
+      }
+      if (shareIntent === 'ASK_QUESTION' && contextNote.length === 0) {
+        throw new Error('Enter the question you want the party or GM to answer.');
+      }
+      if (shareIntent === 'ANSWER_GM_PROMPT' && promptId.length === 0) {
+        throw new Error('No active GM prompt is available for this share intent.');
       }
 
       setShareButtonState('saving');
@@ -349,9 +361,13 @@ export function useCharacterWizardWorkflow(input: {
         state: input.state,
         view: input.view,
         snapshot: nextSnapshot,
+        shareIntent,
+        contextNote: contextNote || null,
+        promptId: promptId || null,
       });
       const body = buildSharedDraftChatBody({
         characterName: artifact.characterName,
+        shareIntent,
       });
 
       await submitCommandAndAwait(
@@ -369,6 +385,7 @@ export function useCharacterWizardWorkflow(input: {
         gameId: input.state.gameId,
         characterId: input.state.characterId,
         snapshotVersion: nextSnapshot.version,
+        shareIntent,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -531,6 +548,9 @@ function buildSharedCharacterDraftArtifact(input: {
   state: WizardState;
   view: CharacterWizardViewModel;
   snapshot: CharacterSnapshot;
+  shareIntent: SharedCharacterDraftIntent;
+  contextNote: string | null;
+  promptId: string | null;
 }): SharedCharacterDraftArtifact {
   return {
     kind: 'CHARACTER_DRAFT',
@@ -539,6 +559,9 @@ function buildSharedCharacterDraftArtifact(input: {
     characterName: input.state.name.trim() || input.state.characterId,
     race: input.state.race,
     status: input.snapshot.status,
+    shareIntent: input.shareIntent,
+    contextNote: input.contextNote ?? undefined,
+    promptId: input.promptId ?? undefined,
     abilitySummary: [
       `STR ${input.view.derived.STR}`,
       `DEX ${input.view.derived.DEX}`,
@@ -552,7 +575,13 @@ function buildSharedCharacterDraftArtifact(input: {
   };
 }
 
-function buildSharedDraftChatBody(input: { characterName: string }): string {
+function buildSharedDraftChatBody(input: { characterName: string; shareIntent: SharedCharacterDraftIntent }): string {
+  if (input.shareIntent === 'ASK_QUESTION') {
+    return `${input.characterName} is asking for draft feedback.`;
+  }
+  if (input.shareIntent === 'ANSWER_GM_PROMPT') {
+    return `${input.characterName} answered the GM prompt with a draft update.`;
+  }
   return `Sharing ${input.characterName} for party feedback.`;
 }
 

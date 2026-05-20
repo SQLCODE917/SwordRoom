@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { CharacterWizardAutofillControls } from './CharacterWizardPanels.js';
+import { CharacterWizardAutofillControls, ShareCheckpointPanel } from './CharacterWizardPanels.js';
 
 describe('CharacterWizardAutofillControls', () => {
   it('omits the current draft from saved-character autofill options and forwards selection', () => {
@@ -37,5 +37,38 @@ describe('CharacterWizardAutofillControls', () => {
     fireEvent.change(select, { target: { value: 'char-2' } });
 
     expect(onSelectSavedCharacter).toHaveBeenCalledWith('char-2');
+  });
+});
+
+describe('ShareCheckpointPanel', () => {
+  it('disables answer-gm-prompt when no active prompt exists and forwards question edits', () => {
+    const onShareIntentChange = vi.fn();
+    const onShareNoteChange = vi.fn();
+    const onShare = vi.fn();
+
+    render(
+      <ShareCheckpointPanel
+        isExecutingCommand={false}
+        shareState="idle"
+        canShare={true}
+        activeStepTitle="Background rolls"
+        shareIntent="ASK_QUESTION"
+        shareNote=""
+        activePrompt={null}
+        onShareIntentChange={onShareIntentChange}
+        onShareNoteChange={onShareNoteChange}
+        onShare={onShare}
+      />
+    );
+
+    expect((screen.getByLabelText('Answer GM prompt') as HTMLInputElement).disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText('Question for chat'), {
+      target: { value: 'Does this cover healing well enough?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Share Update' }));
+
+    expect(onShareNoteChange).toHaveBeenCalledWith('Does this cover healing well enough?');
+    expect(onShare).toHaveBeenCalled();
   });
 });

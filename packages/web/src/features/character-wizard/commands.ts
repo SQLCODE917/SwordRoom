@@ -1,5 +1,5 @@
 import type { CommandEnvelopeInput } from '../../api/ApiClient';
-import type { SharedCharacterDraftArtifact } from '@starter/shared';
+import type { SharedCharacterDraftArtifact, SharedCharacterDraftIntent } from '@starter/shared';
 import { createCommandId } from '../../hooks/useCommandStatus';
 import type { Race, SubAbilityScores } from '../../data/characterCreationReference';
 
@@ -23,6 +23,12 @@ export interface WizardAutofillValues {
   };
   submitNoteToGm: string;
 }
+
+export const CHARACTER_SHARE_INTENT_OPTIONS: Array<{ value: SharedCharacterDraftIntent; label: string }> = [
+  { value: 'DRAFT_SNAPSHOT', label: 'Draft snapshot' },
+  { value: 'ASK_QUESTION', label: 'Ask a question' },
+  { value: 'ANSWER_GM_PROMPT', label: 'Answer GM prompt' },
+];
 
 export const goodHumanRuneMasterAutofill: WizardAutofillValues = {
   race: 'HUMAN',

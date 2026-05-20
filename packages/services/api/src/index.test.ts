@@ -983,6 +983,8 @@ describe('game chat', () => {
           characterName: 'Borin',
           race: 'HUMAN',
           status: 'DRAFT',
+          shareIntent: 'ASK_QUESTION',
+          contextNote: 'Should I trade damage for more party support?',
           abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
           skillSummary: ['Fighter 1'],
         },
@@ -1013,6 +1015,8 @@ describe('game chat', () => {
       characterName: 'Borin',
       race: 'HUMAN',
       status: 'DRAFT',
+      shareIntent: 'ASK_QUESTION',
+      contextNote: 'Should I trade damage for more party support?',
       abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
       skillSummary: ['Fighter 1'],
     });

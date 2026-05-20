@@ -56,6 +56,8 @@ describe('character wizard command builders', () => {
         characterName: 'Borin',
         race: 'HUMAN',
         status: 'DRAFT',
+        shareIntent: 'ASK_QUESTION',
+        contextNote: 'Too fragile for frontline?',
         abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
         skillSummary: ['Fighter 1'],
       },
@@ -65,6 +67,7 @@ describe('character wizard command builders', () => {
     expect(envelope.payload.artifact).toMatchObject({
       kind: 'CHARACTER_DRAFT',
       snapshotVersion: 4,
+      shareIntent: 'ASK_QUESTION',
     });
     expect(envelope.payload.body).toBe('Sharing Borin for party feedback.');
   });

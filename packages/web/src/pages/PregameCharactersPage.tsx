@@ -154,7 +154,9 @@ export function PregameCharactersPage() {
                     {selectedSharedRow ? (
                       <div className="l-col">
                         <div className="c-note c-note--info c-pregame-planning__summary">
+                          <div className="t-small">{selectedSharedRow.shareIntentLabel}</div>
                           <div className="t-small">{selectedSharedRow.snapshotLabel}</div>
+                          {selectedSharedRow.contextNote ? <div className="t-small">{selectedSharedRow.contextNote}</div> : null}
                           <div className="t-small">{selectedSharedRow.abilitySummaryLabel}</div>
                           <div className="t-small">{selectedSharedRow.skillSummaryLabel}</div>
                         </div>

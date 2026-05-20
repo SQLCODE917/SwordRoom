@@ -51,6 +51,8 @@ export interface CharacterWorkbenchSharedRow {
   sharedBy: string;
   sharedAtLabel: string;
   snapshotLabel: string;
+  shareIntentLabel: string;
+  contextNote: string | null;
   abilitySummaryLabel: string;
   skillSummaryLabel: string;
   discussionLabel: string;
@@ -175,6 +177,8 @@ function buildSharedRow(gameId: string, allChatMessages: readonly GameChatMessag
     sharedBy: message.senderDisplayName,
     sharedAtLabel: formatShortTimestamp(message.createdAt),
     snapshotLabel: `Snapshot v${artifact.snapshotVersion} · ${artifact.status}`,
+    shareIntentLabel: formatCharacterDraftIntent(artifact),
+    contextNote: artifact.contextNote ?? null,
     abilitySummaryLabel: artifact.abilitySummary.join(' | ') || 'No ability summary.',
     skillSummaryLabel: artifact.skillSummary.length > 0 ? `Skills: ${artifact.skillSummary.join(', ')}` : 'Skills: none yet',
     discussionLabel: discussionCount > 0 ? `${discussionCount} follow-up ${discussionCount === 1 ? 'message' : 'messages'}` : 'No follow-up yet',
@@ -187,6 +191,16 @@ function buildSharedArtifactChatTo(gameId: string, characterName: string, snapsh
   const searchParams = new URLSearchParams();
   searchParams.set('draft', `About ${characterName} v${snapshotVersion}: `);
   return `/games/${encodeURIComponent(gameId)}/chat?${searchParams.toString()}`;
+}
+
+function formatCharacterDraftIntent(artifact: Extract<NonNullable<GameChatMessage['artifact']>, { kind: 'CHARACTER_DRAFT' }>): string {
+  if (artifact.shareIntent === 'ASK_QUESTION') {
+    return 'Ask a question';
+  }
+  if (artifact.shareIntent === 'ANSWER_GM_PROMPT') {
+    return 'Answer GM prompt';
+  }
+  return 'Draft snapshot';
 }
 
 function readCharacterName(character: CharacterItem): string {

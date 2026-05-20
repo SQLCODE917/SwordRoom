@@ -84,6 +84,8 @@ describe('PregameCharactersPage', () => {
               characterName: 'Aline',
               race: 'ELF',
               status: 'DRAFT',
+              shareIntent: 'ASK_QUESTION',
+              contextNote: 'Can this cover healing without leaving us too fragile?',
               abilitySummary: ['INT 17'],
               skillSummary: ['Priest 2'],
             },
@@ -146,6 +148,8 @@ describe('PregameCharactersPage', () => {
       '/games/game-1/chat?draft=About+Aline+v3%3A+'
     );
     expect(await screen.findByRole('heading', { name: 'Aline Preview' })).toBeTruthy();
+    expect(screen.getByText('Ask a question')).toBeTruthy();
+    expect(screen.getByText('Can this cover healing without leaving us too fragile?')).toBeTruthy();
     expect(screen.getByText('INT 17')).toBeTruthy();
     expect(screen.getByText('Skills: Priest 2')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Continue Discussion' }).getAttribute('href')).toBe(

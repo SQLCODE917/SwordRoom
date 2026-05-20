@@ -19,6 +19,7 @@ import {
   applyFixtureAutofill,
   BackgroundStepPanel,
   buildInitialState,
+  type CharacterShareIntent,
   CharacterSnapshot,
   CharacterWizardAutofillControls,
   createCharacterId,
@@ -32,6 +33,7 @@ import {
   InventoryQuantitiesKey,
   normalizePurchasesForBaseSkills,
   RaceStepPanel,
+  ShareCheckpointPanel,
   SnapshotView,
   SubmitStepPanel,
   useCharacterWizardRouteContext,
@@ -74,6 +76,8 @@ function CharacterWizardPageContent({
   const commandStatusScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stepError, setStepError] = useState<string>(' ');
   const [snapshot, setSnapshot] = useState<CharacterSnapshot | null>(null);
+  const [shareIntent, setShareIntent] = useState<CharacterShareIntent>('DRAFT_SNAPSHOT');
+  const [shareNote, setShareNote] = useState('');
   const [selectedSavedCharacterId, setSelectedSavedCharacterId] = useState('');
   const [lastSavedFingerprint, setLastSavedFingerprint] = useState<string | null>(null);
   const { status: commandStatus, isRunning: isExecutingCommand, submitEnvelopeAndAwait } = useCommandWorkflow();
@@ -81,6 +85,8 @@ function CharacterWizardPageContent({
   useEffect(() => {
     setState(buildInitialState(routeGameId, routeCharacterId));
     setSnapshot(null);
+    setShareIntent('DRAFT_SNAPSHOT');
+    setShareNote('');
     setSelectedSavedCharacterId('');
     setLastSavedFingerprint(null);
     setStepError(' ');
@@ -164,6 +170,7 @@ function CharacterWizardPageContent({
     [state, snapshot, isExecutingCommand, lastSavedFingerprint, wizardMode]
   );
   const pregamePlanning = usePregamePlanning(routeGameId, wizardMode === 'apply');
+  const activePregamePrompt = pregamePlanning.state.status === 'ready' ? pregamePlanning.state.planning.activePrompt : null;
 
   const { saveStateByStep, shareState, saveStepProgress, executeFinalAction, shareDraftToChat, claimPartyRoleInChat, refreshSnapshot } = useCharacterWizardWorkflow({
     api,
@@ -289,7 +296,7 @@ function CharacterWizardPageContent({
           wizardMode={wizardMode}
           onUpdateState={setState}
           onExecuteFinalAction={() => void executeFinalAction()}
-          onShareDraftToChat={() => void shareDraftToChat()}
+          onShareDraftToChat={() => void handleShareCurrentCheckpoint()}
         />
       ),
       action: renderSaveButton('submit', activeStepIndex === 6),
@@ -417,6 +424,23 @@ function CharacterWizardPageContent({
                   disabled={isExecutingCommand || shareState === 'saving'}
                   onClaimRole={claimPartyRoleInChat}
                 />
+              ) : null}
+
+              {wizardMode === 'apply' ? (
+                <Panel title="Share Current Checkpoint" subtitle="Post draft updates from the creator without waiting for final submission.">
+                  <ShareCheckpointPanel
+                    isExecutingCommand={isExecutingCommand}
+                  shareState={shareState}
+                  canShare={view.canEditDraft && view.isDraftReadyForCheckpointShare && !isExecutingCommand}
+                  activeStepTitle={stepTitles[activeStepIndex] ?? 'Current step'}
+                  shareIntent={shareIntent}
+                  shareNote={shareNote}
+                    activePrompt={activePregamePrompt}
+                    onShareIntentChange={setShareIntent}
+                    onShareNoteChange={setShareNote}
+                    onShare={() => void handleShareCurrentCheckpoint()}
+                  />
+                </Panel>
               ) : null}
 
               <div ref={commandStatusRef}>
@@ -578,6 +602,14 @@ function CharacterWizardPageContent({
       scrollCommandStatusIntoView();
       commandStatusScrollTimeoutRef.current = null;
     }, 180);
+  }
+
+  function handleShareCurrentCheckpoint() {
+    return shareDraftToChat({
+      intent: shareIntent,
+      contextNote: shareNote,
+      promptId: shareIntent === 'ANSWER_GM_PROMPT' ? activePregamePrompt?.promptId ?? null : null,
+    });
   }
 
 }

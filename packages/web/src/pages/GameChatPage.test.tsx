@@ -296,6 +296,8 @@ describe('GameChatPage', () => {
               characterName: 'Borin',
               race: 'HUMAN',
               status: 'DRAFT',
+              shareIntent: 'ASK_QUESTION',
+              contextNote: 'Should I trade damage for more party support?',
               abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
               skillSummary: ['Fighter 1'],
             },
@@ -330,6 +332,8 @@ describe('GameChatPage', () => {
     expect(await screen.findByText('Sharing Borin for party feedback.')).toBeTruthy();
     expect(screen.getByText('Borin (HUMAN) v2')).toBeTruthy();
     expect(screen.getByText('Status: DRAFT')).toBeTruthy();
+    expect(screen.getByText('Share: Ask a question')).toBeTruthy();
+    expect(screen.getByText('Should I trade damage for more party support?')).toBeTruthy();
     expect(screen.getByText('STR 16 | DEX 10 | MP 12')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Preview' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reply' })).toBeTruthy();
@@ -366,6 +370,8 @@ describe('GameChatPage', () => {
               characterName: 'Borin',
               race: 'HUMAN',
               status: 'DRAFT',
+              shareIntent: 'ASK_QUESTION',
+              contextNote: 'Should I trade damage for more party support?',
               abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
               skillSummary: ['Fighter 1'],
             },
@@ -403,6 +409,8 @@ describe('GameChatPage', () => {
     expect(within(dialog).getByText('Borin v2')).toBeTruthy();
     expect(within(dialog).getByText('Shared by Borin')).toBeTruthy();
     expect(within(dialog).getByText('HUMAN • DRAFT')).toBeTruthy();
+    expect(within(dialog).getByText('Share: Ask a question')).toBeTruthy();
+    expect(within(dialog).getByText('Should I trade damage for more party support?')).toBeTruthy();
     expect(within(dialog).getByRole('link', { name: 'Open Full Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reply' }));

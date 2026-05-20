@@ -44,6 +44,11 @@ export function createCharacterWizardViewModel(input: {
     purchasePreview.state !== null &&
     equipmentPreview.state !== null &&
     previewErrors.length === 0;
+  const isDraftReadyForCheckpointShare =
+    input.state.name.trim() !== '' &&
+    startingPreview.state !== null &&
+    purchasePreview.state !== null &&
+    previewErrors.length === 0;
   const canExecuteFinalAction = !input.isExecutingCommand && canEditDraft && isDraftReadyForSubmit;
   const backgroundLabel = backgroundsByRoll[input.state.backgroundRoll2dTotal] ?? 'No background result for this roll.';
   const availableMoney = purchasePreview.state?.startingPackage?.startingMoneyGamels ?? 0;
@@ -68,6 +73,7 @@ export function createCharacterWizardViewModel(input: {
     isDirty,
     canEditDraft,
     previewErrors,
+    isDraftReadyForCheckpointShare,
     isDraftReadyForSubmit,
     canExecuteFinalAction,
     backgroundLabel,

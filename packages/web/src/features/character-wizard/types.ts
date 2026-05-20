@@ -1,5 +1,6 @@
 import type { CharacterItem } from '../../api/ApiClient';
 import type { HalfElfRaisedBy, Race, SubAbilityScores } from '../../data/characterCreationReference';
+import type { SharedCharacterDraftIntent } from '@starter/shared';
 
 export interface CharacterSnapshot {
   status: string;
@@ -36,6 +37,7 @@ export interface WizardState {
 export type WizardMode = 'apply' | 'library';
 export type WizardStepKey = 'race' | 'dice' | 'background' | 'identity' | 'exp' | 'equipment' | 'submit';
 export type SaveButtonState = 'idle' | 'saving' | 'saved';
+export type CharacterShareIntent = SharedCharacterDraftIntent;
 
 export interface FieldOption {
   value: string;

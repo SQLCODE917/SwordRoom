@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 export const pregameRoleSchema = z.enum(['FRONTLINE', 'HEALER', 'SCOUT', 'ARCANE']);
 export type PregameRole = z.infer<typeof pregameRoleSchema>;
+export const sharedCharacterDraftIntentSchema = z.enum(['DRAFT_SNAPSHOT', 'ASK_QUESTION', 'ANSWER_GM_PROMPT']);
+export type SharedCharacterDraftIntent = z.infer<typeof sharedCharacterDraftIntentSchema>;
 
 export const sharedCharacterDraftArtifactSchema = z.object({
   kind: z.literal('CHARACTER_DRAFT'),
@@ -10,6 +12,9 @@ export const sharedCharacterDraftArtifactSchema = z.object({
   characterName: z.string().trim().min(1).max(120),
   race: z.string().trim().min(1).max(60),
   status: z.string().trim().min(1).max(40),
+  shareIntent: sharedCharacterDraftIntentSchema.optional(),
+  promptId: z.string().trim().min(1).max(120).optional(),
+  contextNote: z.string().trim().min(1).max(280).optional(),
   abilitySummary: z.array(z.string().trim().min(1).max(40)).max(3),
   skillSummary: z.array(z.string().trim().min(1).max(60)).max(3),
 });

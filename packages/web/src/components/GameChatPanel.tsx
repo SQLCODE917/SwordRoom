@@ -76,6 +76,8 @@ export function GameChatPanel({
                       <div className="c-note c-note--info c-chat__artifact-card">
                         <div className="t-small">{`${characterArtifact.characterName} (${characterArtifact.race}) v${characterArtifact.snapshotVersion}`}</div>
                         <div className="t-small">{`Status: ${characterArtifact.status}`}</div>
+                        <div className="t-small">{`Share: ${formatCharacterDraftIntent(characterArtifact)}`}</div>
+                        {characterArtifact.contextNote ? <div className="t-small">{characterArtifact.contextNote}</div> : null}
                         <div className="t-small">{characterArtifact.abilitySummary.join(' | ') || 'No ability summary.'}</div>
                         <div className="t-small">
                           {characterArtifact.skillSummary.length > 0 ? `Skills: ${characterArtifact.skillSummary.join(', ')}` : 'Skills: none yet'}
@@ -181,6 +183,8 @@ export function GameChatPanel({
             <div className="c-note c-note--info">
               <div className="t-small">{`Shared by ${previewArtifact.senderDisplayName}`}</div>
               <div className="t-small">{`${previewArtifact.artifact.race} • ${previewArtifact.artifact.status}`}</div>
+              <div className="t-small">{`Share: ${formatCharacterDraftIntent(previewArtifact.artifact)}`}</div>
+              {previewArtifact.artifact.contextNote ? <div className="t-small">{previewArtifact.artifact.contextNote}</div> : null}
             </div>
 
             <div className="c-note c-note--info">
@@ -284,4 +288,14 @@ function buildArtifactReplyDraft(artifact: SharedCharacterDraftArtifact, current
     return currentDraftBody;
   }
   return `${currentDraftBody.trimEnd()}\n${prefix}`;
+}
+
+function formatCharacterDraftIntent(artifact: SharedCharacterDraftArtifact): string {
+  if (artifact.shareIntent === 'ASK_QUESTION') {
+    return 'Ask a question';
+  }
+  if (artifact.shareIntent === 'ANSWER_GM_PROMPT') {
+    return 'Answer GM prompt';
+  }
+  return 'Draft snapshot';
 }
