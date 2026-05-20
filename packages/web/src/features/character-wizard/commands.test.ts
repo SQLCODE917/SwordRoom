@@ -62,7 +62,10 @@ describe('character wizard command builders', () => {
     });
 
     expect(envelope.type).toBe('SendGameChatMessage');
-    expect(envelope.payload.artifact?.snapshotVersion).toBe(4);
+    expect(envelope.payload.artifact).toMatchObject({
+      kind: 'CHARACTER_DRAFT',
+      snapshotVersion: 4,
+    });
     expect(envelope.payload.body).toBe('Sharing Borin for party feedback.');
   });
 });

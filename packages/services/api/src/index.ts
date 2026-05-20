@@ -5,6 +5,7 @@ import { createGameReadApis } from './features/games/service.js';
 import { createGameplayReadApis } from './features/gameplay/service.js';
 import { createGmReadApis } from './features/gm/service.js';
 import { createMeReadApis } from './features/me/service.js';
+import { createPregameReadApis } from './features/pregame/service.js';
 import { listContractRoutes } from './httpRoutes.js';
 import type {
   ApiRuntimeService,
@@ -43,6 +44,7 @@ export function createApiService(deps: ApiServiceDependencies): ApiRuntimeServic
       ...createGameplayReadApis(deps),
       ...createGmReadApis(deps),
       ...createMeReadApis(deps, flowLogEnabled, logServiceFlow),
+      ...createPregameReadApis(deps),
     },
   };
 }

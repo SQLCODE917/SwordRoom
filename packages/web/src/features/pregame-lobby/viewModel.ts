@@ -1,4 +1,5 @@
 import type { CharacterItem, GameChatMessage, GameChatParticipant } from '../../api/ApiClient';
+import { formatPregameRoleList } from '../pregame-planning/labels.js';
 import type { PregameLobbyState } from './usePregameLobby';
 
 export type PregameLobbyViewModel =
@@ -26,6 +27,7 @@ export type PregameLobbyViewModel =
       notice: string;
       actions: LobbyAction[];
       summaryLines: string[];
+      promptLines: string[];
       partyNeedsLines: string[];
       rosterRows: LobbyRosterRow[];
       recentActivityRows: LobbyActivityRow[];
@@ -83,8 +85,6 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
   const ownCharacter = state.myCharacters.find((item) => item.gameId === state.game.gameId) ?? null;
   const ownParticipant = state.chat.participants.find((participant) => participant.playerId === state.actorContext.actorId) ?? null;
   const canEditOwnCharacter = ownCharacter ? ownCharacter.status !== 'PENDING' && ownCharacter.status !== 'APPROVED' : false;
-  const players = state.chat.participants.filter((participant) => participant.role === 'PLAYER');
-  const playersWithoutCharacterCount = players.filter((participant) => participant.characterId === null).length;
 
   const summaryLines = [
     ownCharacter
@@ -98,11 +98,8 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
       : 'No pregame chat messages have been posted yet.',
   ];
 
-  const partyNeedsLines = buildPartyNeedsLines({
-    playerCount: players.length,
-    playersWithoutCharacterCount,
-    ownCharacter,
-  });
+  const partyNeedsLines = buildPartyNeedsLines(state, ownCharacter);
+  const promptLines = buildPromptLines(state);
 
   return {
     status: 'ready',
@@ -119,6 +116,7 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
       isGameMaster: state.actorContext.isGameMaster,
     }),
     summaryLines,
+    promptLines,
     partyNeedsLines,
     rosterRows: state.chat.participants.map((participant) => buildRosterRow(state.game.gameId, participant, ownCharacter)),
     recentActivityRows: state.chat.messages.slice(-3).reverse().map(buildActivityRow),
@@ -161,34 +159,63 @@ function buildActions(input: {
   return actions;
 }
 
-function buildPartyNeedsLines(input: {
-  playerCount: number;
-  playersWithoutCharacterCount: number;
-  ownCharacter: CharacterItem | null;
-}): string[] {
+function buildPromptLines(state: Extract<PregameLobbyState, { status: 'ready' }>): string[] {
   const lines: string[] = [];
 
-  if (input.playerCount === 0) {
-    lines.push('No players have joined this game yet.');
-  } else if (input.playersWithoutCharacterCount === 0) {
-    lines.push('Every listed player currently has a character attached.');
-  } else if (input.playersWithoutCharacterCount === 1) {
-    lines.push('One player still needs a character before the party is fully represented.');
+  if (state.planning.activePrompt) {
+    lines.push(`${state.planning.activePrompt.senderDisplayName}: ${state.planning.activePrompt.title}`);
+    lines.push(state.planning.activePrompt.prompt);
+    if (state.planning.activePrompt.suggestedRoles.length > 0) {
+      lines.push(`Suggested roles: ${formatPregameRoleList(state.planning.activePrompt.suggestedRoles)}.`);
+    }
+  } else if (state.actorContext.isGameMaster) {
+    lines.push('No GM planning prompt is active yet.');
+    lines.push('Use Chat or the GM tools to set party direction before the session begins.');
   } else {
-    lines.push(`${input.playersWithoutCharacterCount} players still need characters before the party is fully represented.`);
+    lines.push('No GM planning prompt is active yet.');
+    lines.push('Share your current draft or review party needs to help the table converge.');
   }
 
-  if (!input.ownCharacter) {
+  return lines;
+}
+
+function buildPartyNeedsLines(
+  state: Extract<PregameLobbyState, { status: 'ready' }>,
+  ownCharacter: CharacterItem | null
+): string[] {
+  const lines: string[] = [];
+  const playerCount = state.chat.participants.filter((participant) => participant.role === 'PLAYER').length;
+  const playersWithoutCharacterCount = state.chat.participants.filter(
+    (participant) => participant.role === 'PLAYER' && participant.characterId === null
+  ).length;
+
+  if (playerCount === 0) {
+    lines.push('No players have joined this game yet.');
+  } else if (playersWithoutCharacterCount === 0) {
+    lines.push('Every listed player currently has a character attached.');
+  } else if (playersWithoutCharacterCount === 1) {
+    lines.push('One player still needs a character before the party is fully represented.');
+  } else {
+    lines.push(`${playersWithoutCharacterCount} players still need characters before the party is fully represented.`);
+  }
+
+  for (const need of state.planning.partyNeeds) {
+    lines.push(
+      need.isOpen
+        ? `${need.label}: open`
+        : `${need.label}: claimed by ${need.claimedBy.join(', ')}`
+    );
+  }
+
+  if (!ownCharacter) {
     lines.push('Your next useful move is to create a character draft or review the party conversation first.');
-  } else if (input.ownCharacter.status === 'PENDING') {
+  } else if (ownCharacter.status === 'PENDING') {
     lines.push('Your character is pending GM review. Use chat to coordinate with the table while you wait.');
-  } else if (input.ownCharacter.status === 'APPROVED') {
+  } else if (ownCharacter.status === 'APPROVED') {
     lines.push('Your character is approved. Use chat to align on party composition and opening plans.');
   } else {
     lines.push('Your character is still editable. Share updates in chat as you iterate on the draft.');
   }
-
-  lines.push('Structured party roles and GM prompts are planned to live here as first-class planning signals.');
 
   return lines;
 }

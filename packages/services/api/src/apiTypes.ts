@@ -2,7 +2,8 @@ import type {
   AnyCommandEnvelope,
   CharacterItem,
   CommandStatus,
-  SharedCharacterDraftArtifact,
+  PregameRole,
+  SharedChatArtifact,
   GameChatSenderRole,
   GameplayViewResponse as SharedGameplayViewResponse,
   GameMetadataItem,
@@ -49,7 +50,7 @@ export interface GameChatMessageResponse {
   senderRole: GameChatSenderRole;
   senderCharacterId: string | null;
   body: string;
-  artifact?: SharedCharacterDraftArtifact;
+  artifact?: SharedChatArtifact;
   createdAt: string;
 }
 
@@ -58,6 +59,45 @@ export interface GameChatResponse {
   gameName: string;
   participants: GameChatParticipantResponse[];
   messages: GameChatMessageResponse[];
+}
+
+export interface PregamePlanningPromptResponse {
+  promptId: string;
+  title: string;
+  prompt: string;
+  suggestedRoles: PregameRole[];
+  senderDisplayName: string;
+  createdAt: string;
+}
+
+export interface PregamePlanningClaimResponse {
+  claimId: string;
+  characterId: string;
+  snapshotVersion: number;
+  characterName: string;
+  roles: PregameRole[];
+  note: string | null;
+  senderDisplayName: string;
+  createdAt: string;
+}
+
+export interface PregamePlanningNeedResponse {
+  role: PregameRole;
+  label: string;
+  isOpen: boolean;
+  claimedBy: string[];
+}
+
+export interface PregamePlanningResponse {
+  gameId: string;
+  gameName: string;
+  viewer: {
+    isMember: boolean;
+    isGameMaster: boolean;
+  };
+  activePrompt: PregamePlanningPromptResponse | null;
+  partyNeeds: PregamePlanningNeedResponse[];
+  recentClaims: PregamePlanningClaimResponse[];
 }
 
 export type GameplayViewResponse = SharedGameplayViewResponse;
@@ -99,6 +139,7 @@ export interface ReadApis {
   getGameActorContext(gameId: string, actorId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getGameChat(gameId: string): Promise<GameChatResponse>;
+  getPregamePlanning(gameId: string, actorId: string): Promise<PregamePlanningResponse>;
   getPlayerGameplayView(gameId: string): Promise<GameplayViewResponse | null>;
   getGmGameplayView(gameId: string): Promise<GameplayViewResponse | null>;
 }

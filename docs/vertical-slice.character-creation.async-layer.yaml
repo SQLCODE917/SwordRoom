@@ -25,6 +25,7 @@ aws_components:
       - { method: GET, path: /games/public, auth: required }
       - { method: GET, path: /games/{gameId}/characters/{characterId}, auth: required }
       - { method: GET, path: /games/{gameId}/chat, auth: required }
+      - { method: GET, path: /games/{gameId}/pregame, auth: required }
       - { method: POST, path: /games/{gameId}/characters/{characterId}/appearance/upload-url, auth: required }
       - { method: GET, path: /players/{playerId}/characters/{characterId}, auth: required }
       - { method: GET, path: /gm/games, auth: required }
@@ -105,7 +106,7 @@ command_contracts:
       payload: { characterId: string }
       authz: "actorId == ownerPlayerId || actorId == gmPlayerId"
     - type: SendGameChatMessage
-      payload: { body: string }
+      payload: { body: string, artifact?: object }
       authz: "actorId is current member of game"
     - type: SubmitCharacterForApproval
       payload: { characterId: string, expectedVersion: int }

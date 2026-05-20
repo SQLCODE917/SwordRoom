@@ -1,6 +1,7 @@
 import type { AuthProvider } from '../auth/AuthProvider';
 import type {
-  SharedCharacterDraftArtifact,
+  PregameRole,
+  SharedChatArtifact,
   GameplayCombatActionType,
   GameplayEventRecord,
   GameplayGraphEdge,
@@ -102,7 +103,7 @@ interface CommandPayloadByType {
   PurchaseStarterEquipment: { characterId: string; cart: Record<string, unknown> };
   ConfirmCharacterAppearanceUpload: { characterId: string; s3Key: string };
   DeleteCharacter: { characterId: string };
-  SendGameChatMessage: { body: string; artifact?: SharedCharacterDraftArtifact };
+  SendGameChatMessage: { body: string; artifact?: SharedChatArtifact };
   SubmitCharacterForApproval: {
     characterId: string;
     expectedVersion: number;
@@ -255,7 +256,7 @@ export interface GameChatMessage {
   senderRole: 'PLAYER' | 'GM';
   senderCharacterId: string | null;
   body: string;
-  artifact?: SharedCharacterDraftArtifact;
+  artifact?: SharedChatArtifact;
   createdAt: string;
 }
 
@@ -264,6 +265,45 @@ export interface GameChatResponse {
   gameName: string;
   participants: GameChatParticipant[];
   messages: GameChatMessage[];
+}
+
+export interface PregamePlanningPrompt {
+  promptId: string;
+  title: string;
+  prompt: string;
+  suggestedRoles: PregameRole[];
+  senderDisplayName: string;
+  createdAt: string;
+}
+
+export interface PregamePlanningClaim {
+  claimId: string;
+  characterId: string;
+  snapshotVersion: number;
+  characterName: string;
+  roles: PregameRole[];
+  note: string | null;
+  senderDisplayName: string;
+  createdAt: string;
+}
+
+export interface PregamePlanningNeed {
+  role: PregameRole;
+  label: string;
+  isOpen: boolean;
+  claimedBy: string[];
+}
+
+export interface PregamePlanningResponse {
+  gameId: string;
+  gameName: string;
+  viewer: {
+    isMember: boolean;
+    isGameMaster: boolean;
+  };
+  activePrompt: PregamePlanningPrompt | null;
+  partyNeeds: PregamePlanningNeed[];
+  recentClaims: PregamePlanningClaim[];
 }
 
 export type GameplayGraphNodeView = GameplayGraphNode;
@@ -301,6 +341,7 @@ export interface ApiClient {
   getGameActorContext(gameId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getGameChat(gameId: string): Promise<GameChatResponse>;
+  getPregamePlanning(gameId: string): Promise<PregamePlanningResponse>;
   getPlayerGameplayView(gameId: string): Promise<GameplayView | null>;
   getGmGameplayView(gameId: string): Promise<GameplayView | null>;
   getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
@@ -586,6 +627,27 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         gameId,
         participantCount: response.participants.length,
         messageCount: response.messages.length,
+      });
+      return response;
+    },
+
+    async getPregamePlanning(gameId: string): Promise<PregamePlanningResponse> {
+      logWebFlow('WEB_API_GET_PREGAME_PLANNING_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+      });
+      const response = await requestJson<PregamePlanningResponse>(`${baseUrl}/games/${encodeURIComponent(gameId)}/pregame`, {
+        headers: await auth.withAuthHeaders(),
+      });
+      logWebFlow('WEB_API_GET_PREGAME_PLANNING_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        isMember: response.viewer.isMember,
+        isGameMaster: response.viewer.isGameMaster,
+        hasActivePrompt: response.activePrompt !== null,
+        partyNeedCount: response.partyNeeds.length,
       });
       return response;
     },

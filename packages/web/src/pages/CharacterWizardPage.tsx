@@ -1,4 +1,5 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { PregameRole } from '@starter/shared';
 import { useParams } from 'react-router-dom';
 import { toPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient } from '../api/ApiClient';
@@ -38,6 +39,7 @@ import {
   WizardState,
   WizardStepKey,
 } from '../features/character-wizard';
+import { PREGAME_ROLE_LABELS, PREGAME_ROLE_ORDER, usePregamePlanning } from '../features/pregame-planning';
 import { useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow } from '../logging/flowLog';
 
@@ -160,8 +162,9 @@ function CharacterWizardPageContent({
       }),
     [state, snapshot, isExecutingCommand, lastSavedFingerprint, wizardMode]
   );
+  const pregamePlanning = usePregamePlanning(routeGameId, wizardMode === 'apply');
 
-  const { saveStateByStep, shareState, saveStepProgress, executeFinalAction, shareDraftToChat, refreshSnapshot } = useCharacterWizardWorkflow({
+  const { saveStateByStep, shareState, saveStepProgress, executeFinalAction, shareDraftToChat, claimPartyRoleInChat, refreshSnapshot } = useCharacterWizardWorkflow({
     api,
     routePlayerId,
     wizardMode,
@@ -174,6 +177,7 @@ function CharacterWizardPageContent({
     setStepError,
     submitEnvelopeAndAwait,
     revealCommandStatus: scheduleCommandStatusScroll,
+    onPregamePlanningChanged: pregamePlanning.refresh,
   });
 
   const steps: StepperItem[] = [
@@ -328,6 +332,14 @@ function CharacterWizardPageContent({
         }
       >
         <div className="l-col">
+          {wizardMode === 'apply' ? (
+            <PregamePlanningContext
+              planningState={pregamePlanning.state}
+              disabled={isExecutingCommand || shareState === 'saving'}
+              onClaimRole={claimPartyRoleInChat}
+            />
+          ) : null}
+
           <CharacterWizardAutofillControls
             isExecutingCommand={isExecutingCommand}
             savedCharacters={savedCharacters}
@@ -555,6 +567,73 @@ function CharacterWizardPageContent({
     }, 180);
   }
 
+}
+
+function PregamePlanningContext(props: {
+  planningState: ReturnType<typeof usePregamePlanning>['state'];
+  disabled: boolean;
+  onClaimRole: (role: PregameRole) => Promise<void>;
+}) {
+  if (props.planningState.status === 'disabled') {
+    return null;
+  }
+
+  if (props.planningState.status === 'loading') {
+    return (
+      <div className="c-note c-note--info">
+        <span className="t-small">Loading pregame planning context...</span>
+      </div>
+    );
+  }
+
+  if (props.planningState.status === 'error') {
+    return (
+      <div className="c-note c-note--error">
+        <span className="t-small">{props.planningState.message}</span>
+      </div>
+    );
+  }
+
+  const planning = props.planningState.planning;
+  const openRoles = planning.partyNeeds.filter((need) => need.isOpen);
+
+  return (
+    <div className="c-note c-note--info">
+      <div className="t-small">
+        {planning.activePrompt
+          ? `${planning.activePrompt.senderDisplayName}: ${planning.activePrompt.prompt}`
+          : 'No GM planning prompt is active yet.'}
+      </div>
+      <div className="t-small">
+        {openRoles.length > 0
+          ? `Open roles: ${openRoles.map((need) => need.label).join(', ')}`
+          : 'All tracked party roles currently have at least one claim.'}
+      </div>
+      <div className="l-row">
+        {PREGAME_ROLE_ORDER.map((role) => {
+          const need = planning.partyNeeds.find((entry) => entry.role === role) ?? null;
+          const disabled = props.disabled || !planning.viewer.isMember;
+
+          return (
+            <button
+              key={role}
+              className={`c-btn ${disabled ? 'is-disabled' : ''}`.trim()}
+              type="button"
+              disabled={disabled}
+              onClick={() => void props.onClaimRole(role)}
+              title={
+                !planning.viewer.isMember
+                  ? 'Join the game before posting structured planning updates.'
+                  : undefined
+              }
+            >
+              {need?.isOpen ? `Claim ${PREGAME_ROLE_LABELS[role]}` : `Reinforce ${PREGAME_ROLE_LABELS[role]}`}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function setSubAbility(

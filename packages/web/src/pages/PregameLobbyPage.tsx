@@ -1,18 +1,43 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
+import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { createPregameLobbyViewModel, usePregameLobby } from '../features/pregame-lobby';
+import { buildPostGamePromptEnvelope, buildSuggestedGamePromptArtifact } from '../features/pregame-planning';
+import { useCommandWorkflow } from '../hooks/useCommandStatus';
 
 export function PregameLobbyPage() {
   const params = useParams<{ gameId: string }>();
   const gameId = params.gameId ?? 'game-1';
-  const state = usePregameLobby(gameId);
-  const view = useMemo(() => createPregameLobbyViewModel(state), [state]);
+  const lobby = usePregameLobby(gameId);
+  const view = useMemo(() => createPregameLobbyViewModel(lobby.state), [lobby.state]);
+  const { status: commandStatus, isRunning, submitEnvelopeAndAwait } = useCommandWorkflow();
+
+  async function postSuggestedPrompt() {
+    if (lobby.state.status !== 'ready' || !lobby.state.actorContext.isGameMaster) {
+      return;
+    }
+    const suggestedRoles = lobby.state.planning.partyNeeds.filter((need) => need.isOpen).map((need) => need.role);
+    const prompt = buildSuggestedGamePromptArtifact({ suggestedRoles });
+
+    const terminal = await submitEnvelopeAndAwait(
+      'Post pregame prompt',
+      buildPostGamePromptEnvelope({
+        gameId,
+        body: prompt.body,
+        artifact: prompt.artifact,
+      })
+    );
+    if (terminal.status === 'PROCESSED') {
+      await lobby.refresh();
+    }
+  }
 
   return (
     <div className="l-page">
       <Panel title={view.title} subtitle={view.subtitle} footer={<LobbyActions actions={view.actions} />}>
+        <CommandStatusPanel status={commandStatus} />
         <div className={`c-note ${view.noticeTone === 'error' ? 'c-note--error' : 'c-note--info'}`}>
           <span className="t-small">{view.notice}</span>
         </div>
@@ -22,6 +47,21 @@ export function PregameLobbyPage() {
             <div className="l-col l-grow">
               <SectionTitle title="Planning Status" />
               <InfoList lines={view.summaryLines} />
+
+              <SectionTitle title="GM Prompt" />
+              <InfoList lines={view.promptLines} />
+              {lobby.state.status === 'ready' && lobby.state.actorContext.isGameMaster ? (
+                <div className="l-row">
+                  <button
+                    className={`c-btn ${isRunning ? 'is-disabled' : ''}`.trim()}
+                    type="button"
+                    disabled={isRunning}
+                    onClick={() => void postSuggestedPrompt()}
+                  >
+                    Post Prompt For Open Roles
+                  </button>
+                </div>
+              ) : null}
 
               <SectionTitle title="Party Roster" />
               <div className="c-table" role="table" aria-label="Pregame party roster">

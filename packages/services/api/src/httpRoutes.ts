@@ -10,6 +10,7 @@ import { gameRouteDefinitions } from './features/games/routes.js';
 import { gmRouteDefinitions } from './features/gm/routes.js';
 import { gameplayRouteDefinitions } from './features/gameplay/routes.js';
 import { meRouteDefinitions } from './features/me/routes.js';
+import { pregameRouteDefinitions } from './features/pregame/routes.js';
 import { requireActor, requireCommandAccess, requireGameAccess, requireRole } from './routeAuth.js';
 
 const routeDefinitions: ApiRouteDefinition[] = [
@@ -20,6 +21,7 @@ const routeDefinitions: ApiRouteDefinition[] = [
   ...gmRouteDefinitions,
   ...gameplayRouteDefinitions,
   ...meRouteDefinitions,
+  ...pregameRouteDefinitions,
 ];
 
 export function listContractRoutes(): ApiRoute[] {

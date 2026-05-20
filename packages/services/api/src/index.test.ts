@@ -289,6 +289,7 @@ describe('services/api contract route map', () => {
         { method: 'GET', path: '/me/inbox', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/chat', auth: 'required' },
+        { method: 'GET', path: '/games/{gameId}/pregame', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/play', auth: 'required' },
         { method: 'POST', path: '/games/{gameId}/characters/{characterId}/appearance/upload-url', auth: 'required' },
         { method: 'GET', path: '/players/{playerId}/characters/{characterId}', auth: 'required' },
@@ -646,6 +647,54 @@ describe('POST /commands', () => {
     });
   });
 
+  it('rejects non-GM actors posting structured game prompts into chat', async () => {
+    const db = makeDbMock();
+    db.membershipRepository.getMembership = vi.fn(async () => ({
+      pk: 'GAME#game-1',
+      sk: 'MEMBER#player-1',
+      type: 'GameMember',
+      gameId: 'game-1',
+      playerId: 'player-1',
+      roles: ['PLAYER'],
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z',
+    }) as any);
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: new InMemoryFifoQueue(),
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    await expect(
+      api.postCommands({
+        bypassActorId: 'player-1',
+        envelope: {
+          commandId: '67666666-6666-4666-8666-666666666666',
+          gameId: 'game-1',
+          type: 'SendGameChatMessage',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          payload: {
+            body: 'GM posted a new pregame planning prompt.',
+            artifact: {
+              kind: 'GAME_PROMPT',
+              promptId: 'prompt-1',
+              title: 'Party needs Frontline',
+              prompt: 'We still need Frontline.',
+              suggestedRoles: ['FRONTLINE'],
+            },
+          },
+        },
+      })
+    ).rejects.toMatchObject({
+      statusCode: 403,
+      code: 'GAME_PROMPT_GM_REQUIRED',
+    });
+  });
+
   it('filters archived game characters out of my character listings', async () => {
     const db = makeDbMock();
     db.characterRepository.listCharactersByOwner = vi.fn(async () => [
@@ -965,6 +1014,96 @@ describe('game chat', () => {
       status: 'DRAFT',
       abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
       skillSummary: ['Fighter 1'],
+    });
+  });
+});
+
+describe('pregame planning', () => {
+  it('derives the active prompt and latest role claims from structured chat artifacts', async () => {
+    const db = makeDbMock();
+    db.membershipRepository.getMembership = vi.fn(async (_gameId: string, playerId: string) => ({
+      pk: 'GAME#game-1',
+      sk: `MEMBER#${playerId}`,
+      type: 'GameMember',
+      gameId: 'game-1',
+      playerId,
+      roles: playerId === 'gm-1' ? ['GM'] : ['PLAYER'],
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z',
+    }) as any);
+    db.chatRepository.queryMessages = vi.fn(async () => [
+      {
+        pk: 'GAME#game-1',
+        sk: 'CHAT#2026-03-01T09:15:00.000Z#msg-1',
+        type: 'GameChatMessage',
+        messageId: 'msg-1',
+        gameId: 'game-1',
+        senderPlayerId: 'gm-1',
+        senderRole: 'GM',
+        senderCharacterId: null,
+        senderNameSnapshot: 'Zed GM',
+        body: 'GM posted a new pregame planning prompt.',
+        artifact: {
+          kind: 'GAME_PROMPT',
+          promptId: 'prompt-1',
+          title: 'Party needs Frontline and Healer',
+          prompt: 'We still need Frontline and Healer.',
+          suggestedRoles: ['FRONTLINE', 'HEALER'],
+        },
+        createdAt: '2026-03-01T09:15:00.000Z',
+      },
+      {
+        pk: 'GAME#game-1',
+        sk: 'CHAT#2026-03-01T09:16:00.000Z#msg-2',
+        type: 'GameChatMessage',
+        messageId: 'msg-2',
+        gameId: 'game-1',
+        senderPlayerId: 'player-1',
+        senderRole: 'PLAYER',
+        senderCharacterId: 'char-1',
+        senderNameSnapshot: 'Borin',
+        body: 'Borin is claiming Frontline for the party.',
+        artifact: {
+          kind: 'PARTY_ROLE_CLAIM',
+          claimId: 'claim-1',
+          characterId: 'char-1',
+          snapshotVersion: 4,
+          characterName: 'Borin',
+          roles: ['FRONTLINE'],
+          note: 'Current plan is to cover Frontline.',
+        },
+        createdAt: '2026-03-01T09:16:00.000Z',
+      },
+    ]);
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: { sendMessage: vi.fn(async () => undefined) },
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    const planning = await api.readApis.getPregamePlanning('game-1', 'player-1');
+
+    expect(planning.viewer.isMember).toBe(true);
+    expect(planning.activePrompt?.title).toBe('Party needs Frontline and Healer');
+    expect(planning.partyNeeds.find((need) => need.role === 'FRONTLINE')).toEqual({
+      role: 'FRONTLINE',
+      label: 'Frontline',
+      isOpen: false,
+      claimedBy: ['Borin'],
+    });
+    expect(planning.partyNeeds.find((need) => need.role === 'HEALER')?.isOpen).toBe(true);
+    expect(planning.recentClaims[0]).toEqual({
+      claimId: 'claim-1',
+      characterId: 'char-1',
+      snapshotVersion: 4,
+      characterName: 'Borin',
+      roles: ['FRONTLINE'],
+      note: 'Current plan is to cover Frontline.',
+      senderDisplayName: 'Borin',
+      createdAt: '2026-03-01T09:16:00.000Z',
     });
   });
 });

@@ -1,9 +1,10 @@
 import { useState, type RefObject } from 'react';
+import type { SharedCharacterDraftArtifact, SharedGamePromptArtifact, SharedPartyRoleClaimArtifact } from '@starter/shared';
 import type { GameChatState } from '../hooks/useGameChat';
 import { CommandStatusPanel } from './CommandStatusPanel';
 import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
 import { ButtonLink } from './ButtonLink';
-import type { SharedCharacterDraftArtifact } from '@starter/shared';
+import { formatPregameRoleList } from '../features/pregame-planning/labels';
 
 interface GameChatPanelProps {
   chat: GameChatState;
@@ -62,20 +63,22 @@ export function GameChatPanel({
               <div className="c-chat__empty t-small">{initialLoading ? 'Loading messages...' : 'No chat messages yet.'}</div>
             ) : (
               chat.messages.map((message) => {
-                const artifact = message.artifact?.kind === 'CHARACTER_DRAFT' ? message.artifact : null;
+                const characterArtifact = message.artifact?.kind === 'CHARACTER_DRAFT' ? message.artifact : null;
+                const promptArtifact = message.artifact?.kind === 'GAME_PROMPT' ? message.artifact : null;
+                const roleClaimArtifact = message.artifact?.kind === 'PARTY_ROLE_CLAIM' ? message.artifact : null;
 
                 return (
                   <div className="c-chat__line" key={message.messageId}>
                     <span className="c-chat__time">[{formatChatTimestamp(message.createdAt)}]</span>{' '}
                     <span className="c-chat__speaker">{`<${message.senderDisplayName}>`}</span>{' '}
                     <span className="c-chat__body">{message.body}</span>
-                    {artifact ? (
+                    {characterArtifact ? (
                       <div className="c-note c-note--info c-chat__artifact-card">
-                        <div className="t-small">{`${artifact.characterName} (${artifact.race}) v${artifact.snapshotVersion}`}</div>
-                        <div className="t-small">{`Status: ${artifact.status}`}</div>
-                        <div className="t-small">{artifact.abilitySummary.join(' | ') || 'No ability summary.'}</div>
+                        <div className="t-small">{`${characterArtifact.characterName} (${characterArtifact.race}) v${characterArtifact.snapshotVersion}`}</div>
+                        <div className="t-small">{`Status: ${characterArtifact.status}`}</div>
+                        <div className="t-small">{characterArtifact.abilitySummary.join(' | ') || 'No ability summary.'}</div>
                         <div className="t-small">
-                          {artifact.skillSummary.length > 0 ? `Skills: ${artifact.skillSummary.join(', ')}` : 'Skills: none yet'}
+                          {characterArtifact.skillSummary.length > 0 ? `Skills: ${characterArtifact.skillSummary.join(', ')}` : 'Skills: none yet'}
                         </div>
                         <div className="l-row c-chat__artifact-actions">
                           <button
@@ -84,21 +87,23 @@ export function GameChatPanel({
                             onClick={() =>
                               setPreviewArtifact({
                                 senderDisplayName: message.senderDisplayName,
-                                artifact,
+                                artifact: characterArtifact,
                               })
                             }
                           >
                             Preview
                           </button>
-                          <button className="c-btn" type="button" onClick={() => replyToArtifact(artifact)}>
+                          <button className="c-btn" type="button" onClick={() => replyToArtifact(characterArtifact)}>
                             Reply
                           </button>
-                          <ButtonLink to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(artifact.characterId)}`}>
+                          <ButtonLink to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(characterArtifact.characterId)}`}>
                             Open Sheet
                           </ButtonLink>
                         </div>
                       </div>
                     ) : null}
+                    {promptArtifact ? <PromptArtifactCard artifact={promptArtifact} /> : null}
+                    {roleClaimArtifact ? <RoleClaimArtifactCard artifact={roleClaimArtifact} /> : null}
                   </div>
                 );
               })
@@ -204,6 +209,28 @@ export function GameChatPanel({
         </>
       ) : null}
     </>
+  );
+}
+
+function PromptArtifactCard({ artifact }: { artifact: SharedGamePromptArtifact }) {
+  return (
+    <div className="c-note c-note--info c-chat__artifact-card">
+      <div className="t-small">{artifact.title}</div>
+      <div className="t-small">{artifact.prompt}</div>
+      {artifact.suggestedRoles.length > 0 ? (
+        <div className="t-small">{`Suggested roles: ${formatPregameRoleList(artifact.suggestedRoles)}`}</div>
+      ) : null}
+    </div>
+  );
+}
+
+function RoleClaimArtifactCard({ artifact }: { artifact: SharedPartyRoleClaimArtifact }) {
+  return (
+    <div className="c-note c-note--info c-chat__artifact-card">
+      <div className="t-small">{`${artifact.characterName} claims ${formatPregameRoleList(artifact.roles)}`}</div>
+      <div className="t-small">{`Snapshot v${artifact.snapshotVersion}`}</div>
+      {artifact.note ? <div className="t-small">{artifact.note}</div> : null}
+    </div>
   );
 }
 

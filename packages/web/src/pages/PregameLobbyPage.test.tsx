@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '../api/ApiClient';
 import { useAuthProvider, type AuthProvider } from '../auth/AuthProvider';
+import { useCommandWorkflow } from '../hooks/useCommandStatus';
 import { PregameLobbyPage } from './PregameLobbyPage';
 
 vi.mock('../api/ApiClient', () => ({
@@ -11,6 +12,10 @@ vi.mock('../api/ApiClient', () => ({
 
 vi.mock('../auth/AuthProvider', () => ({
   useAuthProvider: vi.fn(),
+}));
+
+vi.mock('../hooks/useCommandStatus', () => ({
+  useCommandWorkflow: vi.fn(),
 }));
 
 vi.mock('../logging/flowLog', () => ({
@@ -39,6 +44,19 @@ function createAuth(): AuthProvider {
 describe('PregameLobbyPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait: vi.fn(),
+    });
   });
 
   it('renders the game-scoped planning view with lobby actions, roster, and recent activity', async () => {
@@ -78,6 +96,29 @@ describe('PregameLobbyPage', () => {
           },
         ],
       })),
+      getPregamePlanning: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        viewer: {
+          isMember: true,
+          isGameMaster: false,
+        },
+        activePrompt: {
+          promptId: 'prompt-1',
+          title: 'Party needs Frontline',
+          prompt: 'We still need Frontline. Please share a draft if you can cover it.',
+          suggestedRoles: ['FRONTLINE'],
+          senderDisplayName: '@Zed GM',
+          createdAt: '2026-03-01T09:15:00.000Z',
+        },
+        partyNeeds: [
+          { role: 'FRONTLINE', label: 'Frontline', isOpen: true, claimedBy: [] },
+          { role: 'HEALER', label: 'Healer', isOpen: false, claimedBy: ['Borin Stonehand'] },
+          { role: 'SCOUT', label: 'Scout', isOpen: true, claimedBy: [] },
+          { role: 'ARCANE', label: 'Arcane Support', isOpen: true, claimedBy: [] },
+        ],
+        recentClaims: [],
+      })),
       getMyCharacters: vi.fn(async () => [
         {
           gameId: 'game-1',
@@ -106,6 +147,9 @@ describe('PregameLobbyPage', () => {
     expect(screen.getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
     expect(screen.getByText('Your current character is Borin Stonehand (DRAFT).')).toBeTruthy();
     expect(screen.getByText('One player still needs a character before the party is fully represented.')).toBeTruthy();
+    expect(screen.getByText('We still need Frontline. Please share a draft if you can cover it.')).toBeTruthy();
+    expect(screen.getByText('Frontline: open')).toBeTruthy();
+    expect(screen.getByText('Healer: claimed by Borin Stonehand')).toBeTruthy();
 
     const roster = screen.getByRole('table', { name: 'Pregame party roster' });
     expect(within(roster).getByText('@Zed GM')).toBeTruthy();
@@ -135,6 +179,17 @@ describe('PregameLobbyPage', () => {
         gameName: 'Dungeon Delvers',
         participants: [],
         messages: [],
+      })),
+      getPregamePlanning: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        viewer: {
+          isMember: false,
+          isGameMaster: false,
+        },
+        activePrompt: null,
+        partyNeeds: [],
+        recentClaims: [],
       })),
       getMyCharacters: vi.fn(async () => []),
     } as unknown as ReturnType<typeof createApiClient>);

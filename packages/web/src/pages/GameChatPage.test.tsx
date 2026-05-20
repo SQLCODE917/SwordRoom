@@ -377,6 +377,87 @@ describe('GameChatPage', () => {
     expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).value).toBe('About Borin v2: ');
   });
 
+  it('renders structured GM prompts and party role claims inside chat', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-1',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-1' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [
+          {
+            messageId: 'msg-1',
+            senderPlayerId: 'gm-1',
+            senderDisplayName: '@Zed GM',
+            senderRole: 'GM',
+            senderCharacterId: null,
+            body: 'GM posted a new pregame planning prompt.',
+            artifact: {
+              kind: 'GAME_PROMPT',
+              promptId: 'prompt-1',
+              title: 'Party needs Frontline and Healer',
+              prompt: 'We still need Frontline and Healer. Please share a draft if you can cover one of those roles.',
+              suggestedRoles: ['FRONTLINE', 'HEALER'],
+            },
+            createdAt: '2026-03-01T09:15:00.000Z',
+          },
+          {
+            messageId: 'msg-2',
+            senderPlayerId: 'player-1',
+            senderDisplayName: 'Borin',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            body: 'Borin is claiming Frontline for the party.',
+            artifact: {
+              kind: 'PARTY_ROLE_CLAIM',
+              claimId: 'claim-1',
+              characterId: 'char-1',
+              snapshotVersion: 4,
+              characterName: 'Borin',
+              roles: ['FRONTLINE'],
+              note: 'Current plan is to cover Frontline.',
+            },
+            createdAt: '2026-03-01T09:16:00.000Z',
+          },
+        ],
+      })),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Party needs Frontline and Healer')).toBeTruthy();
+    expect(screen.getByText('Suggested roles: Frontline and Healer')).toBeTruthy();
+    expect(screen.getByText('Borin claims Frontline')).toBeTruthy();
+    expect(screen.getByText('Current plan is to cover Frontline.')).toBeTruthy();
+  });
+
   it('keeps the steady loaded state visible during background polling', async () => {
     let resolveRefresh!: (value: GameChatResponse) => void;
     const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((handler: TimerHandler) => {

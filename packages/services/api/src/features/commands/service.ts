@@ -357,13 +357,27 @@ async function assertSendGameChatMessageAuthorized(
   deps: ApiServiceDependencies,
   envelope: Extract<AnyCommandEnvelope, { type: 'SendGameChatMessage' }>
 ): Promise<void> {
-  await requireMembership(deps, envelope.gameId, envelope.actorId);
+  const membership = await requireMembership(deps, envelope.gameId, envelope.actorId);
   if (envelope.payload.artifact?.kind === 'CHARACTER_DRAFT') {
     await assertCharacterOwnerOrGameMaster(deps.db, {
       gameId: envelope.gameId,
       characterId: envelope.payload.artifact.characterId,
       actorId: envelope.actorId,
     });
+  }
+  if (envelope.payload.artifact?.kind === 'PARTY_ROLE_CLAIM') {
+    await assertCharacterOwnerOrGameMaster(deps.db, {
+      gameId: envelope.gameId,
+      characterId: envelope.payload.artifact.characterId,
+      actorId: envelope.actorId,
+    });
+  }
+  if (envelope.payload.artifact?.kind === 'GAME_PROMPT' && !membership.roles.includes('GM')) {
+    throw createApiError(
+      `only the game master can post structured game prompts for "${envelope.gameId}"`,
+      'GAME_PROMPT_GM_REQUIRED',
+      403
+    );
   }
 }
 

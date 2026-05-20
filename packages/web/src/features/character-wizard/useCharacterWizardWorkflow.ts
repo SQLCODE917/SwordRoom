@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
-import type { SharedCharacterDraftArtifact } from '@starter/shared';
+import type { PregameRole, SharedCharacterDraftArtifact, SharedPartyRoleClaimArtifact } from '@starter/shared';
 import type { CharacterItem, CommandEnvelopeInput, CommandStatusResponse, CommandType } from '../../api/ApiClient';
 import { describeFailure } from '../../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../../logging/flowLog';
 import { buildSaveCharacterDraftEnvelope, buildShareCharacterDraftEnvelope, buildSubmitCharacterForApprovalEnvelope } from './commands.js';
+import { buildSharePartyRoleClaimEnvelope } from '../pregame-planning/commands.js';
+import { PREGAME_ROLE_LABELS } from '../pregame-planning/labels.js';
 import { hydrateWizardStateFromCharacter, serializeWizardState } from './state.js';
 import type { CharacterSnapshot, SaveButtonState, WizardMode, WizardState, WizardStepKey } from './types.js';
 import type { createCharacterWizardViewModel } from './viewModel.js';
@@ -39,6 +41,7 @@ export function useCharacterWizardWorkflow(input: {
     envelope: CommandEnvelopeInput<T>
   ) => Promise<CommandStatusResponse>;
   revealCommandStatus?: () => void;
+  onPregamePlanningChanged?: () => Promise<void> | void;
 }) {
   const [saveStateByStep, setSaveStateByStep] = useState<Record<WizardStepKey, SaveButtonState>>(() => initialSaveButtonState);
   const [shareState, setShareState] = useState<SaveButtonState>('idle');
@@ -360,6 +363,7 @@ export function useCharacterWizardWorkflow(input: {
         })
       );
 
+      await input.onPregamePlanningChanged?.();
       setShareButtonState('saved');
       logWebFlow('WEB_CHARACTER_WIZARD_SHARE_OK', {
         gameId: input.state.gameId,
@@ -378,12 +382,77 @@ export function useCharacterWizardWorkflow(input: {
     }
   }, [input, saveCurrentDraft, setShareButtonState, submitCommandAndAwait]);
 
+  const claimPartyRoleInChat = useCallback(
+    async (role: PregameRole) => {
+      input.setStepError(' ');
+      input.revealCommandStatus?.();
+      logWebFlow('WEB_CHARACTER_WIZARD_ROLE_CLAIM_START', {
+        gameId: input.state.gameId,
+        characterId: input.state.characterId,
+        role,
+      });
+      try {
+        if (input.wizardMode !== 'apply') {
+          throw new Error('Only game-scoped character drafts can claim party roles.');
+        }
+        if (!input.view.isDraftReadyForSubmit) {
+          throw new Error(input.view.previewErrors[0] ?? 'Complete the required fields before claiming a party role.');
+        }
+
+        setShareButtonState('saving');
+        const nextSnapshot = await saveCurrentDraft('submit');
+        if (!nextSnapshot.version) {
+          throw new Error('Draft save did not return a versioned character snapshot.');
+        }
+
+        const artifact = buildPartyRoleClaimArtifact({
+          state: input.state,
+          snapshot: nextSnapshot,
+          role,
+        });
+
+        await submitCommandAndAwait(
+          'Claim party role',
+          buildSharePartyRoleClaimEnvelope({
+            gameId: input.state.gameId,
+            body: buildRoleClaimChatBody({
+              characterName: artifact.characterName,
+              roles: artifact.roles,
+            }),
+            artifact,
+          })
+        );
+
+        await input.onPregamePlanningChanged?.();
+        setShareButtonState('saved');
+        logWebFlow('WEB_CHARACTER_WIZARD_ROLE_CLAIM_OK', {
+          gameId: input.state.gameId,
+          characterId: input.state.characterId,
+          role,
+          snapshotVersion: nextSnapshot.version,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setShareButtonState('idle');
+        input.setStepError(message);
+        logWebFlow('WEB_CHARACTER_WIZARD_ROLE_CLAIM_FAILED', {
+          gameId: input.state.gameId,
+          characterId: input.state.characterId,
+          role,
+          ...summarizeError(error),
+        });
+      }
+    },
+    [input, saveCurrentDraft, setShareButtonState, submitCommandAndAwait]
+  );
+
   return {
     saveStateByStep,
     shareState,
     saveStepProgress,
     executeFinalAction,
     shareDraftToChat,
+    claimPartyRoleInChat,
     refreshSnapshot,
   };
 }
@@ -485,4 +554,25 @@ function buildSharedCharacterDraftArtifact(input: {
 
 function buildSharedDraftChatBody(input: { characterName: string }): string {
   return `Sharing ${input.characterName} for party feedback.`;
+}
+
+function buildPartyRoleClaimArtifact(input: {
+  state: WizardState;
+  snapshot: CharacterSnapshot;
+  role: PregameRole;
+}): SharedPartyRoleClaimArtifact {
+  return {
+    kind: 'PARTY_ROLE_CLAIM',
+    claimId: input.snapshot.version ? `${input.state.characterId}:v${input.snapshot.version}:${input.role}` : `${input.state.characterId}:${input.role}`,
+    characterId: input.state.characterId,
+    snapshotVersion: input.snapshot.version ?? 0,
+    characterName: input.state.name.trim() || input.state.characterId,
+    roles: [input.role],
+    note: `Current plan is to cover ${PREGAME_ROLE_LABELS[input.role]}.`,
+  };
+}
+
+function buildRoleClaimChatBody(input: { characterName: string; roles: readonly PregameRole[] }): string {
+  const roleText = input.roles.map((role) => PREGAME_ROLE_LABELS[role]).join(', ');
+  return `${input.characterName} is claiming ${roleText} for the party.`;
 }

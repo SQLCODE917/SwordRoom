@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { createApiClient, type CharacterItem, type GameActorContextResponse, type GameChatResponse, type GameItem } from '../../api/ApiClient';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  createApiClient,
+  type CharacterItem,
+  type GameActorContextResponse,
+  type GameChatResponse,
+  type GameItem,
+  type PregamePlanningResponse,
+} from '../../api/ApiClient';
 import { useAuthProvider } from '../../auth/AuthProvider';
 import { logWebFlow, summarizeError } from '../../logging/flowLog';
 
@@ -12,18 +19,24 @@ export type PregameLobbyState =
       game: GameItem;
       actorContext: GameActorContextResponse;
       chat: GameChatResponse;
+      planning: PregamePlanningResponse;
       myCharacters: CharacterItem[];
     };
 
-export function usePregameLobby(gameId: string): PregameLobbyState {
+export function usePregameLobby(gameId: string): {
+  state: PregameLobbyState;
+  refresh: () => Promise<void>;
+} {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
   const [state, setState] = useState<PregameLobbyState>({ status: 'loading', gameId });
+  const isMountedRef = useRef(true);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
+  const refresh = useMemo(
+    () => async () => {
+      if (!isMountedRef.current) {
+        return;
+      }
       setState({ status: 'loading', gameId });
       logWebFlow('WEB_PREGAME_LOBBY_LOAD_START', {
         actorId: auth.actorId,
@@ -31,26 +44,28 @@ export function usePregameLobby(gameId: string): PregameLobbyState {
         gameId,
       });
       try {
-        const [game, actorContext, chat, myCharacters] = await Promise.all([
+        const [game, actorContext, chat, planning, myCharacters] = await Promise.all([
           api.getGame(gameId),
           api.getGameActorContext(gameId),
           api.getGameChat(gameId),
+          api.getPregamePlanning(gameId),
           api.getMyCharacters(),
         ]);
 
-        if (cancelled) {
-          return;
-        }
         if (!game) {
           throw new Error(`Game ${gameId} was not found.`);
         }
 
+        if (!isMountedRef.current) {
+          return;
+        }
         setState({
           status: 'ready',
           gameId,
           game,
           actorContext,
           chat,
+          planning,
           myCharacters,
         });
         logWebFlow('WEB_PREGAME_LOBBY_LOAD_OK', {
@@ -63,10 +78,10 @@ export function usePregameLobby(gameId: string): PregameLobbyState {
           isGameMaster: actorContext.isGameMaster,
         });
       } catch (loadError) {
-        if (cancelled) {
+        const message = loadError instanceof Error ? loadError.message : String(loadError);
+        if (!isMountedRef.current) {
           return;
         }
-        const message = loadError instanceof Error ? loadError.message : String(loadError);
         setState({
           status: 'error',
           gameId,
@@ -79,14 +94,18 @@ export function usePregameLobby(gameId: string): PregameLobbyState {
           ...summarizeError(loadError),
         });
       }
-    };
+    },
+    [api, auth.actorId, auth.mode, gameId]
+  );
 
-    void load();
+  useEffect(() => {
+    isMountedRef.current = true;
+    void refresh();
 
     return () => {
-      cancelled = true;
+      isMountedRef.current = false;
     };
-  }, [api, auth.actorId, auth.mode, gameId]);
+  }, [refresh]);
 
-  return state;
+  return { state, refresh };
 }
