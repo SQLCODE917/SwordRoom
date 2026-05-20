@@ -127,6 +127,10 @@ function summarizePayload(type: string | null, payload: Record<string, unknown>)
     return {
       bodyLength: typeof payload.body === 'string' ? payload.body.length : null,
       bodyPresent: typeof payload.body === 'string' ? payload.body.trim().length > 0 : false,
+      artifactKind:
+        payload && typeof payload === 'object' && typeof (payload as Record<string, unknown>).artifact === 'object'
+          ? String(((payload as Record<string, unknown>).artifact as Record<string, unknown>).kind ?? '')
+          : null,
     };
   }
 

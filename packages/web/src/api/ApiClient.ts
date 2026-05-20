@@ -1,5 +1,6 @@
 import type { AuthProvider } from '../auth/AuthProvider';
 import type {
+  SharedCharacterDraftArtifact,
   GameplayCombatActionType,
   GameplayEventRecord,
   GameplayGraphEdge,
@@ -101,7 +102,7 @@ interface CommandPayloadByType {
   PurchaseStarterEquipment: { characterId: string; cart: Record<string, unknown> };
   ConfirmCharacterAppearanceUpload: { characterId: string; s3Key: string };
   DeleteCharacter: { characterId: string };
-  SendGameChatMessage: { body: string };
+  SendGameChatMessage: { body: string; artifact?: SharedCharacterDraftArtifact };
   SubmitCharacterForApproval: {
     characterId: string;
     expectedVersion: number;
@@ -254,6 +255,7 @@ export interface GameChatMessage {
   senderRole: 'PLAYER' | 'GM';
   senderCharacterId: string | null;
   body: string;
+  artifact?: SharedCharacterDraftArtifact;
   createdAt: string;
 }
 

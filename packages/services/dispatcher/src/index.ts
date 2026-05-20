@@ -225,6 +225,7 @@ function toTransactWriteItem(
             senderCharacterId: effect.input.senderCharacterId,
             senderNameSnapshot: effect.input.senderNameSnapshot,
             body: effect.input.body,
+            artifact: effect.input.artifact,
             createdAt: effect.input.createdAt,
           },
           ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)',

@@ -124,6 +124,7 @@ describe('GMGameplayPage', () => {
     mockMatchMedia(false);
     vi.mocked(useGameChat).mockReturnValue({
       chat: {
+        gameId: 'game-1',
         gameName: 'Dungeon Delvers',
         participants: [],
         messages: [],

@@ -167,6 +167,16 @@ describe('sendGameChatMessageHandler', () => {
         createdAt: '2026-03-01T09:15:00.000Z',
         payload: {
           body: 'Ready.',
+          artifact: {
+            kind: 'CHARACTER_DRAFT',
+            characterId: 'char-1',
+            snapshotVersion: 2,
+            characterName: 'Borin',
+            race: 'HUMAN',
+            status: 'DRAFT',
+            abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+            skillSummary: ['Fighter 1'],
+          },
         },
       }
     );
@@ -182,6 +192,16 @@ describe('sendGameChatMessageHandler', () => {
           senderCharacterId: 'char-1',
           senderNameSnapshot: 'Borin',
           body: 'Ready.',
+          artifact: {
+            kind: 'CHARACTER_DRAFT',
+            characterId: 'char-1',
+            snapshotVersion: 2,
+            characterName: 'Borin',
+            race: 'HUMAN',
+            status: 'DRAFT',
+            abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+            skillSummary: ['Fighter 1'],
+          },
           createdAt: '2026-03-01T09:15:00.000Z',
         },
       },

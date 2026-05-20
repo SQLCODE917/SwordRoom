@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import type { SharedCharacterDraftArtifact } from '@starter/shared';
 import type { CharacterItem, CommandEnvelopeInput, CommandStatusResponse, CommandType } from '../../api/ApiClient';
 import { describeFailure } from '../../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../../logging/flowLog';
-import { buildSaveCharacterDraftEnvelope, buildSubmitCharacterForApprovalEnvelope } from './commands.js';
+import { buildSaveCharacterDraftEnvelope, buildShareCharacterDraftEnvelope, buildSubmitCharacterForApprovalEnvelope } from './commands.js';
 import { hydrateWizardStateFromCharacter, serializeWizardState } from './state.js';
 import type { CharacterSnapshot, SaveButtonState, WizardMode, WizardState, WizardStepKey } from './types.js';
 import type { createCharacterWizardViewModel } from './viewModel.js';
@@ -40,6 +41,8 @@ export function useCharacterWizardWorkflow(input: {
   revealCommandStatus?: () => void;
 }) {
   const [saveStateByStep, setSaveStateByStep] = useState<Record<WizardStepKey, SaveButtonState>>(() => initialSaveButtonState);
+  const [shareState, setShareState] = useState<SaveButtonState>('idle');
+  const shareResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveResetTimersRef = useRef<Record<WizardStepKey, ReturnType<typeof setTimeout> | null>>({
     race: null,
     dice: null,
@@ -56,6 +59,9 @@ export function useCharacterWizardWorkflow(input: {
         if (timer) {
           clearTimeout(timer);
         }
+      }
+      if (shareResetTimerRef.current) {
+        clearTimeout(shareResetTimerRef.current);
       }
     };
   }, []);
@@ -79,6 +85,20 @@ export function useCharacterWizardWorkflow(input: {
           [stepKey]: 'idle',
         }));
         saveResetTimersRef.current[stepKey] = null;
+      }, 1400);
+    }
+  }, []);
+
+  const setShareButtonState = useCallback((nextState: SaveButtonState) => {
+    if (shareResetTimerRef.current) {
+      clearTimeout(shareResetTimerRef.current);
+      shareResetTimerRef.current = null;
+    }
+    setShareState(nextState);
+    if (nextState === 'saved') {
+      shareResetTimerRef.current = setTimeout(() => {
+        setShareState('idle');
+        shareResetTimerRef.current = null;
       }, 1400);
     }
   }, []);
@@ -299,10 +319,71 @@ export function useCharacterWizardWorkflow(input: {
     }
   }, [input, refreshSnapshot, saveCurrentDraft, setSaveButtonState, submitCommandAndAwait]);
 
+  const shareDraftToChat = useCallback(async () => {
+    input.setStepError(' ');
+    input.revealCommandStatus?.();
+    logWebFlow('WEB_CHARACTER_WIZARD_SHARE_START', {
+      gameId: input.state.gameId,
+      characterId: input.state.characterId,
+      wizardMode: input.wizardMode,
+      namePresent: input.state.name.trim().length > 0,
+    });
+    try {
+      if (input.wizardMode !== 'apply') {
+        throw new Error('Only game-scoped character drafts can be shared to chat.');
+      }
+      if (!input.view.isDraftReadyForSubmit) {
+        throw new Error(input.view.previewErrors[0] ?? 'Complete the required fields before sharing this draft to chat.');
+      }
+
+      setShareButtonState('saving');
+      const nextSnapshot = await saveCurrentDraft('submit');
+      if (!nextSnapshot.version) {
+        throw new Error('Draft save did not return a versioned character snapshot.');
+      }
+
+      const artifact = buildSharedCharacterDraftArtifact({
+        state: input.state,
+        view: input.view,
+        snapshot: nextSnapshot,
+      });
+      const body = buildSharedDraftChatBody({
+        characterName: artifact.characterName,
+      });
+
+      await submitCommandAndAwait(
+        'Share draft to chat',
+        buildShareCharacterDraftEnvelope({
+          gameId: input.state.gameId,
+          body,
+          artifact,
+        })
+      );
+
+      setShareButtonState('saved');
+      logWebFlow('WEB_CHARACTER_WIZARD_SHARE_OK', {
+        gameId: input.state.gameId,
+        characterId: input.state.characterId,
+        snapshotVersion: nextSnapshot.version,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setShareButtonState('idle');
+      input.setStepError(message);
+      logWebFlow('WEB_CHARACTER_WIZARD_SHARE_FAILED', {
+        gameId: input.state.gameId,
+        characterId: input.state.characterId,
+        ...summarizeError(error),
+      });
+    }
+  }, [input, saveCurrentDraft, setShareButtonState, submitCommandAndAwait]);
+
   return {
     saveStateByStep,
+    shareState,
     saveStepProgress,
     executeFinalAction,
+    shareDraftToChat,
     refreshSnapshot,
   };
 }
@@ -375,4 +456,33 @@ function parseOptionalNumber(value: string): number | null {
   }
   const parsed = Number(trimmed);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildSharedCharacterDraftArtifact(input: {
+  state: WizardState;
+  view: CharacterWizardViewModel;
+  snapshot: CharacterSnapshot;
+}): SharedCharacterDraftArtifact {
+  return {
+    kind: 'CHARACTER_DRAFT',
+    characterId: input.state.characterId,
+    snapshotVersion: input.snapshot.version ?? 0,
+    characterName: input.state.name.trim() || input.state.characterId,
+    race: input.state.race,
+    status: input.snapshot.status,
+    abilitySummary: [
+      `STR ${input.view.derived.STR}`,
+      `DEX ${input.view.derived.DEX}`,
+      `MP ${input.view.derived.MP}`,
+    ],
+    skillSummary: input.snapshot.skills
+      .slice()
+      .sort((left, right) => right.level - left.level || left.skill.localeCompare(right.skill))
+      .slice(0, 3)
+      .map((entry) => `${entry.skill} ${entry.level}`),
+  };
+}
+
+function buildSharedDraftChatBody(input: { characterName: string }): string {
+  return `Sharing ${input.characterName} for party feedback.`;
 }

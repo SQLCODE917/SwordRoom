@@ -569,6 +569,83 @@ describe('POST /commands', () => {
     });
   });
 
+  it('rejects sharing another player character into game chat', async () => {
+    const db = makeDbMock();
+    db.membershipRepository.getMembership = vi.fn(async () => ({
+      pk: 'GAME#game-1',
+      sk: 'MEMBER#player-2',
+      type: 'GameMember',
+      gameId: 'game-1',
+      playerId: 'player-2',
+      roles: ['PLAYER'],
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z',
+    }));
+    db.characterRepository.getCharacter = vi.fn(async () => ({
+      pk: 'GAME#game-1',
+      sk: 'CHAR#char-1',
+      type: 'Character',
+      gameId: 'game-1',
+      characterId: 'char-1',
+      ownerPlayerId: 'player-1',
+      status: 'DRAFT',
+      draft: {
+        race: 'HUMAN',
+        raisedBy: null,
+        subAbility: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0, G: 0, H: 0 },
+        ability: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+        bonus: { dex: 0, agi: 0, int: 0, str: 0, lf: 0, mp: 0 },
+        background: { kind: null, roll2d: null },
+        starting: { expTotal: 0, expUnspent: 0, moneyGamels: 0, moneyRoll2d: null, startingSkills: [] },
+        skills: [],
+        purchases: { weapons: [], armor: [], shields: [], gear: [] },
+        appearance: { imageKey: null, imageUrl: null, updatedAt: null },
+        identity: { name: 'Borin', age: null, gender: null },
+        noteToGm: null,
+        gmNote: null,
+      },
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z',
+      version: 1,
+    }) as any);
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: new InMemoryFifoQueue(),
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    await expect(
+      api.postCommands({
+        bypassActorId: 'player-2',
+        envelope: {
+          commandId: '66666666-6666-4666-8666-666666666666',
+          gameId: 'game-1',
+          type: 'SendGameChatMessage',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          payload: {
+            body: 'Sharing Borin.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-1',
+              snapshotVersion: 2,
+              characterName: 'Borin',
+              race: 'HUMAN',
+              status: 'DRAFT',
+              abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+              skillSummary: ['Fighter 1'],
+            },
+          },
+        },
+      })
+    ).rejects.toMatchObject({
+      statusCode: 403,
+    });
+  });
+
   it('filters archived game characters out of my character listings', async () => {
     const db = makeDbMock();
     db.characterRepository.listCharactersByOwner = vi.fn(async () => [
@@ -849,6 +926,16 @@ describe('game chat', () => {
         senderCharacterId: 'char-1',
         senderNameSnapshot: 'Borin',
         body: 'Ready.',
+        artifact: {
+          kind: 'CHARACTER_DRAFT',
+          characterId: 'char-1',
+          snapshotVersion: 2,
+          characterName: 'Borin',
+          race: 'HUMAN',
+          status: 'DRAFT',
+          abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+          skillSummary: ['Fighter 1'],
+        },
         createdAt: '2026-03-01T09:16:00.000Z',
       },
     ]);
@@ -869,5 +956,15 @@ describe('game chat', () => {
       '@Zed GM:Session starts soon.',
       'Borin:Ready.',
     ]);
+    expect(chat.messages[1]?.artifact).toEqual({
+      kind: 'CHARACTER_DRAFT',
+      characterId: 'char-1',
+      snapshotVersion: 2,
+      characterName: 'Borin',
+      race: 'HUMAN',
+      status: 'DRAFT',
+      abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+      skillSummary: ['Fighter 1'],
+    });
   });
 });

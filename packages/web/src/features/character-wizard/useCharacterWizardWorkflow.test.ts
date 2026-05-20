@@ -77,4 +77,26 @@ describe('toCharacterWizardSnapshot', () => {
       skills: [{ skill: 'Fighter', level: 1 }],
     });
   });
+
+  it('preserves skills for later draft-sharing summaries', () => {
+    const snapshot = toCharacterWizardSnapshot({
+      gameId: 'game-1',
+      characterId: 'char-1',
+      status: 'DRAFT',
+      version: 3,
+      draft: {
+        subAbility: { A: 6, B: 4, C: 5, D: 4, E: 4, F: 6, G: 4, H: 5 },
+        ability: { STR: 16, DEX: 10, MP: 12 },
+        skills: [
+          { skill: 'Sorcerer', level: 2 },
+          { skill: 'Sage', level: 1 },
+        ],
+      },
+    });
+
+    expect(snapshot.skills).toEqual([
+      { skill: 'Sorcerer', level: 2 },
+      { skill: 'Sage', level: 1 },
+    ]);
+  });
 });

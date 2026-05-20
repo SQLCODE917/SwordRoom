@@ -110,7 +110,7 @@ describe('PregameLobbyPage', () => {
     const roster = screen.getByRole('table', { name: 'Pregame party roster' });
     expect(within(roster).getByText('@Zed GM')).toBeTruthy();
     expect(within(roster).getByRole('link', { name: 'Open Borin Stonehand' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
-    expect(within(roster).getByText('No character yet')).toBeTruthy();
+    expect(within(roster).getAllByText('No character yet')).toHaveLength(2);
 
     const activity = screen.getByRole('table', { name: 'Pregame recent activity' });
     expect(within(activity).getByText('@Zed GM')).toBeTruthy();

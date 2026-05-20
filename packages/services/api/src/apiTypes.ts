@@ -2,6 +2,7 @@ import type {
   AnyCommandEnvelope,
   CharacterItem,
   CommandStatus,
+  SharedCharacterDraftArtifact,
   GameChatSenderRole,
   GameplayViewResponse as SharedGameplayViewResponse,
   GameMetadataItem,
@@ -48,6 +49,7 @@ export interface GameChatMessageResponse {
   senderRole: GameChatSenderRole;
   senderCharacterId: string | null;
   body: string;
+  artifact?: SharedCharacterDraftArtifact;
   createdAt: string;
 }
 

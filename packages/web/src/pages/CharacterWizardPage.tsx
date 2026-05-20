@@ -161,7 +161,7 @@ function CharacterWizardPageContent({
     [state, snapshot, isExecutingCommand, lastSavedFingerprint, wizardMode]
   );
 
-  const { saveStateByStep, saveStepProgress, executeFinalAction, refreshSnapshot } = useCharacterWizardWorkflow({
+  const { saveStateByStep, shareState, saveStepProgress, executeFinalAction, shareDraftToChat, refreshSnapshot } = useCharacterWizardWorkflow({
     api,
     routePlayerId,
     wizardMode,
@@ -280,9 +280,11 @@ function CharacterWizardPageContent({
           state={state}
           view={view}
           snapshot={snapshot}
+          shareState={shareState}
           wizardMode={wizardMode}
           onUpdateState={setState}
           onExecuteFinalAction={() => void executeFinalAction()}
+          onShareDraftToChat={() => void shareDraftToChat()}
         />
       ),
       action: renderSaveButton('submit', activeStepIndex === 6),

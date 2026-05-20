@@ -1,4 +1,5 @@
 import type { CommandEnvelope, CommandType } from '@starter/shared';
+import type { SharedCharacterDraftArtifact } from '@starter/shared';
 import type {
   AddGmInboxItemInput,
   AddGameplayEventInput,
@@ -42,6 +43,7 @@ export type WriteEffect =
         senderCharacterId: string | null;
         senderNameSnapshot: string;
         body: string;
+        artifact?: SharedCharacterDraftArtifact;
         createdAt: string;
       };
     }

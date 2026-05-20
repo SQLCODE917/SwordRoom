@@ -5,12 +5,14 @@ import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { createCommandId, useCommandWorkflow } from './useCommandStatus';
 
 export interface GameChatState {
+  gameId: string;
   gameName: string;
   participants: GameChatParticipant[];
   messages: GameChatMessage[];
 }
 
 const emptyChatState: GameChatState = {
+  gameId: '',
   gameName: '',
   participants: [],
   messages: [],
@@ -61,6 +63,7 @@ export function useGameChat(gameId: string): {
           return;
         }
         setChat({
+          gameId: next.gameId,
           gameName: next.gameName,
           participants: next.participants,
           messages: next.messages,
@@ -147,6 +150,7 @@ export function useGameChat(gameId: string): {
             senderRole: readSenderRole(current.participants, auth.actorId),
             senderCharacterId: readSenderCharacterId(current.participants, auth.actorId),
             body,
+            artifact: undefined,
             createdAt,
           },
         ],

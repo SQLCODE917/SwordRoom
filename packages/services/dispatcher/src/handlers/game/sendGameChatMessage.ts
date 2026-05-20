@@ -31,6 +31,7 @@ export const sendGameChatMessageHandler: CommandHandler<'SendGameChatMessage'> =
           senderCharacterId: senderCharacter?.characterId ?? null,
           senderNameSnapshot,
           body: envelope.payload.body,
+          artifact: envelope.payload.artifact,
           createdAt: envelope.createdAt,
         },
       },

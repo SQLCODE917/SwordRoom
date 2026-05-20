@@ -358,6 +358,13 @@ async function assertSendGameChatMessageAuthorized(
   envelope: Extract<AnyCommandEnvelope, { type: 'SendGameChatMessage' }>
 ): Promise<void> {
   await requireMembership(deps, envelope.gameId, envelope.actorId);
+  if (envelope.payload.artifact?.kind === 'CHARACTER_DRAFT') {
+    await assertCharacterOwnerOrGameMaster(deps.db, {
+      gameId: envelope.gameId,
+      characterId: envelope.payload.artifact.characterId,
+      actorId: envelope.actorId,
+    });
+  }
 }
 
 async function assertSubmitGameplayIntentAuthorized(

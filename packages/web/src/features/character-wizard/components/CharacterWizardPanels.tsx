@@ -17,7 +17,7 @@ import {
   type EquipmentOption,
 } from '../../../data/characterCreationPurchasing';
 import { goodHumanRuneMasterAutofill, readCharacterIdentityName, toInventoryQuantitiesFromIds } from '../index.js';
-import type { InventoryCategory, InventoryQuantitiesKey, WizardMode, WizardState } from '../types.js';
+import type { InventoryCategory, InventoryQuantitiesKey, SaveButtonState, WizardMode, WizardState } from '../types.js';
 import type { createCharacterWizardViewModel } from '../viewModel.js';
 
 const rollOptions: FieldOption[] = Array.from({ length: 11 }, (_, index) => {
@@ -458,13 +458,23 @@ export function EquipmentStepPanel(props: {
 export function SubmitStepPanel(props: {
   active: boolean;
   isExecutingCommand: boolean;
+  shareState: SaveButtonState;
   state: WizardState;
   view: CharacterWizardViewModel;
   snapshot: { status: string; version: number | null } | null;
   wizardMode: WizardMode;
   onUpdateState: Dispatch<SetStateAction<WizardState>>;
   onExecuteFinalAction: () => void;
+  onShareDraftToChat: () => void;
 }) {
+  const canShareToChat =
+    props.wizardMode === 'apply' &&
+    props.view.canEditDraft &&
+    props.view.isDraftReadyForSubmit &&
+    !props.isExecutingCommand;
+  const isSharing = props.shareState === 'saving';
+  const isShared = props.shareState === 'saved';
+
   return (
     <WizardStep title={props.wizardMode === 'library' ? '7) Create Character' : '7) Submit'} enabled={props.active}>
       <fieldset className="l-col" disabled={props.isExecutingCommand}>
@@ -486,6 +496,16 @@ export function SubmitStepPanel(props: {
         >
           {props.view.finalActionLabel}
         </button>
+        {props.wizardMode === 'apply' ? (
+          <button
+            className={`c-btn ${canShareToChat ? '' : 'is-disabled'} ${isSharing ? 'is-loading' : ''}`.trim()}
+            type="button"
+            disabled={!canShareToChat}
+            onClick={props.onShareDraftToChat}
+          >
+            {isSharing ? 'Sharing...' : isShared ? 'Shared To Chat' : 'Share Draft To Chat'}
+          </button>
+        ) : null}
         <InfoList
           lines={[
             props.wizardMode === 'library'
@@ -498,6 +518,9 @@ export function SubmitStepPanel(props: {
                   ? 'Submit will save the current draft first, then send it for review.'
                   : 'Submit uses the current saved draft revision.',
             `Ready to ${props.wizardMode === 'library' ? 'create' : 'submit'}: ${props.view.isDraftReadyForSubmit ? 'yes' : 'no'}`,
+            props.wizardMode === 'apply'
+              ? 'Share Draft To Chat saves the current draft revision first, then posts a character summary card into game chat.'
+              : 'Personal library characters cannot be shared into a game chat from this route.',
           ]}
         />
         <ErrorList errors={props.state.name.trim() === '' ? ['Name is required.'] : props.view.previewErrors} />

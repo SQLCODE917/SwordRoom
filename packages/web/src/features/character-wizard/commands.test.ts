@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildSaveCharacterDraftEnvelope, buildSubmitCharacterForApprovalEnvelope } from './commands.js';
+import { buildSaveCharacterDraftEnvelope, buildShareCharacterDraftEnvelope, buildSubmitCharacterForApprovalEnvelope } from './commands.js';
 
 describe('character wizard command builders', () => {
   it('builds a save draft envelope with wizard payload fields', () => {
@@ -43,5 +43,26 @@ describe('character wizard command builders', () => {
       characterId: 'char-1',
       expectedVersion: 7,
     });
+  });
+
+  it('builds a share-draft chat envelope with an attached artifact', () => {
+    const envelope = buildShareCharacterDraftEnvelope({
+      gameId: 'game-1',
+      body: 'Sharing Borin for party feedback.',
+      artifact: {
+        kind: 'CHARACTER_DRAFT',
+        characterId: 'char-1',
+        snapshotVersion: 4,
+        characterName: 'Borin',
+        race: 'HUMAN',
+        status: 'DRAFT',
+        abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+        skillSummary: ['Fighter 1'],
+      },
+    });
+
+    expect(envelope.type).toBe('SendGameChatMessage');
+    expect(envelope.payload.artifact?.snapshotVersion).toBe(4);
+    expect(envelope.payload.body).toBe('Sharing Borin for party feedback.');
   });
 });

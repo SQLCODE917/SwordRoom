@@ -2,6 +2,7 @@ import type { RefObject } from 'react';
 import type { GameChatState } from '../hooks/useGameChat';
 import { CommandStatusPanel } from './CommandStatusPanel';
 import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
+import { ButtonLink } from './ButtonLink';
 
 interface GameChatPanelProps {
   chat: GameChatState;
@@ -56,6 +57,23 @@ export function GameChatPanel({
                   <span className="c-chat__time">[{formatChatTimestamp(message.createdAt)}]</span>{' '}
                   <span className="c-chat__speaker">{`<${message.senderDisplayName}>`}</span>{' '}
                   <span className="c-chat__body">{message.body}</span>
+                  {message.artifact?.kind === 'CHARACTER_DRAFT' ? (
+                    <div className="c-note c-note--info">
+                      <div className="t-small">{`${message.artifact.characterName} (${message.artifact.race}) v${message.artifact.snapshotVersion}`}</div>
+                      <div className="t-small">{`Status: ${message.artifact.status}`}</div>
+                      <div className="t-small">{message.artifact.abilitySummary.join(' | ') || 'No ability summary.'}</div>
+                      <div className="t-small">
+                        {message.artifact.skillSummary.length > 0
+                          ? `Skills: ${message.artifact.skillSummary.join(', ')}`
+                          : 'Skills: none yet'}
+                      </div>
+                      <div className="l-row">
+                        <ButtonLink to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(message.artifact.characterId)}`}>
+                          Open Sheet
+                        </ButtonLink>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               ))
             )}
