@@ -1,8 +1,9 @@
-import type { RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import type { GameChatState } from '../hooks/useGameChat';
 import { CommandStatusPanel } from './CommandStatusPanel';
 import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
 import { ButtonLink } from './ButtonLink';
+import type { SharedCharacterDraftArtifact } from '@starter/shared';
 
 interface GameChatPanelProps {
   chat: GameChatState;
@@ -31,6 +32,14 @@ export function GameChatPanel({
   commandStatus,
   onSendMessage,
 }: GameChatPanelProps) {
+  const [previewArtifact, setPreviewArtifact] = useState<PreviewArtifactState | null>(null);
+
+  const closePreview = () => setPreviewArtifact(null);
+  const replyToArtifact = (artifact: SharedCharacterDraftArtifact) => {
+    setDraftBody(buildArtifactReplyDraft(artifact, draftBody));
+    setPreviewArtifact(null);
+  };
+
   return (
     <>
       <CommandStatusPanel status={commandStatus} />
@@ -52,30 +61,47 @@ export function GameChatPanel({
             {chat.messages.length === 0 ? (
               <div className="c-chat__empty t-small">{initialLoading ? 'Loading messages...' : 'No chat messages yet.'}</div>
             ) : (
-              chat.messages.map((message) => (
-                <div className="c-chat__line" key={message.messageId}>
-                  <span className="c-chat__time">[{formatChatTimestamp(message.createdAt)}]</span>{' '}
-                  <span className="c-chat__speaker">{`<${message.senderDisplayName}>`}</span>{' '}
-                  <span className="c-chat__body">{message.body}</span>
-                  {message.artifact?.kind === 'CHARACTER_DRAFT' ? (
-                    <div className="c-note c-note--info">
-                      <div className="t-small">{`${message.artifact.characterName} (${message.artifact.race}) v${message.artifact.snapshotVersion}`}</div>
-                      <div className="t-small">{`Status: ${message.artifact.status}`}</div>
-                      <div className="t-small">{message.artifact.abilitySummary.join(' | ') || 'No ability summary.'}</div>
-                      <div className="t-small">
-                        {message.artifact.skillSummary.length > 0
-                          ? `Skills: ${message.artifact.skillSummary.join(', ')}`
-                          : 'Skills: none yet'}
+              chat.messages.map((message) => {
+                const artifact = message.artifact?.kind === 'CHARACTER_DRAFT' ? message.artifact : null;
+
+                return (
+                  <div className="c-chat__line" key={message.messageId}>
+                    <span className="c-chat__time">[{formatChatTimestamp(message.createdAt)}]</span>{' '}
+                    <span className="c-chat__speaker">{`<${message.senderDisplayName}>`}</span>{' '}
+                    <span className="c-chat__body">{message.body}</span>
+                    {artifact ? (
+                      <div className="c-note c-note--info c-chat__artifact-card">
+                        <div className="t-small">{`${artifact.characterName} (${artifact.race}) v${artifact.snapshotVersion}`}</div>
+                        <div className="t-small">{`Status: ${artifact.status}`}</div>
+                        <div className="t-small">{artifact.abilitySummary.join(' | ') || 'No ability summary.'}</div>
+                        <div className="t-small">
+                          {artifact.skillSummary.length > 0 ? `Skills: ${artifact.skillSummary.join(', ')}` : 'Skills: none yet'}
+                        </div>
+                        <div className="l-row c-chat__artifact-actions">
+                          <button
+                            className="c-btn"
+                            type="button"
+                            onClick={() =>
+                              setPreviewArtifact({
+                                senderDisplayName: message.senderDisplayName,
+                                artifact,
+                              })
+                            }
+                          >
+                            Preview
+                          </button>
+                          <button className="c-btn" type="button" onClick={() => replyToArtifact(artifact)}>
+                            Reply
+                          </button>
+                          <ButtonLink to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(artifact.characterId)}`}>
+                            Open Sheet
+                          </ButtonLink>
+                        </div>
                       </div>
-                      <div className="l-row">
-                        <ButtonLink to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(message.artifact.characterId)}`}>
-                          Open Sheet
-                        </ButtonLink>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ))
+                    ) : null}
+                  </div>
+                );
+              })
             )}
           </div>
 
@@ -130,8 +156,60 @@ export function GameChatPanel({
           </div>
         </>
       ) : null}
+
+      {previewArtifact ? (
+        <>
+          <button
+            className="c-chat__mobile-backdrop"
+            type="button"
+            aria-label="Close character preview"
+            onClick={closePreview}
+          />
+          <section className="c-chat__mobile-sheet c-chat__preview-sheet" role="dialog" aria-modal="true" aria-label="Character draft preview">
+            <div className="l-row">
+              <h3 className="t-h4">{`${previewArtifact.artifact.characterName} v${previewArtifact.artifact.snapshotVersion}`}</h3>
+              <button className="c-btn" type="button" onClick={closePreview}>
+                Close
+              </button>
+            </div>
+
+            <div className="c-note c-note--info">
+              <div className="t-small">{`Shared by ${previewArtifact.senderDisplayName}`}</div>
+              <div className="t-small">{`${previewArtifact.artifact.race} • ${previewArtifact.artifact.status}`}</div>
+            </div>
+
+            <div className="c-note c-note--info">
+              <div className="t-small">Snapshot</div>
+              <div className="t-small">
+                {previewArtifact.artifact.abilitySummary.join(' | ') || 'No ability summary.'}
+              </div>
+              <div className="t-small">
+                {previewArtifact.artifact.skillSummary.length > 0
+                  ? `Skills: ${previewArtifact.artifact.skillSummary.join(', ')}`
+                  : 'Skills: none yet'}
+              </div>
+            </div>
+
+            <div className="l-row c-chat__artifact-actions">
+              <button className="c-btn" type="button" onClick={() => replyToArtifact(previewArtifact.artifact)}>
+                Reply
+              </button>
+              <ButtonLink
+                to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(previewArtifact.artifact.characterId)}`}
+              >
+                Open Full Sheet
+              </ButtonLink>
+            </div>
+          </section>
+        </>
+      ) : null}
     </>
   );
+}
+
+interface PreviewArtifactState {
+  senderDisplayName: string;
+  artifact: SharedCharacterDraftArtifact;
 }
 
 function ChatMemberList({ participants }: { participants: GameChatState['participants'] }) {
@@ -167,4 +245,16 @@ function formatChatTimestamp(value: string): string {
     minute: '2-digit',
     hour12: false,
   }).format(date);
+}
+
+function buildArtifactReplyDraft(artifact: SharedCharacterDraftArtifact, currentDraftBody: string): string {
+  const prefix = `About ${artifact.characterName} v${artifact.snapshotVersion}: `;
+  const trimmedDraft = currentDraftBody.trim();
+  if (!trimmedDraft) {
+    return prefix;
+  }
+  if (trimmedDraft.includes(prefix)) {
+    return currentDraftBody;
+  }
+  return `${currentDraftBody.trimEnd()}\n${prefix}`;
 }

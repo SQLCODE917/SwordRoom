@@ -250,6 +250,14 @@
   gap: var(--gap);
 }
 
+.c-chat__artifact-card {
+  margin-top: var(--s-2);
+}
+
+.c-chat__artifact-actions {
+  flex-wrap: wrap;
+}
+
 .c-chat__members {
   display: flex;
   flex-direction: column;
@@ -296,6 +304,10 @@
   gap: var(--gap);
   max-height: 70vh;
   overflow-y: auto;
+}
+
+.c-chat__preview-sheet {
+  z-index: 11;
 }
 
 .c-cmd {
