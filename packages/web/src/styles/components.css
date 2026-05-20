@@ -205,6 +205,34 @@
   border-left: 4px solid var(--ok);
 }
 
+.c-pregame-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+}
+
+.c-pregame-planning__summary,
+.c-pregame-planning__needs {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.c-pregame-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.c-pregame-workspace__main,
+.c-pregame-workspace__aside {
+  min-width: 0;
+}
+
+.c-wizard-workspace__rail {
+  min-width: 0;
+}
+
 .c-chat__layout {
   display: flex;
   flex-direction: column;
@@ -1182,6 +1210,13 @@
     flex-direction: row;
     align-items: flex-end;
   }
+
+  .c-pregame-workspace__aside {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--gap);
+    align-items: start;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -1273,6 +1308,29 @@
   .c-chat__mobile-backdrop,
   .c-chat__mobile-sheet {
     display: none;
+  }
+
+  .c-pregame-workspace {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .c-pregame-workspace__main {
+    flex: 1 1 auto;
+  }
+
+  .c-pregame-workspace__aside {
+    display: flex;
+    flex: 0 0 min(360px, 32vw);
+    flex-direction: column;
+    position: sticky;
+    top: var(--page-pad);
+  }
+
+  .c-wizard-workspace__rail {
+    flex: 0 0 min(420px, 36vw);
+    position: sticky;
+    top: var(--page-pad);
   }
 
   .c-gm-utility-sheet,

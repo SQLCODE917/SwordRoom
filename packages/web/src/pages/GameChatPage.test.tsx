@@ -43,6 +43,32 @@ function createAuth(overrides?: Partial<AuthProvider>): AuthProvider {
   };
 }
 
+function createPregamePlanningResponse() {
+  return {
+    gameId: 'game-1',
+    gameName: 'Dungeon Delvers',
+    viewer: {
+      isMember: true,
+      isGameMaster: false,
+    },
+    activePrompt: {
+      promptId: 'prompt-1',
+      title: 'Party needs Frontline and Healer',
+      prompt: 'We still need Frontline and Healer. Please share a draft if you can cover one of those roles.',
+      suggestedRoles: ['FRONTLINE', 'HEALER'],
+      senderDisplayName: '@Zed GM',
+      createdAt: '2026-03-01T09:15:00.000Z',
+    },
+    partyNeeds: [
+      { role: 'FRONTLINE', label: 'Frontline', isOpen: true, claimedBy: [] },
+      { role: 'HEALER', label: 'Healer', isOpen: true, claimedBy: [] },
+      { role: 'SCOUT', label: 'Scout', isOpen: false, claimedBy: ['Alice'] },
+      { role: 'ARCANE', label: 'Arcane Support', isOpen: false, claimedBy: ['Borin'] },
+    ],
+    recentClaims: [],
+  } as const;
+}
+
 describe('GameChatPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -117,6 +143,7 @@ describe('GameChatPage', () => {
     );
     vi.mocked(createApiClient).mockReturnValue({
       getGameChat,
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
     } as unknown as ReturnType<typeof createApiClient>);
     vi.mocked(useCommandWorkflow).mockReturnValue({
       status: {
@@ -143,6 +170,10 @@ describe('GameChatPage', () => {
     const transcript = await screen.findByRole('log');
     expect(screen.getByText('Dungeon Delvers')).toBeTruthy();
     expect(screen.queryByText('Dungeon Delvers (game-1)')).toBeNull();
+    const workflow = screen.getByRole('navigation', { name: 'Pregame workflow' });
+    expect(within(workflow).getByRole('link', { name: 'Lobby' }).getAttribute('href')).toBe('/games/game-1');
+    expect(within(workflow).getByRole('link', { name: 'Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
+    expect(await screen.findByText('Open roles: Frontline, Healer')).toBeTruthy();
     expect(
       await within(transcript).findByText(
         (_, element) =>
@@ -199,6 +230,7 @@ describe('GameChatPage', () => {
         ],
         messages: [],
       })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
     } as unknown as ReturnType<typeof createApiClient>);
     vi.mocked(useCommandWorkflow).mockReturnValue({
       status: {
@@ -271,6 +303,7 @@ describe('GameChatPage', () => {
           },
         ],
       })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
     } as unknown as ReturnType<typeof createApiClient>);
     vi.mocked(useCommandWorkflow).mockReturnValue({
       status: {
@@ -340,6 +373,7 @@ describe('GameChatPage', () => {
           },
         ],
       })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
     } as unknown as ReturnType<typeof createApiClient>);
     vi.mocked(useCommandWorkflow).mockReturnValue({
       status: {
@@ -429,6 +463,7 @@ describe('GameChatPage', () => {
           },
         ],
       })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
     } as unknown as ReturnType<typeof createApiClient>);
     vi.mocked(useCommandWorkflow).mockReturnValue({
       status: {
@@ -503,6 +538,7 @@ describe('GameChatPage', () => {
     );
     vi.mocked(createApiClient).mockReturnValue({
       getGameChat,
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
     } as unknown as ReturnType<typeof createApiClient>);
     vi.mocked(useCommandWorkflow).mockReturnValue({
       status: {

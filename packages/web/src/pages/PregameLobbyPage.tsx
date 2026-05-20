@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
+import { PregameWorkflowNav } from '../components/PregameWorkflowNav';
 import { createPregameLobbyViewModel, usePregameLobby } from '../features/pregame-lobby';
 import { buildPostGamePromptEnvelope, buildSuggestedGamePromptArtifact } from '../features/pregame-planning';
 import { useCommandWorkflow } from '../hooks/useCommandStatus';
@@ -41,6 +42,13 @@ export function PregameLobbyPage() {
         <div className={`c-note ${view.noticeTone === 'error' ? 'c-note--error' : 'c-note--info'}`}>
           <span className="t-small">{view.notice}</span>
         </div>
+        {view.status === 'ready' ? (
+          <PregameWorkflowNav
+            gameId={gameId}
+            createTo={view.workflow.createTo}
+            sheetTo={view.workflow.sheetTo}
+          />
+        ) : null}
 
         {view.status === 'ready' ? (
           <div className="l-split">

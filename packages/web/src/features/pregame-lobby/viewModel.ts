@@ -26,6 +26,7 @@ export type PregameLobbyViewModel =
       noticeTone: 'info';
       notice: string;
       actions: LobbyAction[];
+      workflow: LobbyWorkflow;
       summaryLines: string[];
       promptLines: string[];
       partyNeedsLines: string[];
@@ -53,6 +54,11 @@ export interface LobbyActivityRow {
   actorLabel: string;
   body: string;
   createdAtLabel: string;
+}
+
+export interface LobbyWorkflow {
+  createTo: string;
+  sheetTo: string | null;
 }
 
 export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLobbyViewModel {
@@ -115,6 +121,15 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
       canEditOwnCharacter,
       isGameMaster: state.actorContext.isGameMaster,
     }),
+    workflow: {
+      createTo:
+        ownCharacter && canEditOwnCharacter
+          ? `/games/${encodeURIComponent(state.game.gameId)}/characters/${encodeURIComponent(ownCharacter.characterId)}/edit`
+          : `/games/${encodeURIComponent(state.game.gameId)}/character/new`,
+      sheetTo: ownCharacter
+        ? `/games/${encodeURIComponent(state.game.gameId)}/characters/${encodeURIComponent(ownCharacter.characterId)}`
+        : null,
+    },
     summaryLines,
     promptLines,
     partyNeedsLines,

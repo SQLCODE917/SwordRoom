@@ -142,9 +142,13 @@ describe('PregameLobbyPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Pregame Lobby' })).toBeTruthy();
     expect(screen.getByText('Dungeon Delvers (game-1)')).toBeTruthy();
+    const workflow = screen.getByRole('navigation', { name: 'Pregame workflow' });
+    expect(within(workflow).getByRole('link', { name: 'Create' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
+    expect(within(workflow).getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
+    expect(within(workflow).getByRole('link', { name: 'Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
     expect(screen.getByRole('link', { name: 'Continue Character' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
     expect(screen.getByRole('link', { name: 'Character Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
-    expect(screen.getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
+    expect(screen.getByRole('link', { name: 'Player Inbox' }).getAttribute('href')).toBe('/me/inbox');
     expect(screen.getByText('Your current character is Borin Stonehand (DRAFT).')).toBeTruthy();
     expect(screen.getByText('One player still needs a character before the party is fully represented.')).toBeTruthy();
     expect(screen.getByText('We still need Frontline. Please share a draft if you can cover it.')).toBeTruthy();
