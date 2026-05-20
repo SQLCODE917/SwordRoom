@@ -49,7 +49,10 @@ export interface CharacterWorkbenchSharedRow {
   key: string;
   characterName: string;
   sharedBy: string;
+  sharedAtLabel: string;
   snapshotLabel: string;
+  abilitySummaryLabel: string;
+  skillSummaryLabel: string;
   discussionLabel: string;
   sheetTo: string;
   chatTo: string;
@@ -170,11 +173,20 @@ function buildSharedRow(gameId: string, allChatMessages: readonly GameChatMessag
     key: message.messageId,
     characterName: artifact.characterName,
     sharedBy: message.senderDisplayName,
+    sharedAtLabel: formatShortTimestamp(message.createdAt),
     snapshotLabel: `Snapshot v${artifact.snapshotVersion} · ${artifact.status}`,
+    abilitySummaryLabel: artifact.abilitySummary.join(' | ') || 'No ability summary.',
+    skillSummaryLabel: artifact.skillSummary.length > 0 ? `Skills: ${artifact.skillSummary.join(', ')}` : 'Skills: none yet',
     discussionLabel: discussionCount > 0 ? `${discussionCount} follow-up ${discussionCount === 1 ? 'message' : 'messages'}` : 'No follow-up yet',
     sheetTo: `/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(artifact.characterId)}`,
-    chatTo: `/games/${encodeURIComponent(gameId)}/chat`,
+    chatTo: buildSharedArtifactChatTo(gameId, artifact.characterName, artifact.snapshotVersion),
   };
+}
+
+function buildSharedArtifactChatTo(gameId: string, characterName: string, snapshotVersion: number): string {
+  const searchParams = new URLSearchParams();
+  searchParams.set('draft', `About ${characterName} v${snapshotVersion}: `);
+  return `/games/${encodeURIComponent(gameId)}/chat?${searchParams.toString()}`;
 }
 
 function readCharacterName(character: CharacterItem): string {

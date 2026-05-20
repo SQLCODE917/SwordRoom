@@ -229,6 +229,11 @@
   min-width: 0;
 }
 
+.c-characters-workbench .c-pregame-workspace__aside {
+  display: flex;
+  flex-direction: column;
+}
+
 .c-wizard-workspace__rail {
   min-width: 0;
 }

@@ -140,9 +140,17 @@ describe('PregameCharactersPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Shared (1)' }));
     const sharedTable = await screen.findByRole('table', { name: 'Characters workbench shared' });
     expect(within(sharedTable).getByText('Aline')).toBeTruthy();
-    expect(within(sharedTable).getByText('Alice')).toBeTruthy();
     expect(within(sharedTable).getByText('Snapshot v3 · DRAFT')).toBeTruthy();
     expect(within(sharedTable).getByText('1 follow-up message')).toBeTruthy();
+    expect(within(sharedTable).getByRole('link', { name: 'Discuss' }).getAttribute('href')).toBe(
+      '/games/game-1/chat?draft=About+Aline+v3%3A+'
+    );
+    expect(await screen.findByRole('heading', { name: 'Aline Preview' })).toBeTruthy();
+    expect(screen.getByText('INT 17')).toBeTruthy();
+    expect(screen.getByText('Skills: Priest 2')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Continue Discussion' }).getAttribute('href')).toBe(
+      '/games/game-1/chat?draft=About+Aline+v3%3A+'
+    );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Approved (1)' }));
     const approvedTable = await screen.findByRole('table', { name: 'Characters workbench approved' });

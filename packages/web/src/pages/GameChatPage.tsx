@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { GameChatPanel } from '../components/GameChatPanel';
 import { Panel } from '../components/Panel';
 import { PregamePlanningPanel } from '../components/PregamePlanningPanel';
@@ -9,8 +9,9 @@ import { useGameChat } from '../hooks/useGameChat';
 
 export function GameChatPage() {
   const params = useParams<{ gameId: string }>();
+  const [searchParams] = useSearchParams();
   const gameId = params.gameId ?? 'game-1';
-  const chat = useGameChat(gameId);
+  const chat = useGameChat(gameId, searchParams.get('draft'));
   const planning = usePregamePlanning(gameId, true);
 
   return (

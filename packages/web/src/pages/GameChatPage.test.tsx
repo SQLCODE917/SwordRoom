@@ -411,6 +411,51 @@ describe('GameChatPage', () => {
     expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).value).toBe('About Borin v2: ');
   });
 
+  it('prefills the composer from the workbench discussion handoff', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-1',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-1' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [],
+      })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat?draft=About%20Aline%20v3%3A%20']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Dungeon Delvers')).toBeTruthy();
+    expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).value).toBe('About Aline v3: ');
+  });
+
   it('renders structured GM prompts and party role claims inside chat', async () => {
     vi.mocked(useAuthProvider).mockReturnValue(
       createAuth({

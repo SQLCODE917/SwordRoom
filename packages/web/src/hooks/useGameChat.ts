@@ -18,7 +18,7 @@ const emptyChatState: GameChatState = {
   messages: [],
 };
 
-export function useGameChat(gameId: string): {
+export function useGameChat(gameId: string, initialDraftBody: string | null = null): {
   chat: GameChatState;
   initialLoading: boolean;
   error: string | null;
@@ -38,9 +38,22 @@ export function useGameChat(gameId: string): {
   const [error, setError] = useState<string | null>(null);
   const [draftBody, setDraftBody] = useState('');
   const [membersOpen, setMembersOpen] = useState(false);
+  const initialDraftAppliedRef = useRef<string | null>(null);
   const hasLoadedRef = useRef(false);
   const transcriptRef = useRef<HTMLDivElement | null>(null);
   const { status: commandStatus, isRunning: isSending, submitEnvelopeAndAwait } = useCommandWorkflow();
+
+  useEffect(() => {
+    const normalizedDraft = typeof initialDraftBody === 'string' ? initialDraftBody : null;
+    if (!normalizedDraft || normalizedDraft.trim() === '') {
+      return;
+    }
+    if (initialDraftAppliedRef.current === normalizedDraft) {
+      return;
+    }
+    setDraftBody((current) => (current.trim() === '' ? normalizedDraft : current));
+    initialDraftAppliedRef.current = normalizedDraft;
+  }, [initialDraftBody]);
 
   useEffect(() => {
     let cancelled = false;

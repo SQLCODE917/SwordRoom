@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
@@ -13,6 +13,24 @@ export function PregameCharactersPage() {
   const workbench = usePregameCharacters(gameId);
   const view = useMemo(() => createPregameCharactersViewModel(workbench.state), [workbench.state]);
   const [activeTabId, setActiveTabId] = useState<WorkbenchTabId>('mine');
+  const [selectedSharedRowKey, setSelectedSharedRowKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (view.status !== 'ready') {
+      setSelectedSharedRowKey(null);
+      return;
+    }
+    if (view.sharedRows.length === 0) {
+      setSelectedSharedRowKey(null);
+      return;
+    }
+    if (!selectedSharedRowKey || !view.sharedRows.some((row) => row.key === selectedSharedRowKey)) {
+      setSelectedSharedRowKey(view.sharedRows[0]!.key);
+    }
+  }, [selectedSharedRowKey, view]);
+
+  const selectedSharedRow =
+    view.status === 'ready' ? view.sharedRows.find((row) => row.key === selectedSharedRowKey) ?? view.sharedRows[0] ?? null : null;
 
   return (
     <div className="l-page">
@@ -84,34 +102,75 @@ export function PregameCharactersPage() {
             ) : null}
 
             {activeTabId === 'shared' ? (
-              <div className="c-table" role="table" aria-label="Characters workbench shared">
-                <div className="c-table__head c-table__row" role="row">
-                  <div className="c-table__cell t-small">Character</div>
-                  <div className="c-table__cell t-small">Shared By</div>
-                  <div className="c-table__cell t-small">Snapshot</div>
-                  <div className="c-table__cell t-small">Discussion</div>
-                  <div className="c-table__cell t-small">Actions</div>
-                </div>
-                {view.sharedRows.length === 0 ? (
-                  <div className="c-table__row" role="row">
-                    <div className="c-table__cell t-small">No shared character artifacts yet. Share a draft from Create to start the conversation.</div>
+              <div className="c-pregame-workspace c-characters-workbench">
+                <div className="c-pregame-workspace__main">
+                  <div className="c-table" role="table" aria-label="Characters workbench shared">
+                    <div className="c-table__head c-table__row" role="row">
+                      <div className="c-table__cell t-small">Character</div>
+                      <div className="c-table__cell t-small">Shared By</div>
+                      <div className="c-table__cell t-small">Snapshot</div>
+                      <div className="c-table__cell t-small">Discussion</div>
+                      <div className="c-table__cell t-small">Actions</div>
+                    </div>
+                    {view.sharedRows.length === 0 ? (
+                      <div className="c-table__row" role="row">
+                        <div className="c-table__cell t-small">No shared character artifacts yet. Share a draft from Create to start the conversation.</div>
+                      </div>
+                    ) : (
+                      view.sharedRows.map((row) => (
+                        <div className="c-table__row" role="row" key={row.key}>
+                          <div className="c-table__cell t-small">{row.characterName}</div>
+                          <div className="c-table__cell t-small">{`${row.sharedBy} · ${row.sharedAtLabel}`}</div>
+                          <div className="c-table__cell t-small">{row.snapshotLabel}</div>
+                          <div className="c-table__cell t-small">{row.discussionLabel}</div>
+                          <div className="c-table__cell t-small">
+                            <div className="l-row">
+                              <button className="c-btn" type="button" onClick={() => setSelectedSharedRowKey(row.key)}>
+                                Review
+                              </button>
+                              <ButtonLink to={row.sheetTo}>Sheet</ButtonLink>
+                              <ButtonLink to={row.chatTo}>Discuss</ButtonLink>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
-                ) : (
-                  view.sharedRows.map((row) => (
-                    <div className="c-table__row" role="row" key={row.key}>
-                      <div className="c-table__cell t-small">{row.characterName}</div>
-                      <div className="c-table__cell t-small">{row.sharedBy}</div>
-                      <div className="c-table__cell t-small">{row.snapshotLabel}</div>
-                      <div className="c-table__cell t-small">{row.discussionLabel}</div>
-                      <div className="c-table__cell t-small">
+                </div>
+
+                <aside className="c-pregame-workspace__aside">
+                  <Panel
+                    title={selectedSharedRow ? `${selectedSharedRow.characterName} Preview` : 'Shared Preview'}
+                    subtitle={selectedSharedRow ? `${selectedSharedRow.sharedBy} · ${selectedSharedRow.sharedAtLabel}` : 'Select a shared character update.'}
+                    footer={
+                      selectedSharedRow ? (
                         <div className="l-row">
-                          <ButtonLink to={row.sheetTo}>Sheet</ButtonLink>
-                          <ButtonLink to={row.chatTo}>Chat</ButtonLink>
+                          <ButtonLink to={selectedSharedRow.chatTo}>Continue Discussion</ButtonLink>
+                          <ButtonLink to={selectedSharedRow.sheetTo}>Open Full Sheet</ButtonLink>
+                        </div>
+                      ) : undefined
+                    }
+                  >
+                    {selectedSharedRow ? (
+                      <div className="l-col">
+                        <div className="c-note c-note--info c-pregame-planning__summary">
+                          <div className="t-small">{selectedSharedRow.snapshotLabel}</div>
+                          <div className="t-small">{selectedSharedRow.abilitySummaryLabel}</div>
+                          <div className="t-small">{selectedSharedRow.skillSummaryLabel}</div>
+                        </div>
+                        <div className="c-note c-note--info c-pregame-planning__summary">
+                          <div className="t-small">Discussion</div>
+                          <div className="t-small">{selectedSharedRow.discussionLabel}</div>
+                          <div className="t-small">Use Continue Discussion to jump into chat with reply context already staged.</div>
                         </div>
                       </div>
-                    </div>
-                  ))
-                )}
+                    ) : (
+                      <div className="c-note c-note--info">
+                        <span className="t-small">Select a shared update to inspect it before leaving the workbench.</span>
+                      </div>
+                    )}
+                  </Panel>
+                </aside>
               </div>
             ) : null}
 
