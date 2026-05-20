@@ -81,4 +81,18 @@ export const meRouteDefinitions: ApiRouteDefinition[] = [
       context.sendJson(200, inbox);
     },
   },
+  {
+    method: 'GET',
+    path: '/me/pregame',
+    auth: 'required',
+    handler: async (context) => {
+      const digest = await context.runtime.service.readApis.getMyPregameDigest(context.identity.actorId);
+      context.logFlow('API_GET_PREGAME_DIGEST', {
+        requestId: context.requestId,
+        actorId: context.identity.actorId,
+        count: digest.length,
+      });
+      context.sendJson(200, digest);
+    },
+  },
 ];

@@ -306,6 +306,19 @@ export interface PregamePlanningResponse {
   recentClaims: PregamePlanningClaim[];
 }
 
+export type PregameDigestDestination = 'LOBBY' | 'CHAT' | 'CREATE_CHARACTER' | 'EDIT_CHARACTER';
+
+export interface PregameDigestEntry {
+  digestId: string;
+  gameId: string;
+  gameName: string;
+  headline: string;
+  detail: string;
+  destination: PregameDigestDestination;
+  characterId: string | null;
+  createdAt: string;
+}
+
 export type GameplayGraphNodeView = GameplayGraphNode;
 export type GameplayGraphEdgeView = GameplayGraphEdge;
 export type GameplayEventView = GameplayEventRecord;
@@ -333,6 +346,7 @@ export interface ApiClient {
   getGame(gameId: string): Promise<GameItem | null>;
   getMyCharacters(): Promise<CharacterItem[]>;
   getMyGames(): Promise<GameItem[]>;
+  getMyPregameDigest(): Promise<PregameDigestEntry[]>;
   getPublicGames(): Promise<GameItem[]>;
   getGmGames(): Promise<GameItem[]>;
   getAdminUsers(): Promise<PlayerProfile[]>;
@@ -485,6 +499,22 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         headers: await auth.withAuthHeaders(),
       });
       logWebFlow('WEB_API_GET_MY_GAMES_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        count: response.length,
+      });
+      return response;
+    },
+
+    async getMyPregameDigest(): Promise<PregameDigestEntry[]> {
+      logWebFlow('WEB_API_GET_PREGAME_DIGEST_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+      });
+      const response = await requestJson<PregameDigestEntry[]>(`${baseUrl}/me/pregame`, {
+        headers: await auth.withAuthHeaders(),
+      });
+      logWebFlow('WEB_API_GET_PREGAME_DIGEST_OK', {
         actorId: auth.actorId,
         authMode: auth.mode,
         count: response.length,

@@ -100,6 +100,19 @@ export interface PregamePlanningResponse {
   recentClaims: PregamePlanningClaimResponse[];
 }
 
+export type PregameDigestDestination = 'LOBBY' | 'CHAT' | 'CREATE_CHARACTER' | 'EDIT_CHARACTER';
+
+export interface PregameDigestEntryResponse {
+  digestId: string;
+  gameId: string;
+  gameName: string;
+  headline: string;
+  detail: string;
+  destination: PregameDigestDestination;
+  characterId: string | null;
+  createdAt: string;
+}
+
 export type GameplayViewResponse = SharedGameplayViewResponse;
 
 export interface PostCommandRequest {
@@ -136,6 +149,7 @@ export interface ReadApis {
   listGamesForPlayer(playerId: string): Promise<GameMetadataItem[]>;
   listGamesForGm(playerId: string): Promise<GameMetadataItem[]>;
   listUsers(): Promise<PlayerProfileItem[]>;
+  getMyPregameDigest(playerId: string): Promise<PregameDigestEntryResponse[]>;
   getGameActorContext(gameId: string, actorId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getGameChat(gameId: string): Promise<GameChatResponse>;

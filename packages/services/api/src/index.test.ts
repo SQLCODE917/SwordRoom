@@ -287,6 +287,7 @@ describe('services/api contract route map', () => {
         { method: 'GET', path: '/games/public', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/me', auth: 'required' },
         { method: 'GET', path: '/me/inbox', auth: 'required' },
+        { method: 'GET', path: '/me/pregame', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/characters/{characterId}', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/chat', auth: 'required' },
         { method: 'GET', path: '/games/{gameId}/pregame', auth: 'required' },
@@ -1105,5 +1106,164 @@ describe('pregame planning', () => {
       senderDisplayName: 'Borin',
       createdAt: '2026-03-01T09:16:00.000Z',
     });
+  });
+
+  it('derives a player pregame digest with re-entry destinations', async () => {
+    const db = makeDbMock();
+    db.gameRepository.listGamesForPlayer = vi.fn(async () => [
+      {
+        pk: 'GAME#game-1',
+        sk: 'METADATA',
+        type: 'GameMetadata',
+        gameId: 'game-1',
+        name: 'Dungeon Delvers',
+        visibility: 'PUBLIC',
+        createdByPlayerId: 'gm-1',
+        gmPlayerId: 'gm-1',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+        version: 1,
+      },
+      {
+        pk: 'GAME#game-2',
+        sk: 'METADATA',
+        type: 'GameMetadata',
+        gameId: 'game-2',
+        name: 'Forest Watch',
+        visibility: 'PUBLIC',
+        createdByPlayerId: 'gm-2',
+        gmPlayerId: 'gm-2',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+        version: 1,
+      },
+    ] as any);
+    db.gameRepository.getGameMetadata = vi.fn(async (gameId: string) => ({
+      pk: `GAME#${gameId}`,
+      sk: 'METADATA',
+      type: 'GameMetadata',
+      gameId,
+      name: gameId === 'game-1' ? 'Dungeon Delvers' : 'Forest Watch',
+      visibility: 'PUBLIC',
+      createdByPlayerId: gameId === 'game-1' ? 'gm-1' : 'gm-2',
+      gmPlayerId: gameId === 'game-1' ? 'gm-1' : 'gm-2',
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z',
+      version: 1,
+    }) as any);
+    db.membershipRepository.getMembership = vi.fn(async (gameId: string, playerId: string) => ({
+      pk: `GAME#${gameId}`,
+      sk: `MEMBER#${playerId}`,
+      type: 'GameMember',
+      gameId,
+      playerId,
+      roles: ['PLAYER'],
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-01T00:00:00.000Z',
+    }) as any);
+    db.characterRepository.findOwnedCharacterInGame = vi.fn(async (gameId: string) => {
+      if (gameId === 'game-1') {
+        return {
+          pk: 'GAME#game-1',
+          sk: 'CHAR#char-1',
+          type: 'Character',
+          gameId: 'game-1',
+          characterId: 'char-1',
+          ownerPlayerId: 'player-1',
+          status: 'DRAFT',
+          draft: {
+            identity: { name: 'Borin' },
+          },
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+          version: 2,
+        } as any;
+      }
+      return null;
+    });
+    db.chatRepository.queryMessages = vi.fn(async (gameId: string) => {
+      if (gameId === 'game-1') {
+        return [
+          {
+            pk: 'GAME#game-1',
+            sk: 'CHAT#2026-03-01T09:15:00.000Z#msg-1',
+            type: 'GameChatMessage',
+            messageId: 'msg-1',
+            gameId: 'game-1',
+            senderPlayerId: 'gm-1',
+            senderRole: 'GM',
+            senderCharacterId: null,
+            senderNameSnapshot: 'Zed GM',
+            body: 'GM posted a new pregame planning prompt.',
+            artifact: {
+              kind: 'GAME_PROMPT',
+              promptId: 'prompt-1',
+              title: 'Party needs Frontline',
+              prompt: 'We still need Frontline.',
+              suggestedRoles: ['FRONTLINE'],
+            },
+            createdAt: '2026-03-01T09:15:00.000Z',
+          },
+        ] as any;
+      }
+
+      return [
+        {
+          pk: 'GAME#game-2',
+          sk: 'CHAT#2026-03-01T09:16:00.000Z#msg-2',
+          type: 'GameChatMessage',
+          messageId: 'msg-2',
+          gameId: 'game-2',
+          senderPlayerId: 'player-2',
+          senderRole: 'PLAYER',
+          senderCharacterId: 'char-2',
+          senderNameSnapshot: 'Asha',
+          body: 'Asha is claiming Healer for the party.',
+          artifact: {
+            kind: 'PARTY_ROLE_CLAIM',
+            claimId: 'claim-2',
+            characterId: 'char-2',
+            snapshotVersion: 3,
+            characterName: 'Asha',
+            roles: ['HEALER'],
+            note: 'Current plan is to cover Healer.',
+          },
+          createdAt: '2026-03-01T09:16:00.000Z',
+        },
+      ] as any;
+    });
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: { sendMessage: vi.fn(async () => undefined) },
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    const digest = await api.readApis.getMyPregameDigest('player-1');
+
+    expect(digest).toEqual([
+      {
+        digestId: 'game-2:create',
+        gameId: 'game-2',
+        gameName: 'Forest Watch',
+        headline: 'Party needs Frontline, Scout, Arcane Support',
+        detail: 'Create a character if you want to cover Frontline, Scout, Arcane Support.',
+        destination: 'CREATE_CHARACTER',
+        characterId: null,
+        createdAt: '2026-03-01T09:16:00.000Z',
+      },
+      {
+        digestId: 'game-1:edit',
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        headline: 'Party needs Frontline',
+        detail: 'Your draft can still move toward Frontline, Healer, Scout, Arcane Support.',
+        destination: 'EDIT_CHARACTER',
+        characterId: 'char-1',
+        createdAt: '2026-03-01T09:15:00.000Z',
+      },
+    ]);
   });
 });

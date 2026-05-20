@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { createApiClient, type CommandEnvelopeInput, type PlayerInboxItem } from '../api/ApiClient';
+import { createApiClient, type CommandEnvelopeInput, type PlayerInboxItem, type PregameDigestEntry } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
@@ -38,6 +38,7 @@ export function PlayerInboxPage() {
   const api = useMemo(() => createApiClient({ auth }), [auth]);
 
   const [rows, setRows] = useState<InboxRow[]>([]);
+  const [pregameDigest, setPregameDigest] = useState<PregameDigestEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeInviteId, setActiveInviteId] = useState<string | null>(null);
@@ -53,16 +54,18 @@ export function PlayerInboxPage() {
         authMode: auth.mode,
       });
       try {
-        const inbox = await api.getMyInbox();
+        const [inbox, digest] = await Promise.all([api.getMyInbox(), api.getMyPregameDigest()]);
         if (cancelled) {
           return;
         }
         setRows(normalizeRows(inbox));
+        setPregameDigest(digest);
         setError(null);
         logWebFlow('WEB_PLAYER_INBOX_REFRESH_OK', {
           actorId: auth.actorId,
           authMode: auth.mode,
           count: inbox.length,
+          digestCount: digest.length,
         });
       } catch (refreshError) {
         if (cancelled) {
@@ -105,6 +108,36 @@ export function PlayerInboxPage() {
         <div className={noticeClassName} role="note" aria-live="polite">
           <span className="t-small">{error ?? 'Inbox refreshes automatically.'}</span>
         </div>
+
+        <Panel title="Pregame Digest" subtitle="Re-entry back into active planning loops.">
+          <div className="c-table" role="table" aria-label="Pregame Digest Items">
+            <div className="c-table__head c-table__row" role="row">
+              <div className="c-table__cell t-small">Game</div>
+              <div className="c-table__cell t-small">What Changed</div>
+              <div className="c-table__cell t-small">When</div>
+              <div className="c-table__cell t-small">Action</div>
+            </div>
+            {pregameDigest.length === 0 ? (
+              <div className="c-table__row" role="row">
+                <div className="c-table__cell t-small">{loading ? 'Loading pregame digest...' : 'No active pregame re-entry items.'}</div>
+              </div>
+            ) : (
+              pregameDigest.map((entry) => (
+                <div className="c-table__row" role="row" key={entry.digestId}>
+                  <div className="c-table__cell t-small">{entry.gameName}</div>
+                  <div className="c-table__cell t-small">
+                    <div>{entry.headline}</div>
+                    <div>{entry.detail}</div>
+                  </div>
+                  <div className="c-table__cell t-small">{entry.createdAt}</div>
+                  <div className="c-table__cell t-small">
+                    <ButtonLink to={toPregameDigestPath(entry)}>{readPregameDigestActionLabel(entry)}</ButtonLink>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Panel>
 
         <div className="c-table" role="table" aria-label="Player Inbox Items">
           <div className="c-table__head c-table__row" role="row">
@@ -182,8 +215,9 @@ export function PlayerInboxPage() {
           inviteId: row.inviteId,
         },
       } satisfies CommandEnvelopeInput<typeof type>);
-      const inbox = await api.getMyInbox();
+      const [inbox, digest] = await Promise.all([api.getMyInbox(), api.getMyPregameDigest()]);
       setRows(normalizeRows(inbox));
+      setPregameDigest(digest);
     } catch (inviteError) {
       const message = inviteError instanceof Error ? inviteError.message : String(inviteError);
       setError(message);
@@ -199,6 +233,32 @@ export function PlayerInboxPage() {
       setActiveInviteId(null);
     }
   }
+}
+
+function toPregameDigestPath(entry: PregameDigestEntry): string {
+  if (entry.destination === 'CHAT') {
+    return `/games/${encodeURIComponent(entry.gameId)}/chat`;
+  }
+  if (entry.destination === 'CREATE_CHARACTER') {
+    return `/games/${encodeURIComponent(entry.gameId)}/character/new`;
+  }
+  if (entry.destination === 'EDIT_CHARACTER' && entry.characterId) {
+    return `/games/${encodeURIComponent(entry.gameId)}/characters/${encodeURIComponent(entry.characterId)}/edit`;
+  }
+  return `/games/${encodeURIComponent(entry.gameId)}`;
+}
+
+function readPregameDigestActionLabel(entry: PregameDigestEntry): string {
+  if (entry.destination === 'CHAT') {
+    return 'Open Chat';
+  }
+  if (entry.destination === 'CREATE_CHARACTER') {
+    return 'Create Character';
+  }
+  if (entry.destination === 'EDIT_CHARACTER') {
+    return 'Edit Draft';
+  }
+  return 'Open Lobby';
 }
 
 function normalizeRows(items: PlayerInboxItem[]): InboxRow[] {
