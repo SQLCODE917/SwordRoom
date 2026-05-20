@@ -14,7 +14,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "dev": "pnpm run build && node dist/server.js",
+    "dev": "pnpm run build && bash -lc 'cd ../../.. && bash scripts/local/run-api-runtime.sh'",
     "test": "vitest --run",
     "type-check": "tsc -b --force"
   },

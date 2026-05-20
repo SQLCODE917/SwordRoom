@@ -16,7 +16,7 @@
     "build": "tsc -b",
     "test": "vitest --run",
     "type-check": "tsc -b --force",
-    "dev": "pnpm run build && node dist/worker.js"
+    "dev": "pnpm run build && bash -lc 'cd ../../.. && bash scripts/local/run-dispatcher-runtime.sh'"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.1000.0",

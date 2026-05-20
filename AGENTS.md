@@ -15,6 +15,20 @@ Before changing code, read:
 
 If the human corrects the same class of mistake twice, update the relevant agent guidance so the fix persists.
 
+## Continuous Maintenance Discipline
+
+Every time a file gets touched, it gets a mini-review, preventing gradual drift away from the repo rules.
+
+- Every time you edit a file, review that file for adherence to the repo rules in `AGENTS.md` and relevant `docs/` files.
+- If you find drift in code relevant to your task, immediately align it with the repo rules.
+- If you find drift in code not relevant to your task, add it to your TODO list, and after finishing your task, output the TODO list, along with elegant solutions that will bring it back into compliance with the repo rules.
+
+## IaC as the Source of Truth
+
+- Every time you need to change the AWS infrastructure, the change needs to happen via IaC template.
+- Every IaC template change needs to be deployed and verified in AWS.
+- You are not to do one-off changes in AWS using the AWS CLI. If for whatever reason that is the only way, you must get permission from the user to do so.
+
 ## Repository model
 
 - `packages/shared` owns shared contracts, DTOs, validation, command contracts, DB contracts, errors, fixtures, and pure shared rules.
@@ -59,12 +73,13 @@ If the human corrects the same class of mistake twice, update the relevant agent
 - Docs, fixtures, and seed data are updated when behavior changes.
 - The diff has been self-reviewed for duplication, dead code, accidental coupling, naming drift, and boundary violations.
 
-
 ## Supporting documents
 
 - `docs/architecture.md`
+- `docs/architecture.pregame-planning-loop.md`
 - `docs/feature-structure.md`
 - `docs/testing.md`
 - `docs/ui.md`
+- `docs/ux.phone-first-pregame-loop.md`
 - `docs/performance.md`
 - `docs/operations.md`
