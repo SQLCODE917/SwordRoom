@@ -16,6 +16,7 @@ import { HomePage } from './routes/HomePage';
 import { LoginPage } from './routes/LoginPage';
 import { PlayerGameplayPage } from './routes/PlayerGameplayPage';
 import { PlayerInboxPage } from './routes/PlayerInboxPage';
+import { PregameCharactersPage } from './routes/PregameCharactersPage';
 import { PregameLobbyPage } from './routes/PregameLobbyPage';
 import { useGameActorContext } from './hooks/useGameActorContext';
 import { useMyProfile } from './hooks/useMyProfile';
@@ -45,6 +46,10 @@ export default function App() {
             <Route
               path="/games/:gameId/chat"
               element={<RequireAuthRoute><GameChatPage /></RequireAuthRoute>}
+            />
+            <Route
+              path="/games/:gameId/characters"
+              element={<RequireAuthRoute><PregameCharactersPage /></RequireAuthRoute>}
             />
             <Route
               path="/games/:gameId/play"

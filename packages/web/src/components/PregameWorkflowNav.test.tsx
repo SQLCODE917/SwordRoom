@@ -10,7 +10,7 @@ describe('PregameWorkflowNav', () => {
         <PregameWorkflowNav
           gameId="game-1"
           createTo="/games/game-1/characters/char-1/edit"
-          sheetTo="/games/game-1/characters/char-1"
+          charactersTo="/games/game-1/characters"
         />
       </MemoryRouter>
     );
@@ -19,19 +19,18 @@ describe('PregameWorkflowNav', () => {
     expect(within(nav).getByRole('link', { name: 'Lobby' }).getAttribute('href')).toBe('/games/game-1');
     expect(within(nav).getByRole('link', { name: 'Create' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
     expect(within(nav).getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
-    expect(within(nav).getByRole('link', { name: 'Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
+    expect(within(nav).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
     expect(within(nav).getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/me/inbox');
   });
 
-  it('renders the sheet entry as disabled when no sheet route is available yet', () => {
+  it('defaults the characters entry to the game-scoped workbench route', () => {
     render(
       <MemoryRouter initialEntries={['/games/game-1']}>
-        <PregameWorkflowNav gameId="game-1" createTo="/games/game-1/character/new" sheetTo={null} />
+        <PregameWorkflowNav gameId="game-1" createTo="/games/game-1/character/new" />
       </MemoryRouter>
     );
 
     const nav = screen.getByRole('navigation', { name: 'Pregame workflow' });
-    const disabledSheet = within(nav).getByRole('link', { name: 'Sheet' });
-    expect(disabledSheet.getAttribute('aria-disabled')).toBe('true');
+    expect(within(nav).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
   });
 });

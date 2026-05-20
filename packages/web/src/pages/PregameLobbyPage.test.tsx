@@ -145,7 +145,7 @@ describe('PregameLobbyPage', () => {
     const workflow = screen.getByRole('navigation', { name: 'Pregame workflow' });
     expect(within(workflow).getByRole('link', { name: 'Create' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
     expect(within(workflow).getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
-    expect(within(workflow).getByRole('link', { name: 'Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
+    expect(within(workflow).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
     expect(screen.getByRole('link', { name: 'Continue Character' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
     expect(screen.getByRole('link', { name: 'Character Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
     expect(screen.getByRole('link', { name: 'Player Inbox' }).getAttribute('href')).toBe('/me/inbox');

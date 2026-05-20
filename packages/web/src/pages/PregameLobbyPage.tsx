@@ -46,7 +46,7 @@ export function PregameLobbyPage() {
           <PregameWorkflowNav
             gameId={gameId}
             createTo={view.workflow.createTo}
-            sheetTo={view.workflow.sheetTo}
+            charactersTo={`/games/${encodeURIComponent(gameId)}/characters`}
           />
         ) : null}
 

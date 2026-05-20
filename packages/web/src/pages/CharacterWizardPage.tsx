@@ -341,7 +341,7 @@ function CharacterWizardPageContent({
                   ? `/games/${encodeURIComponent(routeGameId)}/characters/${encodeURIComponent(routeCharacterId)}/edit`
                   : `/games/${encodeURIComponent(routeGameId)}/character/new`
               }
-              sheetTo={`/games/${encodeURIComponent(routeGameId)}/characters/${encodeURIComponent(routeCharacterId)}`}
+              charactersTo={`/games/${encodeURIComponent(routeGameId)}/characters`}
             />
           ) : null}
 

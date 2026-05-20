@@ -4,17 +4,14 @@ import { Panel } from '../components/Panel';
 import { PregamePlanningPanel } from '../components/PregamePlanningPanel';
 import { PregameWorkflowNav } from '../components/PregameWorkflowNav';
 import { ButtonLink } from '../components/ButtonLink';
-import { useAuthProvider } from '../auth/AuthProvider';
 import { usePregamePlanning } from '../features/pregame-planning';
 import { useGameChat } from '../hooks/useGameChat';
 
 export function GameChatPage() {
   const params = useParams<{ gameId: string }>();
   const gameId = params.gameId ?? 'game-1';
-  const auth = useAuthProvider();
   const chat = useGameChat(gameId);
   const planning = usePregamePlanning(gameId, true);
-  const ownCharacterId = chat.chat.participants.find((participant) => participant.playerId === auth.actorId)?.characterId ?? null;
 
   return (
     <div className="l-page">
@@ -23,9 +20,7 @@ export function GameChatPage() {
           <PregameWorkflowNav
             gameId={gameId}
             createTo={`/games/${encodeURIComponent(gameId)}/character/new`}
-            sheetTo={
-              ownCharacterId ? `/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(ownCharacterId)}` : null
-            }
+            charactersTo={`/games/${encodeURIComponent(gameId)}/characters`}
           />
 
           <div className="c-pregame-workspace">

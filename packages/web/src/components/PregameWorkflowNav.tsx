@@ -3,17 +3,22 @@ import { NavLink } from 'react-router-dom';
 interface PregameWorkflowNavProps {
   gameId: string;
   createTo: string;
-  sheetTo?: string | null;
+  charactersTo?: string;
   includeInbox?: boolean;
 }
 
-export function PregameWorkflowNav({ gameId, createTo, sheetTo = null, includeInbox = true }: PregameWorkflowNavProps) {
+export function PregameWorkflowNav({
+  gameId,
+  createTo,
+  charactersTo = `/games/${encodeURIComponent(gameId)}/characters`,
+  includeInbox = true,
+}: PregameWorkflowNavProps) {
   return (
     <nav className="c-pregame-nav" aria-label="Pregame workflow">
       <NavButton label="Lobby" to={`/games/${encodeURIComponent(gameId)}`} end />
       <NavButton label="Create" to={createTo} />
       <NavButton label="Chat" to={`/games/${encodeURIComponent(gameId)}/chat`} />
-      <NavButton label="Sheet" to={sheetTo ?? undefined} disabled={sheetTo === null} />
+      <NavButton label="Characters" to={charactersTo} />
       {includeInbox ? <NavButton label="Inbox" to="/me/inbox" /> : null}
     </nav>
   );

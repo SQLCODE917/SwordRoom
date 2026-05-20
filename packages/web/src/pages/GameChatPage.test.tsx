@@ -172,7 +172,7 @@ describe('GameChatPage', () => {
     expect(screen.queryByText('Dungeon Delvers (game-1)')).toBeNull();
     const workflow = screen.getByRole('navigation', { name: 'Pregame workflow' });
     expect(within(workflow).getByRole('link', { name: 'Lobby' }).getAttribute('href')).toBe('/games/game-1');
-    expect(within(workflow).getByRole('link', { name: 'Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
+    expect(within(workflow).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
     expect(await screen.findByText('Open roles: Frontline, Healer')).toBeTruthy();
     expect(
       await within(transcript).findByText(
