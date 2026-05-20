@@ -217,6 +217,7 @@ describe('HomePage', () => {
     const newCharacterControl = within(gameRow as HTMLElement).getByRole('link', { name: 'New Character' });
     expect(newCharacterControl.getAttribute('aria-disabled')).toBe('true');
     expect(newCharacterControl.getAttribute('title')).toBe('You already have a character in this game.');
+    expect(within(gameRow as HTMLElement).getByRole('link', { name: 'Lobby' }).getAttribute('href')).toBe('/games/game-1');
   });
 
   it('shows a destructive Delete button on GM-manageable games in My Games', async () => {

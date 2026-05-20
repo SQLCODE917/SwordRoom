@@ -29,6 +29,23 @@ Every time a file gets touched, it gets a mini-review, preventing gradual drift 
 - Every IaC template change needs to be deployed and verified in AWS.
 - You are not to do one-off changes in AWS using the AWS CLI. If for whatever reason that is the only way, you must get permission from the user to do so.
 
+## Design Documents
+
+When asked to write a design document, do not write a full implementation spec.
+
+Write a handoff-oriented design document whose job is to help future agents implement the feature in small, testable, reviewable sessions.
+
+The document must explain:
+
+- what feature is being built
+- why it exists
+- how the work is divided into safe implementation slices
+- what each slice must prove before it is considered done
+- how each slice fits into the whole feature
+- what boundaries future agents must not cross
+
+The document must not over-specify ordinary implementation details that a competent coding agent can infer from the existing codebase.
+
 ## Repository model
 
 - `packages/shared` owns shared contracts, DTOs, validation, command contracts, DB contracts, errors, fixtures, and pure shared rules.
@@ -83,3 +100,4 @@ Every time a file gets touched, it gets a mini-review, preventing gradual drift 
 - `docs/ux.phone-first-pregame-loop.md`
 - `docs/performance.md`
 - `docs/operations.md`
+- `docs/writing-design-documents.md`

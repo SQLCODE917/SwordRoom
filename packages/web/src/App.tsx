@@ -16,6 +16,7 @@ import { HomePage } from './routes/HomePage';
 import { LoginPage } from './routes/LoginPage';
 import { PlayerGameplayPage } from './routes/PlayerGameplayPage';
 import { PlayerInboxPage } from './routes/PlayerInboxPage';
+import { PregameLobbyPage } from './routes/PregameLobbyPage';
 import { useGameActorContext } from './hooks/useGameActorContext';
 import { useMyProfile } from './hooks/useMyProfile';
 
@@ -33,6 +34,10 @@ export default function App() {
         <AppShell>
           <Routes>
             <Route path="/" element={<RequireAuthRoute><HomePage /></RequireAuthRoute>} />
+            <Route
+              path="/games/:gameId"
+              element={<RequireAuthRoute><PregameLobbyPage /></RequireAuthRoute>}
+            />
             <Route
               path="/games/:gameId/character/new"
               element={<RequireAuthRoute><CharacterWizardPage /></RequireAuthRoute>}

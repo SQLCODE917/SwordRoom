@@ -294,6 +294,7 @@ function MyGamesTable(input: {
                   >
                     New Character
                   </ButtonLink>
+                  <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}`}>Lobby</ButtonLink>
                   <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/play`}>Play</ButtonLink>
                   <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
                   <ButtonLink to="/me/inbox">Player Inbox</ButtonLink>
@@ -358,6 +359,9 @@ export function PublicGamesTable(input: {
                       <ButtonLink to={getCharacterSheetPath(character)}>Sheet</ButtonLink>
                       {canEditCharacter(character) ? <ButtonLink to={getCharacterEditPath(character)}>Edit</ButtonLink> : null}
                     </>
+                  ) : null}
+                  {input.joinedGameIds.has(game.gameId) || input.gmGameIds.has(game.gameId) ? (
+                    <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}`}>Lobby</ButtonLink>
                   ) : null}
                   {input.joinedGameIds.has(game.gameId) ? <ButtonLink to="/me/inbox">Player Inbox</ButtonLink> : null}
                   {input.joinedGameIds.has(game.gameId) || input.gmGameIds.has(game.gameId) ? (

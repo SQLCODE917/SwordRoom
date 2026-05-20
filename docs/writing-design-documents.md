@@ -328,3 +328,32 @@ List what must be true when the entire feature is complete.
 Only include questions that block safe implementation.
 
 Do not include vague future ideas.
+
+## UI Design Slice Requirement
+
+Any design document that includes UI work must include a section called “UI Behavior and Guardrails.”
+
+That section must define:
+
+- screen information level
+- stable layout regions
+- primary actions
+- disabled/loading/empty/error states
+- color semantics
+- layout-shift risks
+- verification steps for visual stability
+- screenshots or story states required for review
+
+Do not leave UI behavior to “make it look good.”
+
+Future agents must know exactly what must stay stable, what must be actionable, what must be quiet, and what must draw attention.
+
+```
+
+The core instruction is:
+
+> Build UI like a control surface, not a marketing surface. Grayscale is normal. Color means something. Nothing jumps. Actions are obvious. Configuration stays out of overview screens.
+
+[1]: https://www.isa.org/standards-and-publications/isa-standards/isa-standards-committees/isa101 "ISA101, Human-Machine Interfaces- ISA  "
+[2]: https://www.isa.org/standards-and-publications/isa-standards/isa-101-standards "ISA-101 Series of Standards"
+```
