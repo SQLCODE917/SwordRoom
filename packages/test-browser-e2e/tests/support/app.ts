@@ -199,6 +199,12 @@ export async function openChatFromMyGames(page: Page, gameName: string): Promise
   await expect(page.getByRole('heading', { name: 'Game Chat' })).toBeVisible();
 }
 
+export async function openLobbyFromMyGames(page: Page, gameName: string): Promise<void> {
+  await page.goto('/');
+  await myGamesRow(page, gameName).getByRole('link', { name: 'Lobby' }).click();
+  await expect(page.getByRole('heading', { name: 'Pregame Lobby' })).toBeVisible();
+}
+
 export async function sendChatMessage(page: Page, body: string): Promise<void> {
   await page.getByLabel('Message').fill(body);
   await page.getByRole('button', { name: 'Send' }).click();
