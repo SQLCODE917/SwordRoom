@@ -157,6 +157,7 @@ export function PregameCharactersPage() {
                           <div className="t-small">{selectedSharedRow.shareIntentLabel}</div>
                           <div className="t-small">{selectedSharedRow.snapshotLabel}</div>
                           {selectedSharedRow.contextNote ? <div className="t-small">{selectedSharedRow.contextNote}</div> : null}
+                          <div className="t-small">{`Reactions: ${selectedSharedRow.reactionSummaryLabel}`}</div>
                           <div className="t-small">{selectedSharedRow.abilitySummaryLabel}</div>
                           <div className="t-small">{selectedSharedRow.skillSummaryLabel}</div>
                         </div>

@@ -195,6 +195,7 @@ export function GMGameplayPage() {
                   isSending={chat.isSending}
                   commandStatus={chat.commandStatus}
                   onSendMessage={chat.sendMessage}
+                  onReactToArtifact={chat.sendCharacterDraftReaction}
                 />
               </Panel>
             </section>

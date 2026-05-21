@@ -1,10 +1,19 @@
 import { useState, type RefObject } from 'react';
-import type { SharedCharacterDraftArtifact, SharedGamePromptArtifact, SharedPartyRoleClaimArtifact } from '@starter/shared';
+import type {
+  SharedCharacterDraftArtifact,
+  SharedCharacterDraftReaction,
+  SharedGamePromptArtifact,
+  SharedPartyRoleClaimArtifact,
+} from '@starter/shared';
 import type { GameChatState } from '../hooks/useGameChat';
 import { CommandStatusPanel } from './CommandStatusPanel';
 import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
 import { ButtonLink } from './ButtonLink';
 import { formatPregameRoleList } from '../features/pregame-planning/labels';
+import {
+  buildCharacterDraftReactionSummaryLabel,
+  CHARACTER_DRAFT_REACTION_OPTIONS,
+} from '../features/pregame-planning/reactions';
 
 interface GameChatPanelProps {
   chat: GameChatState;
@@ -18,6 +27,11 @@ interface GameChatPanelProps {
   isSending: boolean;
   commandStatus: CommandStatusViewModel;
   onSendMessage: () => Promise<void>;
+  onReactToArtifact: (input: {
+    targetMessageId: string;
+    artifact: SharedCharacterDraftArtifact;
+    reaction: SharedCharacterDraftReaction;
+  }) => Promise<void>;
 }
 
 export function GameChatPanel({
@@ -32,8 +46,10 @@ export function GameChatPanel({
   isSending,
   commandStatus,
   onSendMessage,
+  onReactToArtifact,
 }: GameChatPanelProps) {
   const [previewArtifact, setPreviewArtifact] = useState<PreviewArtifactState | null>(null);
+  const visibleMessages = chat.messages.filter((message) => message.artifact?.kind !== 'CHARACTER_DRAFT_REACTION');
 
   const closePreview = () => setPreviewArtifact(null);
   const replyToArtifact = (artifact: SharedCharacterDraftArtifact) => {
@@ -59,13 +75,16 @@ export function GameChatPanel({
       <div className="c-chat__layout">
         <section className="c-chat__panel" aria-label="Game chat transcript">
           <div className="c-chat__transcript" role="log" aria-live="polite" ref={transcriptRef}>
-            {chat.messages.length === 0 ? (
+            {visibleMessages.length === 0 ? (
               <div className="c-chat__empty t-small">{initialLoading ? 'Loading messages...' : 'No chat messages yet.'}</div>
             ) : (
-              chat.messages.map((message) => {
+              visibleMessages.map((message) => {
                 const characterArtifact = message.artifact?.kind === 'CHARACTER_DRAFT' ? message.artifact : null;
                 const promptArtifact = message.artifact?.kind === 'GAME_PROMPT' ? message.artifact : null;
                 const roleClaimArtifact = message.artifact?.kind === 'PARTY_ROLE_CLAIM' ? message.artifact : null;
+                const reactionSummaryLabel = characterArtifact
+                  ? buildCharacterDraftReactionSummaryLabel(chat.messages, message.messageId)
+                  : null;
 
                 return (
                   <div className="c-chat__line" key={message.messageId}>
@@ -82,6 +101,7 @@ export function GameChatPanel({
                         <div className="t-small">
                           {characterArtifact.skillSummary.length > 0 ? `Skills: ${characterArtifact.skillSummary.join(', ')}` : 'Skills: none yet'}
                         </div>
+                        {reactionSummaryLabel ? <div className="t-small">{`Reactions: ${reactionSummaryLabel}`}</div> : null}
                         <div className="l-row c-chat__artifact-actions">
                           <button
                             className="c-btn"
@@ -89,6 +109,7 @@ export function GameChatPanel({
                             onClick={() =>
                               setPreviewArtifact({
                                 senderDisplayName: message.senderDisplayName,
+                                messageId: message.messageId,
                                 artifact: characterArtifact,
                               })
                             }
@@ -101,6 +122,25 @@ export function GameChatPanel({
                           <ButtonLink to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(characterArtifact.characterId)}`}>
                             Open Sheet
                           </ButtonLink>
+                        </div>
+                        <div className="l-row c-chat__artifact-actions">
+                          {CHARACTER_DRAFT_REACTION_OPTIONS.map((reactionOption) => (
+                            <button
+                              key={reactionOption.value}
+                              className={`c-btn ${isSending ? 'is-disabled' : ''}`.trim()}
+                              type="button"
+                              disabled={isSending}
+                              onClick={() =>
+                                void onReactToArtifact({
+                                  targetMessageId: message.messageId,
+                                  artifact: characterArtifact,
+                                  reaction: reactionOption.value,
+                                })
+                              }
+                            >
+                              {reactionOption.label}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     ) : null}
@@ -185,6 +225,7 @@ export function GameChatPanel({
               <div className="t-small">{`${previewArtifact.artifact.race} • ${previewArtifact.artifact.status}`}</div>
               <div className="t-small">{`Share: ${formatCharacterDraftIntent(previewArtifact.artifact)}`}</div>
               {previewArtifact.artifact.contextNote ? <div className="t-small">{previewArtifact.artifact.contextNote}</div> : null}
+              <div className="t-small">{`Reactions: ${buildCharacterDraftReactionSummaryLabel(chat.messages, previewArtifact.messageId)}`}</div>
             </div>
 
             <div className="c-note c-note--info">
@@ -203,6 +244,23 @@ export function GameChatPanel({
               <button className="c-btn" type="button" onClick={() => replyToArtifact(previewArtifact.artifact)}>
                 Reply
               </button>
+              {CHARACTER_DRAFT_REACTION_OPTIONS.map((reactionOption) => (
+                <button
+                  key={reactionOption.value}
+                  className={`c-btn ${isSending ? 'is-disabled' : ''}`.trim()}
+                  type="button"
+                  disabled={isSending}
+                  onClick={() =>
+                    void onReactToArtifact({
+                      targetMessageId: previewArtifact.messageId,
+                      artifact: previewArtifact.artifact,
+                      reaction: reactionOption.value,
+                    })
+                  }
+                >
+                  {reactionOption.label}
+                </button>
+              ))}
               <ButtonLink
                 to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(previewArtifact.artifact.characterId)}`}
               >
@@ -240,6 +298,7 @@ function RoleClaimArtifactCard({ artifact }: { artifact: SharedPartyRoleClaimArt
 
 interface PreviewArtifactState {
   senderDisplayName: string;
+  messageId: string;
   artifact: SharedCharacterDraftArtifact;
 }
 

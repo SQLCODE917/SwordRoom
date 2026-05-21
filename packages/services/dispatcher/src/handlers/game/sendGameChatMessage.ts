@@ -10,6 +10,27 @@ export const sendGameChatMessageHandler: CommandHandler<'SendGameChatMessage'> =
     throw error;
   }
 
+  const reactionArtifact = envelope.payload.artifact?.kind === 'CHARACTER_DRAFT_REACTION' ? envelope.payload.artifact : null;
+  if (reactionArtifact) {
+    const targetMessage = (await ctx.db.chatRepository.queryMessages(envelope.gameId)).find(
+      (message) => message.messageId === reactionArtifact.targetMessageId
+    );
+    const targetDraftArtifact = targetMessage?.artifact?.kind === 'CHARACTER_DRAFT' ? targetMessage.artifact : null;
+    if (!targetDraftArtifact) {
+      const error = new Error(`reaction target "${reactionArtifact.targetMessageId}" was not found in game "${envelope.gameId}"`);
+      (error as Error & { code?: string }).code = 'CHAT_REACTION_TARGET_NOT_FOUND';
+      throw error;
+    }
+    if (
+      targetDraftArtifact.characterId !== reactionArtifact.characterId ||
+      targetDraftArtifact.snapshotVersion !== reactionArtifact.snapshotVersion
+    ) {
+      const error = new Error(`reaction target "${reactionArtifact.targetMessageId}" does not match the referenced draft snapshot`);
+      (error as Error & { code?: string }).code = 'CHAT_REACTION_TARGET_MISMATCH';
+      throw error;
+    }
+  }
+
   const [senderCharacter, profile] = await Promise.all([
     ctx.db.characterRepository.findOwnedCharacterInGame(envelope.gameId, envelope.actorId),
     ctx.db.playerRepository.getPlayerProfile(envelope.actorId),

@@ -145,6 +145,7 @@ describe('GMGameplayPage', () => {
         errorMessage: null,
       },
       sendMessage: vi.fn(async () => undefined),
+      sendCharacterDraftReaction: vi.fn(async () => undefined),
     });
     vi.mocked(useCommandWorkflow).mockReturnValue({
       status: {

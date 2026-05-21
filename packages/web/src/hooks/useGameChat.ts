@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import type { SharedCharacterDraftArtifact, SharedCharacterDraftReaction } from '@starter/shared';
 import { createApiClient, type CommandEnvelopeInput, type GameChatMessage, type GameChatParticipant } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { createCommandId, useCommandWorkflow } from './useCommandStatus';
+import { formatCharacterDraftReaction } from '../features/pregame-planning/reactions';
 
 export interface GameChatState {
   gameId: string;
@@ -30,6 +32,11 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
   isSending: boolean;
   commandStatus: ReturnType<typeof useCommandWorkflow>['status'];
   sendMessage: () => Promise<void>;
+  sendCharacterDraftReaction: (input: {
+    targetMessageId: string;
+    artifact: SharedCharacterDraftArtifact;
+    reaction: SharedCharacterDraftReaction;
+  }) => Promise<void>;
 } {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
@@ -173,6 +180,58 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
     }
   }
 
+  async function sendCharacterDraftReaction(input: {
+    targetMessageId: string;
+    artifact: SharedCharacterDraftArtifact;
+    reaction: SharedCharacterDraftReaction;
+  }) {
+    const commandId = createCommandId();
+    const createdAt = new Date().toISOString();
+    const reactionLabel = formatCharacterDraftReaction(input.reaction);
+    setError(null);
+
+    const envelope = {
+      commandId,
+      gameId,
+      type: 'SendGameChatMessage',
+      schemaVersion: 1,
+      createdAt,
+      payload: {
+        body: `Reaction: ${reactionLabel}`,
+        artifact: {
+          kind: 'CHARACTER_DRAFT_REACTION',
+          targetMessageId: input.targetMessageId,
+          characterId: input.artifact.characterId,
+          snapshotVersion: input.artifact.snapshotVersion,
+          characterName: input.artifact.characterName,
+          reaction: input.reaction,
+        },
+      },
+    } satisfies CommandEnvelopeInput<'SendGameChatMessage'>;
+
+    try {
+      await submitEnvelopeAndAwait('React to shared draft', envelope);
+      setChat((current) => ({
+        ...current,
+        messages: [
+          ...current.messages,
+          {
+            messageId: commandId,
+            senderPlayerId: auth.actorId,
+            senderDisplayName: readSenderDisplayName(current.participants, auth.actorId),
+            senderRole: readSenderRole(current.participants, auth.actorId),
+            senderCharacterId: readSenderCharacterId(current.participants, auth.actorId),
+            body: envelope.payload.body,
+            artifact: envelope.payload.artifact,
+            createdAt,
+          },
+        ],
+      }));
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : String(sendError));
+    }
+  }
+
   return {
     chat,
     initialLoading,
@@ -185,6 +244,7 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
     isSending,
     commandStatus,
     sendMessage,
+    sendCharacterDraftReaction,
   };
 }
 

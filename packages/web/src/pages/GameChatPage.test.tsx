@@ -303,6 +303,23 @@ describe('GameChatPage', () => {
             },
             createdAt: '2026-03-01T09:16:00.000Z',
           },
+          {
+            messageId: 'msg-2',
+            senderPlayerId: 'gm-1',
+            senderDisplayName: '@Zed GM',
+            senderRole: 'GM',
+            senderCharacterId: null,
+            body: 'Reaction: Party fit',
+            artifact: {
+              kind: 'CHARACTER_DRAFT_REACTION',
+              targetMessageId: 'msg-1',
+              characterId: 'char-1',
+              snapshotVersion: 2,
+              characterName: 'Borin',
+              reaction: 'PARTY_FIT',
+            },
+            createdAt: '2026-03-01T09:17:00.000Z',
+          },
         ],
       })),
       getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
@@ -335,9 +352,107 @@ describe('GameChatPage', () => {
     expect(screen.getByText('Share: Ask a question')).toBeTruthy();
     expect(screen.getByText('Should I trade damage for more party support?')).toBeTruthy();
     expect(screen.getByText('STR 16 | DEX 10 | MP 12')).toBeTruthy();
+    expect(screen.getByText('Reactions: Party fit 1')).toBeTruthy();
+    expect(screen.queryByText('Reaction: Party fit')).toBeNull();
     expect(screen.getByRole('button', { name: 'Preview' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reply' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Open Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
+  });
+
+  it('submits low-friction reaction artifacts for shared drafts', async () => {
+    const submitEnvelopeAndAwait = vi.fn(async () => ({
+      commandId: 'cmd-send',
+      status: 'PROCESSED' as const,
+      errorCode: null,
+      errorMessage: null,
+    }));
+
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-1',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-1' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [
+          {
+            messageId: 'msg-1',
+            senderPlayerId: 'player-1',
+            senderDisplayName: 'Borin',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            body: 'Sharing Borin for party feedback.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-1',
+              snapshotVersion: 2,
+              characterName: 'Borin',
+              race: 'HUMAN',
+              status: 'DRAFT',
+              shareIntent: 'ASK_QUESTION',
+              contextNote: 'Should I trade damage for more party support?',
+              abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+              skillSummary: ['Fighter 1'],
+            },
+            createdAt: '2026-03-01T09:16:00.000Z',
+          },
+        ],
+      })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Party fit' }));
+
+    await waitFor(() =>
+      expect(submitEnvelopeAndAwait).toHaveBeenCalledWith(
+        'React to shared draft',
+        expect.objectContaining({
+          gameId: 'game-1',
+          type: 'SendGameChatMessage',
+          payload: {
+            body: 'Reaction: Party fit',
+            artifact: {
+              kind: 'CHARACTER_DRAFT_REACTION',
+              targetMessageId: 'msg-1',
+              characterId: 'char-1',
+              snapshotVersion: 2,
+              characterName: 'Borin',
+              reaction: 'PARTY_FIT',
+            },
+          },
+        })
+      )
+    );
+
+    expect(await screen.findByText('Reactions: Party fit 1')).toBeTruthy();
   });
 
   it('renders compare-direction shares with their intent and note', async () => {
@@ -479,6 +594,7 @@ describe('GameChatPage', () => {
     expect(within(dialog).getByText('HUMAN • DRAFT')).toBeTruthy();
     expect(within(dialog).getByText('Share: Ask a question')).toBeTruthy();
     expect(within(dialog).getByText('Should I trade damage for more party support?')).toBeTruthy();
+    expect(within(dialog).getByText('Reactions: No reactions yet')).toBeTruthy();
     expect(within(dialog).getByRole('link', { name: 'Open Full Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Reply' }));

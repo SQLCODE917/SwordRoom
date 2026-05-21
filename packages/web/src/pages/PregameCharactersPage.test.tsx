@@ -100,6 +100,23 @@ describe('PregameCharactersPage', () => {
             body: 'Looks good to me.',
             createdAt: '2026-03-01T09:16:00.000Z',
           },
+          {
+            messageId: 'msg-3',
+            senderPlayerId: 'player-1',
+            senderDisplayName: 'Borin',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            body: 'Reaction: Party fit',
+            artifact: {
+              kind: 'CHARACTER_DRAFT_REACTION',
+              targetMessageId: 'msg-1',
+              characterId: 'char-2',
+              snapshotVersion: 3,
+              characterName: 'Aline',
+              reaction: 'PARTY_FIT',
+            },
+            createdAt: '2026-03-01T09:17:00.000Z',
+          },
         ],
       })),
       getCharacter: vi
@@ -143,13 +160,14 @@ describe('PregameCharactersPage', () => {
     const sharedTable = await screen.findByRole('table', { name: 'Characters workbench shared' });
     expect(within(sharedTable).getByText('Aline')).toBeTruthy();
     expect(within(sharedTable).getByText('Snapshot v3 · DRAFT')).toBeTruthy();
-    expect(within(sharedTable).getByText('1 follow-up message')).toBeTruthy();
+    expect(within(sharedTable).getByText('1 follow-up message · 1 reaction')).toBeTruthy();
     expect(within(sharedTable).getByRole('link', { name: 'Discuss' }).getAttribute('href')).toBe(
       '/games/game-1/chat?draft=About+Aline+v3%3A+'
     );
     expect(await screen.findByRole('heading', { name: 'Aline Preview' })).toBeTruthy();
     expect(screen.getByText('Compare directions')).toBeTruthy();
     expect(screen.getByText('Option A stays Priest-heavy. Option B shifts into frontline support.')).toBeTruthy();
+    expect(screen.getByText('Reactions: Party fit 1')).toBeTruthy();
     expect(screen.getByText('INT 17')).toBeTruthy();
     expect(screen.getByText('Skills: Priest 2')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Continue Discussion' }).getAttribute('href')).toBe(

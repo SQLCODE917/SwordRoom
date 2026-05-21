@@ -38,6 +38,7 @@ export function GameChatPage() {
                 isSending={chat.isSending}
                 commandStatus={chat.commandStatus}
                 onSendMessage={chat.sendMessage}
+                onReactToArtifact={chat.sendCharacterDraftReaction}
               />
             </div>
 

@@ -294,4 +294,162 @@ describe('sendGameChatMessageHandler', () => {
       code: 'GAME_CHAT_MEMBER_REQUIRED',
     });
   });
+
+  it('stores draft reactions when they target an existing shared draft snapshot', async () => {
+    const base = makeDb();
+    const db = makeDb({
+      membershipRepository: {
+        ...base.membershipRepository,
+        getMembership: vi.fn(async () => ({
+          pk: 'GAME#game-1',
+          sk: 'MEMBER#player-2',
+          type: 'GameMember',
+          gameId: 'game-1',
+          playerId: 'player-2',
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      playerRepository: {
+        ...base.playerRepository,
+        getPlayerProfile: vi.fn(async () => ({
+          pk: 'PLAYER#player-2',
+          sk: 'PROFILE',
+          type: 'PlayerProfile',
+          playerId: 'player-2',
+          displayName: 'Alice',
+          email: 'alice@example.com',
+          emailNormalized: 'alice@example.com',
+          emailVerified: true,
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      chatRepository: {
+        ...base.chatRepository,
+        queryMessages: vi.fn(async () => [
+          {
+            messageId: 'msg-share-1',
+            senderPlayerId: 'player-1',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            senderNameSnapshot: 'Borin',
+            body: 'Borin is comparing two build directions.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-1',
+              snapshotVersion: 3,
+              characterName: 'Borin',
+              race: 'HUMAN',
+              status: 'DRAFT',
+              shareIntent: 'COMPARE_DIRECTIONS',
+              contextNote: 'Option A keeps Fighter 1. Option B pivots to Priest 2.',
+              abilitySummary: ['STR 16'],
+              skillSummary: ['Fighter 1'],
+            },
+            createdAt: '2026-03-01T09:15:00.000Z',
+          },
+        ]),
+      },
+    });
+
+    const result = await sendGameChatMessageHandler(
+      { db, nowIso: () => '2026-03-01T09:17:00.000Z' },
+      {
+        commandId: 'cmd-chat-react-1',
+        gameId: 'game-1',
+        actorId: 'player-2',
+        type: 'SendGameChatMessage',
+        schemaVersion: 1,
+        createdAt: '2026-03-01T09:17:00.000Z',
+        payload: {
+          body: 'Reaction: Party fit',
+          artifact: {
+            kind: 'CHARACTER_DRAFT_REACTION',
+            targetMessageId: 'msg-share-1',
+            characterId: 'char-1',
+            snapshotVersion: 3,
+            characterName: 'Borin',
+            reaction: 'PARTY_FIT',
+          },
+        },
+      }
+    );
+
+    expect(result.writes).toEqual([
+      {
+        kind: 'PUT_GAME_CHAT_MESSAGE',
+        input: {
+          gameId: 'game-1',
+          messageId: 'cmd-chat-react-1',
+          senderPlayerId: 'player-2',
+          senderRole: 'PLAYER',
+          senderCharacterId: null,
+          senderNameSnapshot: 'Alice',
+          body: 'Reaction: Party fit',
+          artifact: {
+            kind: 'CHARACTER_DRAFT_REACTION',
+            targetMessageId: 'msg-share-1',
+            characterId: 'char-1',
+            snapshotVersion: 3,
+            characterName: 'Borin',
+            reaction: 'PARTY_FIT',
+          },
+          createdAt: '2026-03-01T09:17:00.000Z',
+        },
+      },
+    ]);
+  });
+
+  it('rejects draft reactions when the target shared draft cannot be found', async () => {
+    const base = makeDb();
+    const db = makeDb({
+      membershipRepository: {
+        ...base.membershipRepository,
+        getMembership: vi.fn(async () => ({
+          pk: 'GAME#game-1',
+          sk: 'MEMBER#player-2',
+          type: 'GameMember',
+          gameId: 'game-1',
+          playerId: 'player-2',
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      chatRepository: {
+        ...base.chatRepository,
+        queryMessages: vi.fn(async () => []),
+      },
+    });
+
+    await expect(
+      sendGameChatMessageHandler(
+        { db, nowIso: () => '2026-03-01T09:17:00.000Z' },
+        {
+          commandId: 'cmd-chat-react-2',
+          gameId: 'game-1',
+          actorId: 'player-2',
+          type: 'SendGameChatMessage',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T09:17:00.000Z',
+          payload: {
+            body: 'Reaction: Party fit',
+            artifact: {
+              kind: 'CHARACTER_DRAFT_REACTION',
+              targetMessageId: 'missing-share',
+              characterId: 'char-1',
+              snapshotVersion: 3,
+              characterName: 'Borin',
+              reaction: 'PARTY_FIT',
+            },
+          },
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'CHAT_REACTION_TARGET_NOT_FOUND',
+    });
+  });
 });

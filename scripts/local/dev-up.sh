@@ -38,6 +38,26 @@ kill_orphan_web_vite() {
   done < <(pgrep -f "$ROOT_DIR/packages/web/node_modules/.bin/.*/vite/bin/vite.js" || true)
 }
 
+kill_orphan_api_runtime() {
+  local pid
+  while IFS= read -r pid; do
+    if [[ -z "$pid" || "$pid" == "$$" ]]; then
+      continue
+    fi
+    if [[ -d "/proc/$pid" ]]; then
+      local cwd
+      cwd="$(readlink "/proc/$pid/cwd" 2>/dev/null || true)"
+      if [[ "$cwd" == "$ROOT_DIR" ]]; then
+        kill -TERM "$pid" >/dev/null 2>&1 || true
+        sleep 1
+        if kill -0 "$pid" >/dev/null 2>&1; then
+          kill -KILL "$pid" >/dev/null 2>&1 || true
+        fi
+      fi
+    fi
+  done < <(pgrep -f 'node(.+)?packages/services/api/dist/server\.js' || true)
+}
+
 prefix_stream() {
   local name="$1"
   sed -u "s/^/[$name] /"
@@ -154,6 +174,7 @@ docker compose -f docker-compose.local.yml up -d
 
 log "Clearing orphaned web dev servers"
 kill_orphan_web_vite
+kill_orphan_api_runtime
 
 log "Provisioning local resources"
 if [[ "${RESET_LOCAL_STATE:-0}" == "1" ]]; then

@@ -1,5 +1,9 @@
 import type { CharacterItem, GameChatMessage } from '../../api/ApiClient';
 import type { PregameCharactersState } from './usePregameCharacters';
+import {
+  buildCharacterDraftReactionSummaryLabel,
+  countCharacterDraftReactions,
+} from '../pregame-planning/reactions';
 
 export type PregameCharactersViewModel =
   | {
@@ -56,6 +60,7 @@ export interface CharacterWorkbenchSharedRow {
   abilitySummaryLabel: string;
   skillSummaryLabel: string;
   discussionLabel: string;
+  reactionSummaryLabel: string;
   sheetTo: string;
   chatTo: string;
 }
@@ -169,7 +174,22 @@ function buildSharedRow(gameId: string, allChatMessages: readonly GameChatMessag
     throw new Error('Shared row requires a character draft artifact.');
   }
 
-  const discussionCount = allChatMessages.filter((entry) => entry.createdAt > message.createdAt && entry.senderPlayerId !== message.senderPlayerId).length;
+  const replyCount = allChatMessages.filter((entry) => {
+    if (entry.createdAt <= message.createdAt || entry.senderPlayerId === message.senderPlayerId) {
+      return false;
+    }
+    return entry.artifact?.kind !== 'CHARACTER_DRAFT_REACTION';
+  }).length;
+  const reactionCount = countCharacterDraftReactions(allChatMessages, message.messageId);
+  const discussionLabel =
+    replyCount > 0 || reactionCount > 0
+      ? [
+          replyCount > 0 ? `${replyCount} follow-up ${replyCount === 1 ? 'message' : 'messages'}` : null,
+          reactionCount > 0 ? `${reactionCount} reaction${reactionCount === 1 ? '' : 's'}` : null,
+        ]
+          .filter((entry): entry is string => entry !== null)
+          .join(' · ')
+      : 'No follow-up yet';
 
   return {
     key: message.messageId,
@@ -181,7 +201,8 @@ function buildSharedRow(gameId: string, allChatMessages: readonly GameChatMessag
     contextNote: artifact.contextNote ?? null,
     abilitySummaryLabel: artifact.abilitySummary.join(' | ') || 'No ability summary.',
     skillSummaryLabel: artifact.skillSummary.length > 0 ? `Skills: ${artifact.skillSummary.join(', ')}` : 'Skills: none yet',
-    discussionLabel: discussionCount > 0 ? `${discussionCount} follow-up ${discussionCount === 1 ? 'message' : 'messages'}` : 'No follow-up yet',
+    discussionLabel,
+    reactionSummaryLabel: buildCharacterDraftReactionSummaryLabel(allChatMessages, message.messageId),
     sheetTo: `/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(artifact.characterId)}`,
     chatTo: buildSharedArtifactChatTo(gameId, artifact.characterName, artifact.snapshotVersion),
   };
