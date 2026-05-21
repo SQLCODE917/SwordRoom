@@ -53,6 +53,28 @@ export function PregameLobbyPage() {
         {view.status === 'ready' ? (
           <div className="l-split">
             <div className="l-col l-grow">
+              <SectionTitle title="Pregame Status" />
+              <InfoList lines={view.loopStatusLines} />
+
+              <SectionTitle title="Next Move" />
+              <div className="c-note c-note--info c-pregame-planning__summary">
+                <div className="l-row">
+                  {view.primaryAction.kind === 'route' ? (
+                    <ButtonLink to={view.primaryAction.to}>{view.primaryAction.label}</ButtonLink>
+                  ) : (
+                    <button
+                      className={`c-btn ${isRunning ? 'is-disabled' : ''}`.trim()}
+                      type="button"
+                      disabled={isRunning}
+                      onClick={() => void postSuggestedPrompt()}
+                    >
+                      {view.primaryAction.label}
+                    </button>
+                  )}
+                </div>
+                <div className="t-small">{view.primaryAction.detail}</div>
+              </div>
+
               <SectionTitle title="Planning Status" />
               <InfoList lines={view.summaryLines} />
 

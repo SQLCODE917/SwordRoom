@@ -1,4 +1,5 @@
 import type { CharacterItem, GameChatMessage } from '../../api/ApiClient';
+import { appendCharacterWizardEntryContext } from '../character-wizard';
 import type { PregameCharactersState } from './usePregameCharacters';
 import {
   buildCharacterDraftReactionSummaryLabel,
@@ -75,7 +76,10 @@ export interface CharacterWorkbenchApprovedRow {
 
 export function createPregameCharactersViewModel(state: PregameCharactersState): PregameCharactersViewModel {
   const defaultWorkflow: PregameCharactersWorkflow = {
-    createTo: `/games/${encodeURIComponent(state.gameId)}/character/new`,
+    createTo: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(state.gameId)}/character/new`, {
+      entrySource: 'characters',
+      focus: 'review',
+    }),
     charactersTo: `/games/${encodeURIComponent(state.gameId)}/characters`,
   };
 
@@ -134,8 +138,14 @@ export function createPregameCharactersViewModel(state: PregameCharactersState):
     workflow: {
       createTo:
         state.myCharacters.length > 0 && canEditCharacter(state.myCharacters[0]!)
-          ? `/games/${encodeURIComponent(state.game.gameId)}/characters/${encodeURIComponent(state.myCharacters[0]!.characterId)}/edit`
-          : `/games/${encodeURIComponent(state.game.gameId)}/character/new`,
+          ? appendCharacterWizardEntryContext(
+              `/games/${encodeURIComponent(state.game.gameId)}/characters/${encodeURIComponent(state.myCharacters[0]!.characterId)}/edit`,
+              { entrySource: 'characters', focus: 'review' }
+            )
+          : appendCharacterWizardEntryContext(`/games/${encodeURIComponent(state.game.gameId)}/character/new`, {
+              entrySource: 'characters',
+              focus: 'review',
+            }),
       charactersTo: `/games/${encodeURIComponent(state.game.gameId)}/characters`,
     },
     summaryLines,
@@ -163,7 +173,10 @@ function buildMineRow(character: CharacterItem, latestShare: GameChatMessage | n
     shareLabel: latestShare ? `Shared ${formatShortTimestamp(latestShare.createdAt)}` : 'Not shared yet',
     sheetTo: `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}`,
     editTo: canEditCharacter(character)
-      ? `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}/edit`
+      ? appendCharacterWizardEntryContext(
+          `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}/edit`,
+          { entrySource: 'characters', focus: 'review' }
+        )
       : null,
   };
 }

@@ -4,6 +4,7 @@ import { useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
+import { appendCharacterWizardEntryContext } from '../features/character-wizard';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
@@ -256,10 +257,16 @@ function toPregameDigestPath(entry: PregameDigestEntry): string {
     return `/games/${encodeURIComponent(entry.gameId)}/chat`;
   }
   if (entry.destination === 'CREATE_CHARACTER') {
-    return `/games/${encodeURIComponent(entry.gameId)}/character/new`;
+    return appendCharacterWizardEntryContext(`/games/${encodeURIComponent(entry.gameId)}/character/new`, {
+      entrySource: 'inbox',
+      focus: 'resume',
+    });
   }
   if (entry.destination === 'EDIT_CHARACTER' && entry.characterId) {
-    return `/games/${encodeURIComponent(entry.gameId)}/characters/${encodeURIComponent(entry.characterId)}/edit`;
+    return appendCharacterWizardEntryContext(
+      `/games/${encodeURIComponent(entry.gameId)}/characters/${encodeURIComponent(entry.characterId)}/edit`,
+      { entrySource: 'inbox', focus: 'resume' }
+    );
   }
   return `/games/${encodeURIComponent(entry.gameId)}`;
 }

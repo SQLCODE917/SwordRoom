@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApiClient } from '../api/ApiClient';
+import { createApiClient, type CommandStatusResponse } from '../api/ApiClient';
 import { useAuthProvider, type AuthProvider } from '../auth/AuthProvider';
 import { useCommandWorkflow } from '../hooks/useCommandStatus';
 import { PregameLobbyPage } from './PregameLobbyPage';
@@ -142,11 +142,20 @@ describe('PregameLobbyPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Pregame Lobby' })).toBeTruthy();
     expect(screen.getByText('Dungeon Delvers (game-1)')).toBeTruthy();
+    expect(screen.getByText('Need: Frontline')).toBeTruthy();
+    expect(screen.getByText('Prompt active: Party needs Frontline')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Answer Prompt In Create' }).getAttribute('href')).toBe(
+      '/games/game-1/characters/char-1/edit?entry=lobby&focus=prompt'
+    );
     const workflow = screen.getByRole('navigation', { name: 'Pregame workflow' });
-    expect(within(workflow).getByRole('link', { name: 'Create' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
+    expect(within(workflow).getByRole('link', { name: 'Create' }).getAttribute('href')).toBe(
+      '/games/game-1/characters/char-1/edit?entry=lobby&focus=prompt'
+    );
     expect(within(workflow).getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
     expect(within(workflow).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
-    expect(screen.getByRole('link', { name: 'Continue Character' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
+    expect(screen.getByRole('link', { name: 'Continue Character' }).getAttribute('href')).toBe(
+      '/games/game-1/characters/char-1/edit?entry=lobby&focus=revise'
+    );
     expect(screen.getByRole('link', { name: 'Character Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
     expect(screen.getByRole('link', { name: 'Player Inbox' }).getAttribute('href')).toBe('/me/inbox');
     expect(screen.getByText('Your current character is Borin Stonehand (DRAFT).')).toBeTruthy();
@@ -163,6 +172,85 @@ describe('PregameLobbyPage', () => {
     const activity = screen.getByRole('table', { name: 'Pregame recent activity' });
     expect(within(activity).getByText('@Zed GM')).toBeTruthy();
     expect(within(activity).getByText('We still need a frontline character.')).toBeTruthy();
+  });
+
+  it('gives the GM a dominant prompt-setting action when no planning prompt is active', async () => {
+    const submitEnvelopeAndAwait = vi.fn(async (): Promise<CommandStatusResponse> => ({
+      status: 'PROCESSED',
+      commandId: 'cmd-1',
+      errorCode: null,
+      errorMessage: null,
+    }));
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait,
+    });
+    vi.mocked(useAuthProvider).mockReturnValue({
+      ...createAuth(),
+      actorId: 'gm-1',
+    });
+    vi.mocked(createApiClient).mockReturnValue({
+      getGame: vi.fn(async () => ({
+        gameId: 'game-1',
+        name: 'Dungeon Delvers',
+        visibility: 'PUBLIC',
+        gmPlayerId: 'gm-1',
+        version: 1,
+      })),
+      getGameActorContext: vi.fn(async () => ({
+        actorId: 'gm-1',
+        displayName: '@Zed GM',
+        roles: ['GM'],
+        gmPlayerId: 'gm-1',
+        isGameMaster: true,
+      })),
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [],
+      })),
+      getPregamePlanning: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        viewer: {
+          isMember: true,
+          isGameMaster: true,
+        },
+        activePrompt: null,
+        partyNeeds: [
+          { role: 'FRONTLINE', label: 'Frontline', isOpen: true, claimedBy: [] },
+          { role: 'HEALER', label: 'Healer', isOpen: true, claimedBy: [] },
+          { role: 'SCOUT', label: 'Scout', isOpen: false, claimedBy: ['Borin Stonehand'] },
+          { role: 'ARCANE', label: 'Arcane Support', isOpen: true, claimedBy: [] },
+        ],
+        recentClaims: [],
+      })),
+      getMyCharacters: vi.fn(async () => []),
+    } as unknown as ReturnType<typeof createApiClient>);
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1']}>
+        <Routes>
+          <Route path="/games/:gameId" element={<PregameLobbyPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Prompt active: no GM prompt yet')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Set Planning Prompt' })).toBeTruthy();
   });
 
   it('renders a recoverable error state when the lobby context fails to load', async () => {

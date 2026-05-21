@@ -18,6 +18,7 @@ import {
   type EquipmentOption,
 } from '../../../data/characterCreationPurchasing';
 import { CHARACTER_SHARE_INTENT_OPTIONS, goodHumanRuneMasterAutofill, readCharacterIdentityName, toInventoryQuantitiesFromIds } from '../index.js';
+import type { CharacterPlanningFocusViewModel } from '../planningFocus.js';
 import type { CharacterShareIntent, InventoryCategory, InventoryQuantitiesKey, SaveButtonState, WizardMode, WizardState } from '../types.js';
 import type { createCharacterWizardViewModel } from '../viewModel.js';
 
@@ -614,6 +615,18 @@ export function ShareCheckpointPanel(props: {
         ]}
       />
     </fieldset>
+  );
+}
+
+export function PlanningFocusPanel(props: { focus: CharacterPlanningFocusViewModel }) {
+  return (
+    <div className="l-col">
+      <div className="c-note c-note--info c-pregame-planning__summary">
+        <div className="t-small">{props.focus.headline}</div>
+        <div className="t-small">{props.focus.detail}</div>
+      </div>
+      <InfoList lines={props.focus.lines} />
+    </div>
   );
 }
 

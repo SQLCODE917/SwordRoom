@@ -1,4 +1,5 @@
 import type { CharacterItem, GameChatMessage, GameChatParticipant } from '../../api/ApiClient';
+import { appendCharacterWizardEntryContext } from '../character-wizard';
 import { formatPregameRoleList } from '../pregame-planning/labels.js';
 import type { PregameLobbyState } from './usePregameLobby';
 
@@ -27,6 +28,8 @@ export type PregameLobbyViewModel =
       notice: string;
       actions: LobbyAction[];
       workflow: LobbyWorkflow;
+      loopStatusLines: string[];
+      primaryAction: LobbyPrimaryAction;
       summaryLines: string[];
       promptLines: string[];
       partyNeedsLines: string[];
@@ -60,6 +63,19 @@ export interface LobbyWorkflow {
   createTo: string;
   sheetTo: string | null;
 }
+
+export type LobbyPrimaryAction =
+  | {
+      kind: 'route';
+      label: string;
+      to: string;
+      detail: string;
+    }
+  | {
+      kind: 'command';
+      label: string;
+      detail: string;
+    };
 
 export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLobbyViewModel {
   if (state.status === 'loading') {
@@ -106,6 +122,8 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
 
   const partyNeedsLines = buildPartyNeedsLines(state, ownCharacter);
   const promptLines = buildPromptLines(state);
+  const loopStatusLines = buildLoopStatusLines(state, ownCharacter);
+  const primaryAction = buildPrimaryAction(state, ownCharacter, canEditOwnCharacter);
 
   return {
     status: 'ready',
@@ -124,12 +142,20 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
     workflow: {
       createTo:
         ownCharacter && canEditOwnCharacter
-          ? `/games/${encodeURIComponent(state.game.gameId)}/characters/${encodeURIComponent(ownCharacter.characterId)}/edit`
-          : `/games/${encodeURIComponent(state.game.gameId)}/character/new`,
+          ? appendCharacterWizardEntryContext(
+              `/games/${encodeURIComponent(state.game.gameId)}/characters/${encodeURIComponent(ownCharacter.characterId)}/edit`,
+              { entrySource: 'lobby', focus: state.planning.activePrompt ? 'prompt' : 'revise' }
+            )
+          : appendCharacterWizardEntryContext(`/games/${encodeURIComponent(state.game.gameId)}/character/new`, {
+              entrySource: 'lobby',
+              focus: 'role',
+            }),
       sheetTo: ownCharacter
         ? `/games/${encodeURIComponent(state.game.gameId)}/characters/${encodeURIComponent(ownCharacter.characterId)}`
         : null,
     },
+    loopStatusLines,
+    primaryAction,
     summaryLines,
     promptLines,
     partyNeedsLines,
@@ -150,7 +176,10 @@ function buildActions(input: {
     if (input.canEditOwnCharacter) {
       actions.push({
         label: 'Continue Character',
-        to: `/games/${encodeURIComponent(input.gameId)}/characters/${encodeURIComponent(input.ownCharacter.characterId)}/edit`,
+        to: appendCharacterWizardEntryContext(
+          `/games/${encodeURIComponent(input.gameId)}/characters/${encodeURIComponent(input.ownCharacter.characterId)}/edit`,
+          { entrySource: 'lobby', focus: 'revise' }
+        ),
       });
     }
     actions.push({
@@ -160,7 +189,10 @@ function buildActions(input: {
   } else {
     actions.push({
       label: 'New Character',
-      to: `/games/${encodeURIComponent(input.gameId)}/character/new`,
+      to: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(input.gameId)}/character/new`, {
+        entrySource: 'lobby',
+        focus: 'role',
+      }),
     });
   }
 
@@ -172,6 +204,98 @@ function buildActions(input: {
   }
 
   return actions;
+}
+
+function buildPrimaryAction(
+  state: Extract<PregameLobbyState, { status: 'ready' }>,
+  ownCharacter: CharacterItem | null,
+  canEditOwnCharacter: boolean
+): LobbyPrimaryAction {
+  const gameId = state.game.gameId;
+  const firstOpenNeed = state.planning.partyNeeds.find((need) => need.isOpen) ?? null;
+  const latestActivity = state.chat.messages[state.chat.messages.length - 1] ?? null;
+
+  if (state.actorContext.isGameMaster) {
+    if (!state.planning.activePrompt) {
+      return {
+        kind: 'command',
+        label: 'Set Planning Prompt',
+        detail: 'Guide the party by posting the next question for open roles.',
+      };
+    }
+    if (latestActivity) {
+      return {
+        kind: 'route',
+        label: 'Respond In Chat',
+        to: `/games/${encodeURIComponent(gameId)}/chat`,
+        detail: 'Use the latest shared draft or party conversation to steer the group.',
+      };
+    }
+    return {
+      kind: 'route',
+      label: 'Open Chat',
+      to: `/games/${encodeURIComponent(gameId)}/chat`,
+      detail: 'Start the planning conversation and guide the party toward a workable composition.',
+    };
+  }
+
+  if (ownCharacter && canEditOwnCharacter) {
+    return {
+      kind: 'route',
+      label: state.planning.activePrompt ? 'Answer Prompt In Create' : 'Revise Draft',
+      to: appendCharacterWizardEntryContext(
+        `/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(ownCharacter.characterId)}/edit`,
+        { entrySource: 'lobby', focus: state.planning.activePrompt ? 'prompt' : 'revise' }
+      ),
+      detail: state.planning.activePrompt
+        ? 'Open your draft and respond directly to the active GM prompt.'
+        : 'Continue iterating on your draft and share the next checkpoint with the table.',
+    };
+  }
+
+  if (!ownCharacter && firstOpenNeed) {
+    return {
+      kind: 'route',
+      label: `Create For ${firstOpenNeed.label}`,
+      to: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(gameId)}/character/new`, {
+        entrySource: 'lobby',
+        focus: 'role',
+      }),
+      detail: 'Start a game-scoped draft that covers the party’s most visible open need.',
+    };
+  }
+
+  return {
+    kind: 'route',
+    label: 'Open Chat',
+    to: `/games/${encodeURIComponent(gameId)}/chat`,
+    detail: 'Review the latest planning conversation before choosing your next draft move.',
+  };
+}
+
+function buildLoopStatusLines(
+  state: Extract<PregameLobbyState, { status: 'ready' }>,
+  ownCharacter: CharacterItem | null
+): string[] {
+  const firstOpenNeed = state.planning.partyNeeds.find((need) => need.isOpen) ?? null;
+  const latestActivity = state.chat.messages[state.chat.messages.length - 1] ?? null;
+  const lines: string[] = [];
+
+  lines.push(firstOpenNeed ? `Need: ${firstOpenNeed.label}` : 'Need: no open role gaps called out');
+  lines.push(
+    state.planning.activePrompt ? `Prompt active: ${state.planning.activePrompt.title}` : 'Prompt active: no GM prompt yet'
+  );
+  lines.push(
+    latestActivity ? `Latest: ${latestActivity.senderDisplayName} said "${latestActivity.body}"` : 'Latest: no pregame chat yet'
+  );
+
+  if (!ownCharacter) {
+    lines.push('You do not have a game-scoped character draft yet.');
+  } else if (ownCharacter.status === 'DRAFT') {
+    lines.push(`Your draft ${readCharacterName(ownCharacter)} is still editable.`);
+  }
+
+  return lines;
 }
 
 function buildPromptLines(state: Extract<PregameLobbyState, { status: 'ready' }>): string[] {

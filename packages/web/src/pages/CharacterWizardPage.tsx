@@ -1,8 +1,9 @@
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { toPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { PregamePlanningPanel } from '../components/PregamePlanningPanel';
@@ -22,6 +23,7 @@ import {
   type CharacterShareIntent,
   CharacterSnapshot,
   CharacterWizardAutofillControls,
+  createCharacterPlanningFocusViewModel,
   createCharacterId,
   createCharacterWizardViewModel,
   DiceStepPanel,
@@ -31,8 +33,11 @@ import {
   IdentityStepPanel,
   InventoryCategory,
   InventoryQuantitiesKey,
+  getCharacterWizardReturnPath,
   normalizePurchasesForBaseSkills,
+  PlanningFocusPanel,
   RaceStepPanel,
+  readCharacterWizardEntryContext,
   ShareCheckpointPanel,
   SnapshotView,
   SubmitStepPanel,
@@ -60,6 +65,7 @@ function CharacterWizardPageContent({
 }: {
   params: Readonly<{ gameId?: string; playerId?: string; characterId?: string }>;
 }) {
+  const [searchParams] = useSearchParams();
   const auth = useAuthProvider();
   const routePlayerId = params.playerId ?? null;
   const wizardMode: WizardMode = routePlayerId ? 'library' : 'apply';
@@ -171,6 +177,35 @@ function CharacterWizardPageContent({
   );
   const pregamePlanning = usePregamePlanning(routeGameId, wizardMode === 'apply');
   const activePregamePrompt = pregamePlanning.state.status === 'ready' ? pregamePlanning.state.planning.activePrompt : null;
+  const entryContext = useMemo(() => readCharacterWizardEntryContext(searchParams), [searchParams]);
+  const planningFocus = useMemo(
+    () =>
+      createCharacterPlanningFocusViewModel({
+        entryContext,
+        isEditMode,
+        characterName: state.name.trim() || state.characterId,
+        activeStepTitle: stepTitles[activeStepIndex] ?? 'Current step',
+        isDraftReadyForCheckpointShare: view.isDraftReadyForCheckpointShare,
+        activePromptTitle: activePregamePrompt?.title ?? null,
+        activePromptPrompt: activePregamePrompt?.prompt ?? null,
+        openRoleLabels:
+          pregamePlanning.state.status === 'ready'
+            ? pregamePlanning.state.planning.partyNeeds.filter((need) => need.isOpen).map((need) => need.label)
+            : [],
+      }),
+    [
+      activePregamePrompt?.prompt,
+      activePregamePrompt?.title,
+      activeStepIndex,
+      entryContext,
+      isEditMode,
+      pregamePlanning.state,
+      state.characterId,
+      state.name,
+      view.isDraftReadyForCheckpointShare,
+    ]
+  );
+  const returnToPath = wizardMode === 'apply' ? getCharacterWizardReturnPath(routeGameId, entryContext.entrySource) : null;
 
   const { saveStateByStep, shareState, saveStepProgress, executeFinalAction, shareDraftToChat, claimPartyRoleInChat, refreshSnapshot } = useCharacterWizardWorkflow({
     api,
@@ -419,6 +454,20 @@ function CharacterWizardPageContent({
 
             <div className="l-col l-grow c-wizard-workspace__rail">
               {wizardMode === 'apply' ? (
+                <Panel
+                  title="Planning Focus"
+                  subtitle="Keep the current game need visible while you draft and revise."
+                  footer={
+                    returnToPath ? (
+                      <ButtonLink to={returnToPath}>{readReturnActionLabel(entryContext.entrySource)}</ButtonLink>
+                    ) : undefined
+                  }
+                >
+                  <PlanningFocusPanel focus={planningFocus} />
+                </Panel>
+              ) : null}
+
+              {wizardMode === 'apply' ? (
                 <PregamePlanningPanel
                   planningState={pregamePlanning.state}
                   disabled={isExecutingCommand || shareState === 'saving'}
@@ -612,6 +661,25 @@ function CharacterWizardPageContent({
     });
   }
 
+}
+
+function readReturnActionLabel(entrySource: ReturnType<typeof readCharacterWizardEntryContext>['entrySource']): string {
+  if (entrySource === 'lobby') {
+    return 'Back To Lobby';
+  }
+  if (entrySource === 'chat') {
+    return 'Back To Chat';
+  }
+  if (entrySource === 'characters') {
+    return 'Back To Characters';
+  }
+  if (entrySource === 'inbox') {
+    return 'Back To Inbox';
+  }
+  if (entrySource === 'home') {
+    return 'Back To Home';
+  }
+  return 'Back';
 }
 
 function setSubAbility(

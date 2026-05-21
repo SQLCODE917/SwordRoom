@@ -301,7 +301,9 @@ describe('HomePage', () => {
 
     const quickStart = await screen.findByText('Resume planning in Goblin Cave');
     expect(quickStart).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
+    expect(screen.getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe(
+      '/games/game-1/characters/char-1/edit?entry=home&focus=resume'
+    );
   });
 
   it('shows join, start, and create-first actions for phone-style quick entry', async () => {
@@ -337,8 +339,12 @@ describe('HomePage', () => {
     );
 
     expect(await screen.findByText('Join Goblin Cave')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Join a Game' }).getAttribute('href')).toBe('/games/game-public/character/new');
+    expect(screen.getByRole('link', { name: 'Join a Game' }).getAttribute('href')).toBe(
+      '/games/game-public/character/new?entry=home&focus=start'
+    );
     expect(screen.getByRole('link', { name: 'Start a Game' }).getAttribute('href')).toBe('/gm/games');
-    expect(screen.getByRole('link', { name: 'Create a Character' }).getAttribute('href')).toBe('/games/game-public/character/new');
+    expect(screen.getByRole('link', { name: 'Create a Character' }).getAttribute('href')).toBe(
+      '/games/game-public/character/new?entry=home&focus=start'
+    );
   });
 });

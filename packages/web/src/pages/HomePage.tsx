@@ -5,6 +5,7 @@ import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
+import { appendCharacterWizardEntryContext } from '../features/character-wizard';
 import { useMyProfile } from '../hooks/useMyProfile';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
@@ -439,7 +440,10 @@ function getCharacterEditPath(character: CharacterItem): string {
     const ownerPlayerId = typeof character.ownerPlayerId === 'string' ? character.ownerPlayerId : '';
     return `/player/${encodeURIComponent(ownerPlayerId)}/characters/${encodeURIComponent(character.characterId)}/edit`;
   }
-  return `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}/edit`;
+  return appendCharacterWizardEntryContext(
+    `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}/edit`,
+    { entrySource: 'home', focus: 'resume' }
+  );
 }
 
 function canEditCharacter(character: CharacterItem): boolean {
@@ -498,7 +502,10 @@ function createQuickStartViewModel(input: {
       detail: 'Start planning by creating a character draft for a visible game.',
       primaryAction: {
         label: 'Join a Game',
-        to: `/games/${encodeURIComponent(joinableGame.gameId)}/character/new`,
+        to: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(joinableGame.gameId)}/character/new`, {
+          entrySource: 'home',
+          focus: 'start',
+        }),
       },
       secondaryActions: buildSecondaryQuickStartActions({
         actorId: input.actorId,
@@ -514,7 +521,10 @@ function createQuickStartViewModel(input: {
       detail: 'Enter the game-scoped creator and start the pregame loop immediately.',
       primaryAction: {
         label: 'Create a Character',
-        to: `/games/${encodeURIComponent(gameNeedingCharacter.gameId)}/character/new`,
+        to: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(gameNeedingCharacter.gameId)}/character/new`, {
+          entrySource: 'home',
+          focus: 'start',
+        }),
       },
       secondaryActions: buildSecondaryQuickStartActions({
         actorId: input.actorId,
@@ -548,7 +558,10 @@ function buildSecondaryQuickStartActions(input: {
   if (input.joinableGame) {
     actions.push({
       label: 'Join a Game',
-      to: `/games/${encodeURIComponent(input.joinableGame.gameId)}/character/new`,
+      to: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(input.joinableGame.gameId)}/character/new`, {
+        entrySource: 'home',
+        focus: 'start',
+      }),
     });
   }
   actions.push({
@@ -558,7 +571,10 @@ function buildSecondaryQuickStartActions(input: {
   actions.push({
     label: 'Create a Character',
     to: input.gameNeedingCharacter
-      ? `/games/${encodeURIComponent(input.gameNeedingCharacter.gameId)}/character/new`
+      ? appendCharacterWizardEntryContext(`/games/${encodeURIComponent(input.gameNeedingCharacter.gameId)}/character/new`, {
+          entrySource: 'home',
+          focus: 'start',
+        })
       : `/player/${encodeURIComponent(input.actorId)}/character/new`,
   });
   return dedupeQuickStartActions(actions);
@@ -581,10 +597,16 @@ function toPregameDigestPath(entry: PregameDigestEntry): string {
     return `/games/${encodeURIComponent(entry.gameId)}/chat`;
   }
   if (entry.destination === 'CREATE_CHARACTER') {
-    return `/games/${encodeURIComponent(entry.gameId)}/character/new`;
+    return appendCharacterWizardEntryContext(`/games/${encodeURIComponent(entry.gameId)}/character/new`, {
+      entrySource: 'home',
+      focus: 'resume',
+    });
   }
   if (entry.destination === 'EDIT_CHARACTER' && entry.characterId) {
-    return `/games/${encodeURIComponent(entry.gameId)}/characters/${encodeURIComponent(entry.characterId)}/edit`;
+    return appendCharacterWizardEntryContext(
+      `/games/${encodeURIComponent(entry.gameId)}/characters/${encodeURIComponent(entry.characterId)}/edit`,
+      { entrySource: 'home', focus: 'resume' }
+    );
   }
   return `/games/${encodeURIComponent(entry.gameId)}`;
 }

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { CharacterWizardAutofillControls, ShareCheckpointPanel } from './CharacterWizardPanels.js';
+import { createCharacterPlanningFocusViewModel } from '../planningFocus.js';
+import { CharacterWizardAutofillControls, PlanningFocusPanel, ShareCheckpointPanel } from './CharacterWizardPanels.js';
 
 describe('CharacterWizardAutofillControls', () => {
   it('omits the current draft from saved-character autofill options and forwards selection', () => {
@@ -90,5 +91,31 @@ describe('ShareCheckpointPanel', () => {
 
     expect(screen.getByLabelText('Directions to compare')).toBeTruthy();
     expect(screen.getByText('Describe the two directions you want feedback on, such as role, risk, or tone.')).toBeTruthy();
+  });
+});
+
+describe('PlanningFocusPanel', () => {
+  it('renders route entry context and prompt-driven revision focus', () => {
+    const focus = createCharacterPlanningFocusViewModel({
+      entryContext: {
+        entrySource: 'chat',
+        focus: 'prompt',
+      },
+      isEditMode: true,
+      characterName: 'Borin Stonehand',
+      activeStepTitle: 'EXP spend',
+      isDraftReadyForCheckpointShare: true,
+      activePromptTitle: 'Party needs Frontline',
+      activePromptPrompt: 'Please cover Frontline if you can.',
+      openRoleLabels: ['Frontline', 'Scout'],
+    });
+
+    render(<PlanningFocusPanel focus={focus} />);
+
+    expect(screen.getByText('Answer the GM prompt: Party needs Frontline')).toBeTruthy();
+    expect(screen.getByText('Opened from Chat so you can revise in response to the current conversation.')).toBeTruthy();
+    expect(screen.getByText('Current checkpoint: EXP spend')).toBeTruthy();
+    expect(screen.getByText('Prompt detail: Please cover Frontline if you can.')).toBeTruthy();
+    expect(screen.getByText('Share ready: yes, this checkpoint can go to chat now')).toBeTruthy();
   });
 });

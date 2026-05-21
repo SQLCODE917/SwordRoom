@@ -4,6 +4,7 @@ import { Panel } from '../components/Panel';
 import { PregamePlanningPanel } from '../components/PregamePlanningPanel';
 import { PregameWorkflowNav } from '../components/PregameWorkflowNav';
 import { ButtonLink } from '../components/ButtonLink';
+import { appendCharacterWizardEntryContext } from '../features/character-wizard';
 import { usePregamePlanning } from '../features/pregame-planning';
 import { useGameChat } from '../hooks/useGameChat';
 
@@ -48,7 +49,14 @@ export function GameChatPage() {
                 actions={
                   <div className="l-row">
                     <ButtonLink to={`/games/${encodeURIComponent(gameId)}`}>Open Lobby</ButtonLink>
-                    <ButtonLink to={`/games/${encodeURIComponent(gameId)}/character/new`}>Answer In Creator</ButtonLink>
+                    <ButtonLink
+                      to={appendCharacterWizardEntryContext(`/games/${encodeURIComponent(gameId)}/character/new`, {
+                        entrySource: 'chat',
+                        focus: planning.state.status === 'ready' && planning.state.planning.activePrompt ? 'prompt' : 'revise',
+                      })}
+                    >
+                      Answer In Creator
+                    </ButtonLink>
                   </div>
                 }
               />

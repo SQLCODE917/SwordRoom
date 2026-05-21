@@ -96,7 +96,7 @@ describe('PublicGamesTable', () => {
       '/games/game-applied/characters/char-77'
     );
     expect(within(appliedRow as HTMLElement).getByRole('link', { name: 'Edit' }).getAttribute('href')).toBe(
-      '/games/game-applied/characters/char-77/edit'
+      '/games/game-applied/characters/char-77/edit?entry=home&focus=resume'
     );
   });
 });

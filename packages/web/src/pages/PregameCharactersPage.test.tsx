@@ -155,6 +155,9 @@ describe('PregameCharactersPage', () => {
     const mineTable = screen.getByRole('table', { name: 'Characters workbench mine' });
     expect(within(mineTable).getByText('Borin Stonehand')).toBeTruthy();
     expect(within(mineTable).getByText('Not shared yet')).toBeTruthy();
+    expect(within(mineTable).getByRole('link', { name: 'Edit' }).getAttribute('href')).toBe(
+      '/games/game-1/characters/char-1/edit?entry=characters&focus=review'
+    );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Shared (1)' }));
     const sharedTable = await screen.findByRole('table', { name: 'Characters workbench shared' });
