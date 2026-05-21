@@ -181,8 +181,8 @@ export function HomePage() {
 
         <div className="l-split">
           <div className="l-col l-grow">
-            <SectionTitle title="My Characters" />
             <div className="l-row">
+              <SectionTitle title="My Characters" />
               <ButtonLink
                 to={`/player/${encodeURIComponent(auth.actorId)}/character/new`}
               >
@@ -244,8 +244,8 @@ export function HomePage() {
           </div>
 
           <div className="l-col l-grow">
-            <SectionTitle title="My Games" />
             <div className="l-row">
+              <SectionTitle title="My Games" />
               <ButtonLink to="/gm/games">Create Game</ButtonLink>
             </div>
             <MyGamesTable
