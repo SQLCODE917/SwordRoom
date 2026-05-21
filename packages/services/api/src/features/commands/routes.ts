@@ -29,6 +29,7 @@ export const commandRouteDefinitions: ApiRouteDefinition[] = [
         envelope: payload.envelope as any,
         authHeader: context.req.headers.authorization,
         bypassActorId: context.identity.authMode === 'dev' ? context.identity.actorId : undefined,
+        traceContext: context.traceContext,
       });
       context.logFlow('API_POST_COMMAND_ACCEPTED', {
         requestId: context.requestId,

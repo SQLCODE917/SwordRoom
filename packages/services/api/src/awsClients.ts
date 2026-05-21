@@ -72,6 +72,15 @@ export function createApiAwsClients() {
           MessageBody: input.messageBody,
           MessageGroupId: input.messageGroupId,
           MessageDeduplicationId: input.messageDeduplicationId,
+          MessageAttributes: buildTraceMessageAttributes(input.traceContext ?? null),
+          MessageSystemAttributes: input.traceContext?.xrayTraceHeader
+            ? {
+                AWSTraceHeader: {
+                  DataType: 'String',
+                  StringValue: input.traceContext.xrayTraceHeader,
+                },
+              }
+            : undefined,
         })
       );
     },
@@ -129,6 +138,24 @@ export function createApiAwsClients() {
     queueUrl,
     uploads,
   };
+}
+
+function buildTraceMessageAttributes(traceContext: { apiRequestId: string | null; clientSessionId: string | null; clientRequestId: string | null } | null) {
+  if (!traceContext) {
+    return undefined;
+  }
+
+  const attributes: Record<string, { DataType: string; StringValue: string }> = {};
+  if (traceContext.apiRequestId) {
+    attributes.ApiRequestId = { DataType: 'String', StringValue: traceContext.apiRequestId };
+  }
+  if (traceContext.clientSessionId) {
+    attributes.ClientSessionId = { DataType: 'String', StringValue: traceContext.clientSessionId };
+  }
+  if (traceContext.clientRequestId) {
+    attributes.ClientRequestId = { DataType: 'String', StringValue: traceContext.clientRequestId };
+  }
+  return Object.keys(attributes).length > 0 ? attributes : undefined;
 }
 
 function isS3NotFound(error: unknown): boolean {

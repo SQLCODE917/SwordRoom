@@ -1,6 +1,7 @@
 import type {
   AnyCommandEnvelope,
   CharacterItem,
+  CommandTraceContext,
   CommandStatus,
   GameChatReplyTarget,
   PregameObservationSessionSummary,
@@ -123,6 +124,7 @@ export interface PostCommandRequest {
   envelope: Omit<AnyCommandEnvelope, 'actorId'> & { actorId?: string };
   authHeader?: string;
   bypassActorId?: string;
+  traceContext?: CommandTraceContext | null;
 }
 
 export interface PostCommandResponse {

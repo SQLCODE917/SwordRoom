@@ -14,6 +14,7 @@ import type {
 } from '@starter/shared';
 import { logWebFlow, summarizeCommandEnvelope, summarizeError } from '../logging/flowLog';
 import { readActivePregameObservationHeaders } from '../logging/pregameObservationContext';
+import { readTraceRequestHeaders } from '../logging/requestTraceContext';
 
 export type CommandType =
   | 'CreateGame'
@@ -861,6 +862,10 @@ async function requestJsonOrNull<T>(url: string, auth: AuthProvider): Promise<T 
 async function withObservedAuthHeaders(auth: AuthProvider, headers?: HeadersInit): Promise<Headers> {
   const authHeaders = await auth.withAuthHeaders(headers);
   const next = new Headers(authHeaders);
+  const traceHeaders = readTraceRequestHeaders();
+  for (const [name, value] of Object.entries(traceHeaders)) {
+    next.set(name, value);
+  }
   const observationHeaders = readActivePregameObservationHeaders();
   for (const [name, value] of Object.entries(observationHeaders)) {
     next.set(name, value);

@@ -27,8 +27,9 @@ These are the major product slices that still remain after the current pregame l
   - Slice 1: backend durable semantic metric emission for post-commit pregame commands
   - Slice 2: creator-session start/completion and active-duration recording with stable entry-source semantics
   - Slice 3: durable reply-target and prompt-response semantics for shared draft discussion
-- Remaining:
   - Slice 4: end-to-end trace propagation across browser, HTTP, queue, and dispatcher
+- Remaining:
+  - AWS observability rollout and reporting surfaces built on the completed metric and trace contracts
 - Track:
   - creator active minutes per invited player
   - creator return sessions before first play

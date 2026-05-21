@@ -1,10 +1,11 @@
-import type { AnyCommandEnvelope } from '@starter/shared';
+import type { AnyCommandEnvelope, CommandTraceContext } from '@starter/shared';
 
 export interface QueueSendInput {
   queueUrl: string;
   messageBody: string;
   messageGroupId: string;
   messageDeduplicationId: string;
+  traceContext?: CommandTraceContext | null;
 }
 
 export interface QueueMessage {
@@ -13,6 +14,7 @@ export interface QueueMessage {
   messageGroupId: string;
   messageDeduplicationId: string;
   receiptHandle: string;
+  traceContext: CommandTraceContext | null;
 }
 
 export interface CommandQueue {
@@ -36,6 +38,7 @@ export class InMemoryFifoQueue implements CommandQueue, QueueConsumer {
     this.seenDedupIds.add(input.messageDeduplicationId);
     this.messages.push({
       ...input,
+      traceContext: input.traceContext ?? null,
       receiptHandle: `rh-${input.messageDeduplicationId}`,
     });
   }
@@ -67,11 +70,13 @@ export class InMemoryFifoQueue implements CommandQueue, QueueConsumer {
 export function makeSqsFifoSendInput(input: {
   queueUrl: string;
   envelope: AnyCommandEnvelope;
+  traceContext?: CommandTraceContext | null;
 }): QueueSendInput {
   return {
     queueUrl: input.queueUrl,
     messageBody: JSON.stringify(input.envelope),
     messageGroupId: input.envelope.gameId,
     messageDeduplicationId: input.envelope.commandId,
+    traceContext: input.traceContext ?? null,
   };
 }

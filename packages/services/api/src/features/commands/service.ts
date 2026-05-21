@@ -137,6 +137,7 @@ export function createCommandRuntimeService(
             buildFifoMessage({
               queueUrl: deps.queueUrl,
               envelope,
+              traceContext: request.traceContext ?? null,
             })
           );
         } catch (error) {
@@ -446,12 +447,17 @@ function normalizeEnvelopeCandidate(
   return candidate;
 }
 
-function buildFifoMessage(input: { queueUrl: string; envelope: AnyCommandEnvelope }) {
+function buildFifoMessage(input: {
+  queueUrl: string;
+  envelope: AnyCommandEnvelope;
+  traceContext?: PostCommandRequest['traceContext'];
+}) {
   return {
     queueUrl: input.queueUrl,
     messageBody: JSON.stringify(input.envelope),
     messageGroupId: input.envelope.gameId,
     messageDeduplicationId: input.envelope.commandId,
+    traceContext: input.traceContext ?? null,
   };
 }
 

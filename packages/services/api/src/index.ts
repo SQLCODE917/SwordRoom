@@ -23,6 +23,7 @@ export interface ApiServiceDependencies {
       messageBody: string;
       messageGroupId: string;
       messageDeduplicationId: string;
+      traceContext?: import('@starter/shared').CommandTraceContext | null;
     }): Promise<void>;
   };
   queueUrl: string;

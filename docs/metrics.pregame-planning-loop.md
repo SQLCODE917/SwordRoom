@@ -23,10 +23,10 @@ Today, the repo has useful flow logs in the web, API, and dispatcher, but those 
   - the handler has produced effects
   - the write transaction has succeeded
 - Current limitations that matter for metrics:
-  - the metric stream now covers durable command-side events and creator-session start/completion, but end-to-end tracing is still incomplete
+  - the metric stream now covers durable command-side events, creator-session start/completion, and trace propagation across browser requests, API intake, queue handoff, and dispatcher processing
   - creator time-in-flow and return sessions still require the browser-semantic session seam because backend writes alone cannot see abandoned or read-only creator visits
   - creator answers to GM prompts can be joined durably through prompt identity on the shared draft artifact, but not every creator answer yet carries a direct chat-message reply target
-  - end-to-end trace correlation across browser, HTTP, queue, and dispatcher does not yet exist
+  - downstream AWS-native trace visualization such as full X-Ray service maps is still infrastructure work, not an application-contract gap
 
 ## 3. Target State
 
@@ -261,6 +261,43 @@ Prepare for plan-maximum tracing across browser, HTTP, queue, and dispatcher wit
 
 - Replacing existing flow logs.
 - Building dashboards as part of the propagation seam.
+
+**Expected Behavior After This Slice**
+
+- Browser-originated API requests carry a stable client session id, client request id, and AWS-friendly trace header.
+- API command intake preserves that trace context and adds the durable API request id.
+- Queue handoff keeps the trace context without altering gameplay or pregame command payloads.
+- Dispatcher processing and command-side pregame metrics can be joined back to the originating API request.
+
+**Contracts and Boundaries**
+
+- Trace propagation is transport metadata, not product payload.
+- `X-Amzn-Trace-Id` is treated as the canonical AWS-friendly request trace header.
+- `x-swordworld-client-session-id` and `x-swordworld-client-request-id` are app-owned correlation headers for browser-to-service joins.
+- Queue propagation must not depend on re-encoding the command envelope.
+
+**Testable Hypotheses**
+
+- Given a browser API request, the shared API client adds a trace header and stable browser correlation ids without an extra network call.
+- Given a traced `POST /commands` request, API command intake preserves the request trace context and enqueues it alongside the command.
+- Given a queued traced command, dispatcher-side processing can read the trace context without parsing it from freeform logs.
+
+**Verification**
+
+- Shared contract tests for trace header round-tripping
+- Service-shared queue tests for trace-context preservation
+- API route and command tests for trace-context extraction and queue handoff
+- Web API-client tests for request-header emission
+
+**Definition of Done**
+
+- The app can correlate browser request context with API request ids, queued commands, and dispatcher processing using stable transport metadata.
+- The propagation seam does not require route-specific telemetry, component-specific telemetry, or changes to product-level command DTOs.
+
+**Handoff Notes for Next Agent**
+
+- You can rely on stable trace propagation across browser, HTTP, queue, and dispatcher.
+- The remaining work is AWS infrastructure and visualization, not application-level propagation contracts.
 
 **Expected Behavior After This Slice**
 

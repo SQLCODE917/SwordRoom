@@ -1,4 +1,5 @@
 import type { IncomingMessage } from 'node:http';
+import { createCommandTraceContext } from '@starter/shared';
 import { buildPregameMetricsFromObservation, readPregameObservationContext } from '@starter/services-shared';
 import type { DbAccess } from '@starter/services-shared';
 import type { ResolvedActorIdentity } from './auth.js';
@@ -65,6 +66,15 @@ export async function dispatchApiRoute(input: ApiRouteDispatchInput): Promise<bo
     readJsonBody,
   });
 
+  input.res.setHeader?.('x-request-id', input.requestId);
+  const requestTraceContext = createCommandTraceContext({
+    requestId: input.requestId,
+    headers: input.req.headers as Record<string, string | string[] | undefined>,
+  });
+  if (requestTraceContext.xrayTraceHeader) {
+    input.res.setHeader?.('x-amzn-trace-id', requestTraceContext.xrayTraceHeader);
+  }
+
   const observation = readPregameObservationContext(input.req.headers as Record<string, string | string[] | undefined>);
   if (observation) {
     for (const metric of buildPregameMetricsFromObservation({
@@ -88,6 +98,7 @@ export async function dispatchApiRoute(input: ApiRouteDispatchInput): Promise<bo
     readJsonBody,
     sendJson: (statusCode, body) => input.sendJson(input.res, statusCode, body),
     logFlow: input.logFlow,
+    traceContext: requestTraceContext,
   });
 
   return true;

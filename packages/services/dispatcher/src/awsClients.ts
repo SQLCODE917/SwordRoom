@@ -1,5 +1,5 @@
 import { ReceiveMessageCommand, DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
-import { createDbAccess, createDynamoDbDocumentClient } from '@starter/services-shared';
+import { createDbAccess, createDynamoDbDocumentClient, type QueueMessage } from '@starter/services-shared';
 
 function env(name: string, fallback?: string): string {
   const value = process.env[name] ?? fallback;
@@ -50,7 +50,7 @@ export async function receiveCommandMessages(
   sqs: SQSClient,
   queueUrl: string,
   maxNumberOfMessages = 10
-): Promise<Array<{ receiptHandle: string; messageBody: string }>> {
+): Promise<Array<Pick<QueueMessage, 'receiptHandle' | 'messageBody' | 'traceContext'>>> {
   const output = await sqs.send(
     new ReceiveMessageCommand({
       QueueUrl: queueUrl,
@@ -61,12 +61,23 @@ export async function receiveCommandMessages(
     })
   );
 
-  return (output.Messages ?? [])
-    .filter((msg): msg is { ReceiptHandle: string; Body: string } => Boolean(msg.ReceiptHandle && msg.Body))
-    .map((msg) => ({
+  const messages: Array<Pick<QueueMessage, 'receiptHandle' | 'messageBody' | 'traceContext'>> = [];
+  for (const msg of output.Messages ?? []) {
+    if (!msg.ReceiptHandle || !msg.Body) {
+      continue;
+    }
+    messages.push({
       receiptHandle: msg.ReceiptHandle,
       messageBody: msg.Body,
-    }));
+      traceContext: {
+        apiRequestId: readMessageAttribute(msg.MessageAttributes?.ApiRequestId?.StringValue),
+        clientSessionId: readMessageAttribute(msg.MessageAttributes?.ClientSessionId?.StringValue),
+        clientRequestId: readMessageAttribute(msg.MessageAttributes?.ClientRequestId?.StringValue),
+        xrayTraceHeader: readMessageAttribute(msg.Attributes?.AWSTraceHeader),
+      },
+    });
+  }
+  return messages;
 }
 
 export async function deleteCommandMessage(sqs: SQSClient, queueUrl: string, receiptHandle: string): Promise<void> {
@@ -76,4 +87,8 @@ export async function deleteCommandMessage(sqs: SQSClient, queueUrl: string, rec
       ReceiptHandle: receiptHandle,
     })
   );
+}
+
+function readMessageAttribute(value: string | undefined): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
 }

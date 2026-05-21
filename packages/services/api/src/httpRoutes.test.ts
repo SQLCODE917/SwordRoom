@@ -115,6 +115,9 @@ describe('dispatchApiRoute', () => {
         method: 'POST',
         headers: {
           authorization: 'Bearer ignored-in-dev',
+          'x-amzn-trace-id': 'Root=1-682e307d-0123456789abcdef01234567;Parent=0123456789abcdef;Sampled=1',
+          'x-swordworld-client-session-id': 'browser-session-1',
+          'x-swordworld-client-request-id': 'browser-request-1',
         },
       } as IncomingMessage,
       res: {
@@ -167,6 +170,12 @@ describe('dispatchApiRoute', () => {
       },
       authHeader: 'Bearer ignored-in-dev',
       bypassActorId: 'player-dev',
+      traceContext: {
+        apiRequestId: 'req-3',
+        xrayTraceHeader: 'Root=1-682e307d-0123456789abcdef01234567;Parent=0123456789abcdef;Sampled=1',
+        clientSessionId: 'browser-session-1',
+        clientRequestId: 'browser-request-1',
+      },
     });
   });
 

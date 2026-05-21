@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { CommandTraceContext } from '@starter/shared';
 import type { DbAccess } from '@starter/services-shared';
 import type { ResolvedActorIdentity } from './auth.js';
 import type { ApiRoute, ApiRuntimeService } from './apiTypes.js';
@@ -39,6 +40,7 @@ export interface ApiRouteContext {
   readJsonBody(): Promise<unknown>;
   sendJson(statusCode: number, body: unknown): void;
   logFlow(event: string, data: Record<string, unknown>): void;
+  traceContext: CommandTraceContext;
 }
 
 export interface ApiRouteDefinition extends ApiRoute {

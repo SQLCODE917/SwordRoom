@@ -1,6 +1,7 @@
 import {
   COMMAND_TYPES,
   anyCommandEnvelopeSchema,
+  type CommandTraceContext,
   type AnyCommandEnvelope,
   type CommandType,
 } from '@starter/shared';
@@ -39,13 +40,25 @@ export function createDispatcher(deps: DispatcherDependencies) {
   const flowLogEnabled = process.env.FLOW_LOG === '1';
 
   return {
-    async dispatch(envelopeInput: unknown): Promise<DispatchResult> {
+    async dispatch(
+      envelopeInput: unknown,
+      options?: {
+        traceContext?: CommandTraceContext | null;
+      }
+    ): Promise<DispatchResult> {
       const parsed = anyCommandEnvelopeSchema.parse(envelopeInput);
-      logFlow(flowLogEnabled, 'DISPATCH_BEGIN', summarizeCommandEnvelope(parsed));
+      const traceContext = options?.traceContext ?? null;
+      logFlow(flowLogEnabled, 'DISPATCH_BEGIN', {
+        ...summarizeCommandEnvelope(parsed),
+        ...summarizeTraceContext(traceContext),
+      });
       const existing = await deps.db.commandLogRepository.get(parsed.commandId);
 
       if (existing?.status === 'PROCESSED') {
-        logFlow(flowLogEnabled, 'DISPATCH_NOOP_ALREADY_PROCESSED', summarizeCommandEnvelope(parsed));
+        logFlow(flowLogEnabled, 'DISPATCH_NOOP_ALREADY_PROCESSED', {
+          ...summarizeCommandEnvelope(parsed),
+          ...summarizeTraceContext(traceContext),
+        });
         return { commandId: parsed.commandId, outcome: 'NOOP_ALREADY_PROCESSED' };
       }
 
@@ -96,6 +109,11 @@ export function createDispatcher(deps: DispatcherDependencies) {
               ...metric.metricContext,
               processedAt,
             },
+            metricTrace: {
+              ...metric.metricTrace,
+              requestId: traceContext?.apiRequestId ?? metric.metricTrace.requestId,
+            },
+            traceContext: summarizeTraceContext(traceContext),
           });
         }
 
@@ -111,6 +129,15 @@ export function createDispatcher(deps: DispatcherDependencies) {
         return { commandId: parsed.commandId, outcome: 'FAILED', errorCode };
       }
     },
+  };
+}
+
+function summarizeTraceContext(traceContext: CommandTraceContext | null): Record<string, string | null> {
+  return {
+    apiRequestId: traceContext?.apiRequestId ?? null,
+    clientSessionId: traceContext?.clientSessionId ?? null,
+    clientRequestId: traceContext?.clientRequestId ?? null,
+    xrayTraceHeader: traceContext?.xrayTraceHeader ?? null,
   };
 }
 

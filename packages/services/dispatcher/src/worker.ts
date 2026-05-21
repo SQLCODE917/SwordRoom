@@ -30,11 +30,19 @@ async function run(): Promise<void> {
         const envelope = JSON.parse(message.messageBody);
         logFlow('DISPATCHER_MESSAGE_RECEIVED', {
           receiptHandle: message.receiptHandle,
+          apiRequestId: message.traceContext?.apiRequestId ?? null,
+          clientSessionId: message.traceContext?.clientSessionId ?? null,
+          clientRequestId: message.traceContext?.clientRequestId ?? null,
+          xrayTraceHeader: message.traceContext?.xrayTraceHeader ?? null,
           ...summarizeCommandEnvelope(envelope),
         });
-        const result = await dispatcher.dispatch(envelope);
+        const result = await dispatcher.dispatch(envelope, { traceContext: message.traceContext });
         logFlow('DISPATCHER_MESSAGE_RESULT', {
           receiptHandle: message.receiptHandle,
+          apiRequestId: message.traceContext?.apiRequestId ?? null,
+          clientSessionId: message.traceContext?.clientSessionId ?? null,
+          clientRequestId: message.traceContext?.clientRequestId ?? null,
+          xrayTraceHeader: message.traceContext?.xrayTraceHeader ?? null,
           ...summarizeCommandEnvelope(envelope),
           outcome: result.outcome,
           errorCode: result.errorCode ?? null,
@@ -48,6 +56,10 @@ async function run(): Promise<void> {
           await deleteCommandMessage(clients.sqs, clients.queueUrl, message.receiptHandle);
           logFlow(result.outcome === 'FAILED' ? 'DISPATCHER_MESSAGE_DELETED_AFTER_FAILURE' : 'DISPATCHER_MESSAGE_DELETED', {
             receiptHandle: message.receiptHandle,
+            apiRequestId: message.traceContext?.apiRequestId ?? null,
+            clientSessionId: message.traceContext?.clientSessionId ?? null,
+            clientRequestId: message.traceContext?.clientRequestId ?? null,
+            xrayTraceHeader: message.traceContext?.xrayTraceHeader ?? null,
             ...summarizeCommandEnvelope(envelope),
             errorCode: result.errorCode ?? null,
           });
@@ -56,6 +68,10 @@ async function run(): Promise<void> {
 
         logFlow('DISPATCHER_MESSAGE_RETAINED_FOR_RETRY', {
           receiptHandle: message.receiptHandle,
+          apiRequestId: message.traceContext?.apiRequestId ?? null,
+          clientSessionId: message.traceContext?.clientSessionId ?? null,
+          clientRequestId: message.traceContext?.clientRequestId ?? null,
+          xrayTraceHeader: message.traceContext?.xrayTraceHeader ?? null,
           ...summarizeCommandEnvelope(envelope),
           errorCode: result.errorCode ?? null,
         });

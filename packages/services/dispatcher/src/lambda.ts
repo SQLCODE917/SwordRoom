@@ -5,6 +5,15 @@ import { createDispatcher } from './index.js';
 interface SqsLambdaRecord {
   messageId: string;
   body: string;
+  attributes?: {
+    AWSTraceHeader?: string;
+  };
+  messageAttributes?: Record<
+    string,
+    {
+      stringValue?: string;
+    }
+  >;
 }
 
 interface SqsLambdaEvent {
@@ -28,12 +37,27 @@ export async function handler(event: SqsLambdaEvent): Promise<SqsBatchResponse> 
       const envelope = JSON.parse(record.body);
       logFlow('DISPATCHER_LAMBDA_MESSAGE_RECEIVED', {
         messageId: record.messageId,
+        apiRequestId: readAttribute(record.messageAttributes?.ApiRequestId?.stringValue),
+        clientSessionId: readAttribute(record.messageAttributes?.ClientSessionId?.stringValue),
+        clientRequestId: readAttribute(record.messageAttributes?.ClientRequestId?.stringValue),
+        xrayTraceHeader: readAttribute(record.attributes?.AWSTraceHeader),
         ...summarizeCommandEnvelope(envelope),
       });
 
-      const result = await dispatcher.dispatch(envelope);
+      const result = await dispatcher.dispatch(envelope, {
+        traceContext: {
+          apiRequestId: readAttribute(record.messageAttributes?.ApiRequestId?.stringValue),
+          clientSessionId: readAttribute(record.messageAttributes?.ClientSessionId?.stringValue),
+          clientRequestId: readAttribute(record.messageAttributes?.ClientRequestId?.stringValue),
+          xrayTraceHeader: readAttribute(record.attributes?.AWSTraceHeader),
+        },
+      });
       logFlow('DISPATCHER_LAMBDA_MESSAGE_RESULT', {
         messageId: record.messageId,
+        apiRequestId: readAttribute(record.messageAttributes?.ApiRequestId?.stringValue),
+        clientSessionId: readAttribute(record.messageAttributes?.ClientSessionId?.stringValue),
+        clientRequestId: readAttribute(record.messageAttributes?.ClientRequestId?.stringValue),
+        xrayTraceHeader: readAttribute(record.attributes?.AWSTraceHeader),
         ...summarizeCommandEnvelope(envelope),
         outcome: result.outcome,
         errorCode: result.errorCode ?? null,
@@ -48,6 +72,10 @@ export async function handler(event: SqsLambdaEvent): Promise<SqsBatchResponse> 
   }
 
   return { batchItemFailures };
+}
+
+function readAttribute(value: string | undefined): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
 }
 
 function logFlow(event: string, data: Record<string, unknown>): void {

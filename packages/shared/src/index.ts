@@ -4,6 +4,7 @@ export * from './contracts/chat.js';
 export * from './contracts/gameplay.js';
 export * from './contracts/errors.js';
 export * from './contracts/pregameObservability.js';
+export * from './contracts/traceContext.js';
 export * from './gameplayLoopGraph.js';
 export * from './gameplayStepDescriptors.js';
 export * from './rules/equipmentRoster.js';

@@ -325,6 +325,12 @@ describe('POST /commands', () => {
 
     const response = await api.postCommands({
       bypassActorId: 'player-1',
+      traceContext: {
+        apiRequestId: 'api-req-1',
+        xrayTraceHeader: 'Root=1-682e307d-0123456789abcdef01234567;Parent=0123456789abcdef;Sampled=1',
+        clientSessionId: 'browser-session-1',
+        clientRequestId: 'browser-request-1',
+      },
       envelope: {
         commandId: '29f61013-8f47-4f5f-9456-9f07a88e5893',
         gameId: 'game-1',
@@ -341,6 +347,12 @@ describe('POST /commands', () => {
     expect(messages).toHaveLength(1);
     expect(messages[0]?.messageGroupId).toBe('game-1');
     expect(messages[0]?.messageDeduplicationId).toBe('29f61013-8f47-4f5f-9456-9f07a88e5893');
+    expect(messages[0]?.traceContext).toEqual({
+      apiRequestId: 'api-req-1',
+      xrayTraceHeader: 'Root=1-682e307d-0123456789abcdef01234567;Parent=0123456789abcdef;Sampled=1',
+      clientSessionId: 'browser-session-1',
+      clientRequestId: 'browser-request-1',
+    });
   });
 
   it('treats duplicate commandId as an idempotent replay while the command is still ACCEPTED', async () => {

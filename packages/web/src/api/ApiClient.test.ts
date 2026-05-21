@@ -13,6 +13,7 @@ describe('createApiClient', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     window.localStorage.clear();
+    window.sessionStorage.clear();
     deactivatePregameObservationContext('creator-session-1');
   });
 
@@ -65,6 +66,13 @@ describe('createApiClient', () => {
     const request = firstCall?.[1] as RequestInit | undefined;
     const headers = new Headers(request?.headers);
     expect(headers.get('Authorization')).toBe('Bearer oidc-token');
+    expect(headers.get('x-amzn-trace-id')).toMatch(/^Root=1-[0-9a-f]{8}-[0-9a-f]{24};Parent=[0-9a-f]{16};Sampled=1$/);
+    expect(headers.get('x-swordworld-client-session-id')).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    );
+    expect(headers.get('x-swordworld-client-request-id')).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    );
   });
 
   it('posts profile sync with dev bypass actor id', async () => {
