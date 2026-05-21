@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { sharedChatArtifactSchema } from './chat.js';
+import { gameChatReplyTargetSchema, sharedChatArtifactSchema } from './chat.js';
 import {
   gameplayEventItemSchema,
   gameplaySessionItemSchema,
@@ -264,6 +264,7 @@ export const gameChatMessageItemSchema = pkSkSchema.extend({
   senderNameSnapshot: z.string(),
   body: z.string(),
   artifact: sharedChatArtifactSchema.optional(),
+  replyTarget: gameChatReplyTargetSchema.optional(),
   createdAt: z.string(),
 });
 

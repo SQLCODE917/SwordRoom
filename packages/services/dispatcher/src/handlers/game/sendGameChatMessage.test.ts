@@ -403,6 +403,324 @@ describe('sendGameChatMessageHandler', () => {
     ]);
   });
 
+  it('stores chat replies that target an existing shared draft snapshot', async () => {
+    const base = makeDb();
+    const db = makeDb({
+      membershipRepository: {
+        ...base.membershipRepository,
+        getMembership: vi.fn(async () => ({
+          pk: 'GAME#game-1',
+          sk: 'MEMBER#player-2',
+          type: 'GameMember',
+          gameId: 'game-1',
+          playerId: 'player-2',
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      playerRepository: {
+        ...base.playerRepository,
+        getPlayerProfile: vi.fn(async () => ({
+          pk: 'PLAYER#player-2',
+          sk: 'PROFILE',
+          type: 'PlayerProfile',
+          playerId: 'player-2',
+          displayName: 'Alice',
+          email: 'alice@example.com',
+          emailNormalized: 'alice@example.com',
+          emailVerified: true,
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      chatRepository: {
+        ...base.chatRepository,
+        queryMessages: vi.fn(async () => [
+          {
+            messageId: 'msg-share-1',
+            senderPlayerId: 'player-1',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            senderNameSnapshot: 'Borin',
+            body: 'Sharing Borin for party feedback.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-1',
+              snapshotVersion: 3,
+              characterName: 'Borin',
+              race: 'HUMAN',
+              status: 'DRAFT',
+              shareIntent: 'ASK_QUESTION',
+              contextNote: 'Does this fit the party?',
+              abilitySummary: ['STR 16'],
+              skillSummary: ['Fighter 1'],
+            },
+            createdAt: '2026-03-01T09:15:00.000Z',
+          },
+        ]),
+      },
+    });
+
+    const result = await sendGameChatMessageHandler(
+      { db, nowIso: () => '2026-03-01T09:17:00.000Z' },
+      {
+        commandId: 'cmd-chat-reply-1',
+        gameId: 'game-1',
+        actorId: 'player-2',
+        type: 'SendGameChatMessage',
+        schemaVersion: 1,
+        createdAt: '2026-03-01T09:17:00.000Z',
+        payload: {
+          body: 'I think this fits the frontline gap.',
+          replyTarget: {
+            kind: 'CHARACTER_DRAFT',
+            targetMessageId: 'msg-share-1',
+            characterId: 'char-1',
+            snapshotVersion: 3,
+          },
+        },
+      }
+    );
+
+    expect(result.writes).toEqual([
+      {
+        kind: 'PUT_GAME_CHAT_MESSAGE',
+        input: {
+          gameId: 'game-1',
+          messageId: 'cmd-chat-reply-1',
+          senderPlayerId: 'player-2',
+          senderRole: 'PLAYER',
+          senderCharacterId: null,
+          senderNameSnapshot: 'Alice',
+          body: 'I think this fits the frontline gap.',
+          replyTarget: {
+            kind: 'CHARACTER_DRAFT',
+            targetMessageId: 'msg-share-1',
+            characterId: 'char-1',
+            snapshotVersion: 3,
+          },
+          createdAt: '2026-03-01T09:17:00.000Z',
+        },
+      },
+    ]);
+  });
+
+  it('rejects chat replies when the target shared draft metadata does not match', async () => {
+    const base = makeDb();
+    const db = makeDb({
+      membershipRepository: {
+        ...base.membershipRepository,
+        getMembership: vi.fn(async () => ({
+          pk: 'GAME#game-1',
+          sk: 'MEMBER#player-2',
+          type: 'GameMember',
+          gameId: 'game-1',
+          playerId: 'player-2',
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      chatRepository: {
+        ...base.chatRepository,
+        queryMessages: vi.fn(async () => [
+          {
+            messageId: 'msg-share-1',
+            senderPlayerId: 'player-1',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            senderNameSnapshot: 'Borin',
+            body: 'Sharing Borin for party feedback.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-1',
+              snapshotVersion: 3,
+              characterName: 'Borin',
+              race: 'HUMAN',
+              status: 'DRAFT',
+              shareIntent: 'ASK_QUESTION',
+              contextNote: 'Does this fit the party?',
+              abilitySummary: ['STR 16'],
+              skillSummary: ['Fighter 1'],
+            },
+            createdAt: '2026-03-01T09:15:00.000Z',
+          },
+        ]),
+      },
+    });
+
+    await expect(
+      sendGameChatMessageHandler(
+        { db, nowIso: () => '2026-03-01T09:17:00.000Z' },
+        {
+          commandId: 'cmd-chat-reply-2',
+          gameId: 'game-1',
+          actorId: 'player-2',
+          type: 'SendGameChatMessage',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T09:17:00.000Z',
+          payload: {
+            body: 'I think this fits the frontline gap.',
+            replyTarget: {
+              kind: 'CHARACTER_DRAFT',
+              targetMessageId: 'msg-share-1',
+              characterId: 'char-1',
+              snapshotVersion: 4,
+            },
+          },
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'CHAT_REPLY_TARGET_MISMATCH',
+    });
+  });
+
+  it('stores chat replies that target an existing GM prompt', async () => {
+    const base = makeDb();
+    const db = makeDb({
+      membershipRepository: {
+        ...base.membershipRepository,
+        getMembership: vi.fn(async () => ({
+          pk: 'GAME#game-1',
+          sk: 'MEMBER#player-2',
+          type: 'GameMember',
+          gameId: 'game-1',
+          playerId: 'player-2',
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      playerRepository: {
+        ...base.playerRepository,
+        getPlayerProfile: vi.fn(async () => ({
+          pk: 'PLAYER#player-2',
+          sk: 'PROFILE',
+          type: 'PlayerProfile',
+          playerId: 'player-2',
+          displayName: 'Alice',
+          email: 'alice@example.com',
+          emailNormalized: 'alice@example.com',
+          emailVerified: true,
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      chatRepository: {
+        ...base.chatRepository,
+        queryMessages: vi.fn(async () => [
+          {
+            messageId: 'msg-prompt-1',
+            senderPlayerId: 'gm-1',
+            senderRole: 'GM',
+            senderCharacterId: null,
+            senderNameSnapshot: 'Zed GM',
+            body: 'GM posted a new pregame planning prompt.',
+            artifact: {
+              kind: 'GAME_PROMPT',
+              promptId: 'prompt-1',
+              title: 'Party needs Frontline',
+              prompt: 'We still need Frontline.',
+              suggestedRoles: ['FRONTLINE'],
+            },
+            createdAt: '2026-03-01T09:15:00.000Z',
+          },
+        ]),
+      },
+    });
+
+    const result = await sendGameChatMessageHandler(
+      { db, nowIso: () => '2026-03-01T09:17:00.000Z' },
+      {
+        commandId: 'cmd-chat-reply-3',
+        gameId: 'game-1',
+        actorId: 'player-2',
+        type: 'SendGameChatMessage',
+        schemaVersion: 1,
+        createdAt: '2026-03-01T09:17:00.000Z',
+        payload: {
+          body: 'I can cover that role.',
+          replyTarget: {
+            kind: 'GAME_PROMPT',
+            targetMessageId: 'msg-prompt-1',
+            promptId: 'prompt-1',
+          },
+        },
+      }
+    );
+
+    expect(result.writes).toEqual([
+      {
+        kind: 'PUT_GAME_CHAT_MESSAGE',
+        input: {
+          gameId: 'game-1',
+          messageId: 'cmd-chat-reply-3',
+          senderPlayerId: 'player-2',
+          senderRole: 'PLAYER',
+          senderCharacterId: null,
+          senderNameSnapshot: 'Alice',
+          body: 'I can cover that role.',
+          replyTarget: {
+            kind: 'GAME_PROMPT',
+            targetMessageId: 'msg-prompt-1',
+            promptId: 'prompt-1',
+          },
+          createdAt: '2026-03-01T09:17:00.000Z',
+        },
+      },
+    ]);
+  });
+
+  it('rejects chat replies when the target GM prompt cannot be found', async () => {
+    const base = makeDb();
+    const db = makeDb({
+      membershipRepository: {
+        ...base.membershipRepository,
+        getMembership: vi.fn(async () => ({
+          pk: 'GAME#game-1',
+          sk: 'MEMBER#player-2',
+          type: 'GameMember',
+          gameId: 'game-1',
+          playerId: 'player-2',
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      chatRepository: {
+        ...base.chatRepository,
+        queryMessages: vi.fn(async () => []),
+      },
+    });
+
+    await expect(
+      sendGameChatMessageHandler(
+        { db, nowIso: () => '2026-03-01T09:17:00.000Z' },
+        {
+          commandId: 'cmd-chat-reply-4',
+          gameId: 'game-1',
+          actorId: 'player-2',
+          type: 'SendGameChatMessage',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T09:17:00.000Z',
+          payload: {
+            body: 'I can cover that role.',
+            replyTarget: {
+              kind: 'GAME_PROMPT',
+              targetMessageId: 'missing-prompt',
+              promptId: 'prompt-1',
+            },
+          },
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'CHAT_PROMPT_TARGET_NOT_FOUND',
+    });
+  });
+
   it('rejects draft reactions when the target shared draft cannot be found', async () => {
     const base = makeDb();
     const db = makeDb({

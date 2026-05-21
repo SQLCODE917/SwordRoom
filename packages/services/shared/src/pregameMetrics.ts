@@ -13,7 +13,9 @@ export type PregameMetricName =
   | 'CHARACTER_DRAFT_SAVED'
   | 'CHARACTER_SUBMITTED_FOR_APPROVAL'
   | 'SHARED_CHARACTER_DRAFT_PUBLISHED'
+  | 'SHARED_CHARACTER_DRAFT_REPLY_PUBLISHED'
   | 'GM_PROMPT_PUBLISHED'
+  | 'GM_PROMPT_RESPONSE_PUBLISHED'
   | 'PARTY_ROLE_CLAIM_PUBLISHED'
   | 'SHARED_CHARACTER_DRAFT_REACTION_PUBLISHED';
 
@@ -99,17 +101,46 @@ export function buildPregameMetricsFromCommand(input: {
   }
 
   const artifact = input.envelope.payload.artifact;
-  if (!artifact) {
-    return metrics;
+  const replyTarget = input.envelope.payload.replyTarget;
+
+  if (artifact) {
+    metrics.push(
+      ...buildPregameMetricsFromArtifact({
+        envelope: input.envelope,
+        artifact,
+        baseContext,
+      })
+    );
   }
 
-  metrics.push(
-    ...buildPregameMetricsFromArtifact({
-      envelope: input.envelope,
-      artifact,
-      baseContext,
-    })
-  );
+  if (replyTarget) {
+    metrics.push(
+      ...buildPregameMetricsFromReplyTarget({
+        envelope: input.envelope,
+        replyTarget,
+        artifact: artifact ?? null,
+        baseContext,
+      })
+    );
+  } else if (artifact?.kind === 'CHARACTER_DRAFT' && artifact.shareIntent === 'ANSWER_GM_PROMPT' && artifact.promptId) {
+    metrics.push(
+      createPregameMetric({
+        metricName: 'GM_PROMPT_RESPONSE_PUBLISHED',
+        dimensions: {
+          responseKind: 'DRAFT_ANSWER',
+        },
+        context: {
+          ...baseContext,
+          characterId: artifact.characterId,
+          snapshotVersion: artifact.snapshotVersion,
+          promptId: artifact.promptId,
+        },
+        trace: {
+          commandId: input.envelope.commandId,
+        },
+      })
+    );
+  }
 
   return metrics;
 }
@@ -295,6 +326,50 @@ function buildPregameMetricsFromArtifact(input: {
   }
 
   return [];
+}
+
+function buildPregameMetricsFromReplyTarget(input: {
+  envelope: Extract<AnyCommandEnvelope, { type: 'SendGameChatMessage' }>;
+  replyTarget: NonNullable<Extract<AnyCommandEnvelope, { type: 'SendGameChatMessage' }>['payload']['replyTarget']>;
+  artifact: SharedChatArtifact | null;
+  baseContext: Record<string, string | number | boolean | null>;
+}): PregameMetricLogData[] {
+  const trace = {
+    commandId: input.envelope.commandId,
+  };
+
+  if (input.replyTarget.kind === 'CHARACTER_DRAFT') {
+    return [
+      createPregameMetric({
+        metricName: 'SHARED_CHARACTER_DRAFT_REPLY_PUBLISHED',
+        dimensions: {
+          responseKind: input.artifact?.kind === 'CHARACTER_DRAFT' ? 'SHARED_ARTIFACT' : 'CHAT_REPLY',
+        },
+        context: {
+          ...input.baseContext,
+          targetMessageId: input.replyTarget.targetMessageId,
+          characterId: input.replyTarget.characterId,
+          snapshotVersion: input.replyTarget.snapshotVersion,
+        },
+        trace,
+      }),
+    ];
+  }
+
+  return [
+    createPregameMetric({
+      metricName: 'GM_PROMPT_RESPONSE_PUBLISHED',
+      dimensions: {
+        responseKind: input.artifact?.kind === 'CHARACTER_DRAFT' ? 'DRAFT_ANSWER' : 'CHAT_REPLY',
+      },
+      context: {
+        ...input.baseContext,
+        targetMessageId: input.replyTarget.targetMessageId,
+        promptId: input.replyTarget.promptId,
+      },
+      trace,
+    }),
+  ];
 }
 
 function createPregameMetric(input: {

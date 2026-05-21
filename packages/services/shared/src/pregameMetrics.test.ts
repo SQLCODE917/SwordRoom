@@ -63,6 +63,181 @@ describe('pregameMetrics', () => {
     ]);
   });
 
+  it('derives a durable reply metric for replies to shared draft artifacts', () => {
+    const metrics = buildPregameMetricsFromCommand({
+      envelope: {
+        commandId: 'cmd-reply-1',
+        gameId: 'game-1',
+        actorId: 'player-2',
+        type: 'SendGameChatMessage',
+        schemaVersion: 1,
+        createdAt: '2026-03-01T00:01:00.000Z',
+        payload: {
+          body: 'I like Borin leaning into frontline.',
+          replyTarget: {
+            kind: 'CHARACTER_DRAFT',
+            targetMessageId: 'msg-share-1',
+            characterId: 'char-1',
+            snapshotVersion: 3,
+          },
+        },
+      },
+      effects: {
+        writes: [],
+      },
+    });
+
+    expect(metrics).toEqual([
+      {
+        metricSchema: 'pregame.v1',
+        metricKind: 'counter',
+        metricName: 'SHARED_CHARACTER_DRAFT_REPLY_PUBLISHED',
+        metricValue: 1,
+        metricUnit: 'Count',
+        metricDimensions: {
+          responseKind: 'CHAT_REPLY',
+        },
+        metricContext: {
+          actorId: 'player-2',
+          gameId: 'game-1',
+          characterId: 'char-1',
+          targetMessageId: 'msg-share-1',
+          snapshotVersion: 3,
+        },
+        metricTrace: {
+          requestId: null,
+          commandId: 'cmd-reply-1',
+        },
+      },
+    ]);
+  });
+
+  it('derives a durable prompt-response metric for prompt replies in chat', () => {
+    const metrics = buildPregameMetricsFromCommand({
+      envelope: {
+        commandId: 'cmd-reply-2',
+        gameId: 'game-1',
+        actorId: 'player-2',
+        type: 'SendGameChatMessage',
+        schemaVersion: 1,
+        createdAt: '2026-03-01T00:02:00.000Z',
+        payload: {
+          body: 'I can cover healer with my current draft.',
+          replyTarget: {
+            kind: 'GAME_PROMPT',
+            targetMessageId: 'msg-prompt-1',
+            promptId: 'prompt-1',
+          },
+        },
+      },
+      effects: {
+        writes: [],
+      },
+    });
+
+    expect(metrics).toEqual([
+      {
+        metricSchema: 'pregame.v1',
+        metricKind: 'counter',
+        metricName: 'GM_PROMPT_RESPONSE_PUBLISHED',
+        metricValue: 1,
+        metricUnit: 'Count',
+        metricDimensions: {
+          responseKind: 'CHAT_REPLY',
+        },
+        metricContext: {
+          actorId: 'player-2',
+          gameId: 'game-1',
+          characterId: null,
+          targetMessageId: 'msg-prompt-1',
+          promptId: 'prompt-1',
+        },
+        metricTrace: {
+          requestId: null,
+          commandId: 'cmd-reply-2',
+        },
+      },
+    ]);
+  });
+
+  it('derives a fallback prompt-response metric for creator draft answers without a chat reply target', () => {
+    const metrics = buildPregameMetricsFromCommand({
+      envelope: {
+        commandId: 'cmd-reply-3',
+        gameId: 'game-1',
+        actorId: 'player-1',
+        type: 'SendGameChatMessage',
+        schemaVersion: 1,
+        createdAt: '2026-03-01T00:03:00.000Z',
+        payload: {
+          body: 'Answering the GM prompt with my draft.',
+          artifact: {
+            kind: 'CHARACTER_DRAFT',
+            characterId: 'char-1',
+            snapshotVersion: 4,
+            characterName: 'Borin',
+            race: 'HUMAN',
+            status: 'DRAFT',
+            shareIntent: 'ANSWER_GM_PROMPT',
+            promptId: 'prompt-1',
+            contextNote: 'I can take frontline.',
+            abilitySummary: ['STR 16'],
+            skillSummary: ['Fighter 1'],
+          },
+        },
+      },
+      effects: {
+        writes: [],
+      },
+    });
+
+    expect(metrics).toEqual([
+      {
+        metricSchema: 'pregame.v1',
+        metricKind: 'counter',
+        metricName: 'SHARED_CHARACTER_DRAFT_PUBLISHED',
+        metricValue: 1,
+        metricUnit: 'Count',
+        metricDimensions: {
+          artifactKind: 'CHARACTER_DRAFT',
+          shareIntent: 'ANSWER_GM_PROMPT',
+        },
+        metricContext: {
+          actorId: 'player-1',
+          gameId: 'game-1',
+          characterId: 'char-1',
+          snapshotVersion: 4,
+          promptId: 'prompt-1',
+        },
+        metricTrace: {
+          requestId: null,
+          commandId: 'cmd-reply-3',
+        },
+      },
+      {
+        metricSchema: 'pregame.v1',
+        metricKind: 'counter',
+        metricName: 'GM_PROMPT_RESPONSE_PUBLISHED',
+        metricValue: 1,
+        metricUnit: 'Count',
+        metricDimensions: {
+          responseKind: 'DRAFT_ANSWER',
+        },
+        metricContext: {
+          actorId: 'player-1',
+          gameId: 'game-1',
+          characterId: 'char-1',
+          snapshotVersion: 4,
+          promptId: 'prompt-1',
+        },
+        metricTrace: {
+          requestId: null,
+          commandId: 'cmd-reply-3',
+        },
+      },
+    ]);
+  });
+
   it('skips persisted-save metrics for no-op draft saves', () => {
     const metrics = buildPregameMetricsFromCommand({
       envelope: {

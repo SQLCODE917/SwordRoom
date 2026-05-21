@@ -602,6 +602,7 @@ describe('GameChatPage', () => {
 
     expect(screen.queryByRole('dialog', { name: 'Character draft preview' })).toBeNull();
     expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).value).toBe('About Borin v2: ');
+    expect(screen.getByText('Replying to Borin v2')).toBeTruthy();
   });
 
   it('prefills the composer from the workbench discussion handoff', async () => {
@@ -720,6 +721,106 @@ describe('GameChatPage', () => {
     );
   });
 
+  it('sends durable reply targets for shared draft replies and allows clearing the reply context', async () => {
+    const submitEnvelopeAndAwait = vi.fn(async () => ({
+      commandId: 'cmd-send',
+      status: 'PROCESSED' as const,
+      errorCode: null,
+      errorMessage: null,
+    }));
+
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-1',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-1' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [
+          {
+            messageId: 'msg-1',
+            senderPlayerId: 'player-1',
+            senderDisplayName: 'Borin',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            body: 'Sharing Borin for party feedback.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-1',
+              snapshotVersion: 2,
+              characterName: 'Borin',
+              race: 'HUMAN',
+              status: 'DRAFT',
+              shareIntent: 'ASK_QUESTION',
+              contextNote: 'Should I trade damage for more party support?',
+              abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+              skillSummary: ['Fighter 1'],
+            },
+            createdAt: '2026-03-01T09:16:00.000Z',
+          },
+        ],
+      })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reply' }));
+    expect(screen.getByText('Replying to Borin v2')).toBeTruthy();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
+      target: { value: 'I think this build works.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() =>
+      expect(submitEnvelopeAndAwait).toHaveBeenCalledWith(
+        'Send chat message',
+        expect.objectContaining({
+          payload: {
+            body: 'I think this build works.',
+            replyTarget: {
+              kind: 'CHARACTER_DRAFT',
+              targetMessageId: 'msg-1',
+              characterId: 'char-1',
+              snapshotVersion: 2,
+            },
+          },
+        })
+      )
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reply' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear Reply Target' }));
+    expect(screen.queryByRole('button', { name: 'Clear Reply Target' })).toBeNull();
+  });
+
   it('renders structured GM prompts and party role claims inside chat', async () => {
     vi.mocked(useAuthProvider).mockReturnValue(
       createAuth({
@@ -800,6 +901,190 @@ describe('GameChatPage', () => {
     expect(screen.getByText('Suggested roles: Frontline and Healer')).toBeTruthy();
     expect(screen.getByText('Borin claims Frontline')).toBeTruthy();
     expect(screen.getByText('Current plan is to cover Frontline.')).toBeTruthy();
+  });
+
+  it('sends durable reply targets for GM prompt replies', async () => {
+    const submitEnvelopeAndAwait = vi.fn(async () => ({
+      commandId: 'cmd-send',
+      status: 'PROCESSED' as const,
+      errorCode: null,
+      errorMessage: null,
+    }));
+
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-1',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-1' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [
+          {
+            messageId: 'msg-prompt-1',
+            senderPlayerId: 'gm-1',
+            senderDisplayName: '@Zed GM',
+            senderRole: 'GM',
+            senderCharacterId: null,
+            body: 'GM posted a new pregame planning prompt.',
+            artifact: {
+              kind: 'GAME_PROMPT',
+              promptId: 'prompt-1',
+              title: 'Party needs Frontline and Healer',
+              prompt: 'We still need Frontline and Healer. Please share a draft if you can cover one of those roles.',
+              suggestedRoles: ['FRONTLINE', 'HEALER'],
+            },
+            createdAt: '2026-03-01T09:15:00.000Z',
+          },
+        ],
+      })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Reply' }));
+    expect(screen.getByText('Replying to prompt: Party needs Frontline and Healer')).toBeTruthy();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
+      target: { value: 'I can probably cover frontline.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() =>
+      expect(submitEnvelopeAndAwait).toHaveBeenCalledWith(
+        'Send chat message',
+        expect.objectContaining({
+          payload: {
+            body: 'I can probably cover frontline.',
+            replyTarget: {
+              kind: 'GAME_PROMPT',
+              targetMessageId: 'msg-prompt-1',
+              promptId: 'prompt-1',
+            },
+          },
+        })
+      )
+    );
+  });
+
+  it('auto-selects the active draft reply target when discussion opens from the workbench route', async () => {
+    const submitEnvelopeAndAwait = vi.fn(async () => ({
+      commandId: 'cmd-send',
+      status: 'PROCESSED' as const,
+      errorCode: null,
+      errorMessage: null,
+    }));
+
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-1',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-1' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [
+          {
+            messageId: 'msg-1',
+            senderPlayerId: 'player-1',
+            senderDisplayName: 'Borin',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            body: 'Sharing Borin for party feedback.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-1',
+              snapshotVersion: 2,
+              characterName: 'Borin',
+              race: 'HUMAN',
+              status: 'DRAFT',
+              shareIntent: 'ASK_QUESTION',
+              contextNote: 'Should I trade damage for more party support?',
+              abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+              skillSummary: ['Fighter 1'],
+            },
+            createdAt: '2026-03-01T09:16:00.000Z',
+          },
+        ],
+      })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat?artifact=msg-1&draft=About%20Borin%20v2%3A%20']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Replying to Borin v2')).toBeTruthy();
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
+      target: { value: 'About Borin v2: I would keep the current build.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() =>
+      expect(submitEnvelopeAndAwait).toHaveBeenCalledWith(
+        'Send chat message',
+        expect.objectContaining({
+          payload: {
+            body: 'About Borin v2: I would keep the current build.',
+            replyTarget: {
+              kind: 'CHARACTER_DRAFT',
+              targetMessageId: 'msg-1',
+              characterId: 'char-1',
+              snapshotVersion: 2,
+            },
+          },
+        })
+      )
+    );
   });
 
   it('routes Answer In Creator to the existing game draft when the viewer already has one', async () => {

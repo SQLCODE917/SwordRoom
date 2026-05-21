@@ -1,5 +1,6 @@
 import type { AuthProvider } from '../auth/AuthProvider';
 import type {
+  GameChatReplyTarget,
   PregameObservationSessionSummary,
   PregameRole,
   SharedChatArtifact,
@@ -105,7 +106,7 @@ interface CommandPayloadByType {
   PurchaseStarterEquipment: { characterId: string; cart: Record<string, unknown> };
   ConfirmCharacterAppearanceUpload: { characterId: string; s3Key: string };
   DeleteCharacter: { characterId: string };
-  SendGameChatMessage: { body: string; artifact?: SharedChatArtifact };
+  SendGameChatMessage: { body: string; artifact?: SharedChatArtifact; replyTarget?: GameChatReplyTarget };
   SubmitCharacterForApproval: {
     characterId: string;
     expectedVersion: number;
@@ -259,6 +260,7 @@ export interface GameChatMessage {
   senderCharacterId: string | null;
   body: string;
   artifact?: SharedChatArtifact;
+  replyTarget?: GameChatReplyTarget;
   createdAt: string;
 }
 

@@ -55,6 +55,7 @@ export function createGameplayReadApis(
           senderCharacterId: message.senderCharacterId,
           body: message.body,
           artifact: message.artifact,
+          replyTarget: message.replyTarget,
           createdAt: message.createdAt,
         })),
       };

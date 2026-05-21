@@ -48,6 +48,24 @@ export const sharedCharacterDraftReactionArtifactSchema = z.object({
   reaction: sharedCharacterDraftReactionSchema,
 });
 
+export const gameChatCharacterDraftReplyTargetSchema = z.object({
+  kind: z.literal('CHARACTER_DRAFT'),
+  targetMessageId: z.string(),
+  characterId: z.string(),
+  snapshotVersion: z.number().int(),
+});
+
+export const gameChatPromptReplyTargetSchema = z.object({
+  kind: z.literal('GAME_PROMPT'),
+  targetMessageId: z.string(),
+  promptId: z.string(),
+});
+
+export const gameChatReplyTargetSchema = z.discriminatedUnion('kind', [
+  gameChatCharacterDraftReplyTargetSchema,
+  gameChatPromptReplyTargetSchema,
+]);
+
 export const sharedChatArtifactSchema = z.discriminatedUnion('kind', [
   sharedCharacterDraftArtifactSchema,
   sharedGamePromptArtifactSchema,
@@ -59,4 +77,7 @@ export type SharedCharacterDraftArtifact = z.infer<typeof sharedCharacterDraftAr
 export type SharedGamePromptArtifact = z.infer<typeof sharedGamePromptArtifactSchema>;
 export type SharedPartyRoleClaimArtifact = z.infer<typeof sharedPartyRoleClaimArtifactSchema>;
 export type SharedCharacterDraftReactionArtifact = z.infer<typeof sharedCharacterDraftReactionArtifactSchema>;
+export type GameChatCharacterDraftReplyTarget = z.infer<typeof gameChatCharacterDraftReplyTargetSchema>;
+export type GameChatPromptReplyTarget = z.infer<typeof gameChatPromptReplyTargetSchema>;
+export type GameChatReplyTarget = z.infer<typeof gameChatReplyTargetSchema>;
 export type SharedChatArtifact = z.infer<typeof sharedChatArtifactSchema>;

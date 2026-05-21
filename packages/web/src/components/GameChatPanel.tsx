@@ -1,5 +1,6 @@
 import { useState, type RefObject } from 'react';
 import type {
+  GameChatReplyTarget,
   SharedCharacterDraftArtifact,
   SharedCharacterDraftReaction,
   SharedGamePromptArtifact,
@@ -21,6 +22,8 @@ interface GameChatPanelProps {
   error: string | null;
   draftBody: string;
   setDraftBody: (value: string) => void;
+  activeReplyTarget: GameChatReplyTarget | null;
+  onClearReplyTarget: () => void;
   membersOpen: boolean;
   setMembersOpen: (value: boolean) => void;
   transcriptRef: RefObject<HTMLDivElement>;
@@ -32,6 +35,14 @@ interface GameChatPanelProps {
     artifact: SharedCharacterDraftArtifact;
     reaction: SharedCharacterDraftReaction;
   }) => Promise<void>;
+  onReplyToArtifact: (input: {
+    targetMessageId: string;
+    artifact: SharedCharacterDraftArtifact;
+  }) => void;
+  onReplyToPrompt: (input: {
+    targetMessageId: string;
+    artifact: SharedGamePromptArtifact;
+  }) => void;
   activeArtifactMessageId: string | null;
 }
 
@@ -41,6 +52,8 @@ export function GameChatPanel({
   error,
   draftBody,
   setDraftBody,
+  activeReplyTarget,
+  onClearReplyTarget,
   membersOpen,
   setMembersOpen,
   transcriptRef,
@@ -48,6 +61,8 @@ export function GameChatPanel({
   commandStatus,
   onSendMessage,
   onReactToArtifact,
+  onReplyToArtifact,
+  onReplyToPrompt,
   activeArtifactMessageId,
 }: GameChatPanelProps) {
   const [previewArtifact, setPreviewArtifact] = useState<PreviewArtifactState | null>(null);
@@ -55,10 +70,7 @@ export function GameChatPanel({
   const activeArtifactEntry = findActiveArtifactEntry(visibleMessages, activeArtifactMessageId);
 
   const closePreview = () => setPreviewArtifact(null);
-  const replyToArtifact = (artifact: SharedCharacterDraftArtifact) => {
-    setDraftBody(buildArtifactReplyDraft(artifact, draftBody));
-    setPreviewArtifact(null);
-  };
+  const replyTargetLabel = readReplyTargetLabel(chat.messages, activeReplyTarget);
 
   return (
     <>
@@ -79,7 +91,16 @@ export function GameChatPanel({
             <div className="t-small">Reply here to discuss it, or open Characters to review it in the workbench.</div>
           </div>
           <div className="l-row c-chat__artifact-actions">
-            <button className="c-btn" type="button" onClick={() => replyToArtifact(activeArtifactEntry.artifact)}>
+            <button
+              className="c-btn"
+              type="button"
+              onClick={() =>
+                onReplyToArtifact({
+                  targetMessageId: activeArtifactEntry.messageId,
+                  artifact: activeArtifactEntry.artifact,
+                })
+              }
+            >
               Reply To Active Draft
             </button>
             <ButtonLink to={buildCharacterReviewTo(chat.gameId, activeArtifactEntry.messageId)}>Open In Characters</ButtonLink>
@@ -118,6 +139,9 @@ export function GameChatPanel({
                     <span className="c-chat__time">[{formatChatTimestamp(message.createdAt)}]</span>{' '}
                     <span className="c-chat__speaker">{`<${message.senderDisplayName}>`}</span>{' '}
                     <span className="c-chat__body">{message.body}</span>
+                    {message.replyTarget ? (
+                      <div className="t-small">{readReplyTargetLabel(chat.messages, message.replyTarget)}</div>
+                    ) : null}
                     {characterArtifact ? (
                       <div className="c-note c-note--info c-chat__artifact-card">
                         <div className="t-small">{`${characterArtifact.characterName} (${characterArtifact.race}) v${characterArtifact.snapshotVersion}`}</div>
@@ -143,7 +167,16 @@ export function GameChatPanel({
                           >
                             Preview
                           </button>
-                          <button className="c-btn" type="button" onClick={() => replyToArtifact(characterArtifact)}>
+                          <button
+                            className="c-btn"
+                            type="button"
+                            onClick={() =>
+                              onReplyToArtifact({
+                                targetMessageId: message.messageId,
+                                artifact: characterArtifact,
+                              })
+                            }
+                          >
                             Reply
                           </button>
                           <ButtonLink to={buildCharacterReviewTo(chat.gameId, message.messageId)}>Open In Characters</ButtonLink>
@@ -172,7 +205,17 @@ export function GameChatPanel({
                         </div>
                       </div>
                     ) : null}
-                    {promptArtifact ? <PromptArtifactCard artifact={promptArtifact} /> : null}
+                    {promptArtifact ? (
+                      <PromptArtifactCard
+                        artifact={promptArtifact}
+                        onReply={() =>
+                          onReplyToPrompt({
+                            targetMessageId: message.messageId,
+                            artifact: promptArtifact,
+                          })
+                        }
+                      />
+                    ) : null}
                     {roleClaimArtifact ? <RoleClaimArtifactCard artifact={roleClaimArtifact} /> : null}
                   </div>
                 );
@@ -187,6 +230,16 @@ export function GameChatPanel({
               void onSendMessage();
             }}
           >
+            {replyTargetLabel ? (
+              <div className="c-note c-note--info">
+                <div className="l-row">
+                  <span className="t-small">{replyTargetLabel}</span>
+                  <button className="c-btn" type="button" onClick={onClearReplyTarget}>
+                    Clear Reply Target
+                  </button>
+                </div>
+              </div>
+            ) : null}
             <label className="c-field l-grow">
               <span className="c-field__label">Message</span>
               <input
@@ -269,7 +322,17 @@ export function GameChatPanel({
             </div>
 
             <div className="l-row c-chat__artifact-actions">
-              <button className="c-btn" type="button" onClick={() => replyToArtifact(previewArtifact.artifact)}>
+              <button
+                className="c-btn"
+                type="button"
+                onClick={() => {
+                  onReplyToArtifact({
+                    targetMessageId: previewArtifact.messageId,
+                    artifact: previewArtifact.artifact,
+                  });
+                  closePreview();
+                }}
+              >
                 Reply
               </button>
               {CHARACTER_DRAFT_REACTION_OPTIONS.map((reactionOption) => (
@@ -303,7 +366,13 @@ export function GameChatPanel({
   );
 }
 
-function PromptArtifactCard({ artifact }: { artifact: SharedGamePromptArtifact }) {
+function PromptArtifactCard({
+  artifact,
+  onReply,
+}: {
+  artifact: SharedGamePromptArtifact;
+  onReply: () => void;
+}) {
   return (
     <div className="c-note c-note--info c-chat__artifact-card">
       <div className="t-small">{artifact.title}</div>
@@ -311,6 +380,11 @@ function PromptArtifactCard({ artifact }: { artifact: SharedGamePromptArtifact }
       {artifact.suggestedRoles.length > 0 ? (
         <div className="t-small">{`Suggested roles: ${formatPregameRoleList(artifact.suggestedRoles)}`}</div>
       ) : null}
+      <div className="l-row c-chat__artifact-actions">
+        <button className="c-btn" type="button" onClick={onReply}>
+          Reply
+        </button>
+      </div>
     </div>
   );
 }
@@ -392,18 +466,6 @@ function formatChatTimestamp(value: string): string {
   }).format(date);
 }
 
-function buildArtifactReplyDraft(artifact: SharedCharacterDraftArtifact, currentDraftBody: string): string {
-  const prefix = `About ${artifact.characterName} v${artifact.snapshotVersion}: `;
-  const trimmedDraft = currentDraftBody.trim();
-  if (!trimmedDraft) {
-    return prefix;
-  }
-  if (trimmedDraft.includes(prefix)) {
-    return currentDraftBody;
-  }
-  return `${currentDraftBody.trimEnd()}\n${prefix}`;
-}
-
 function buildCharacterReviewTo(gameId: string, sharedRowKey: string): string {
   const searchParams = new URLSearchParams();
   searchParams.set('shared', sharedRowKey);
@@ -421,4 +483,25 @@ function formatCharacterDraftIntent(artifact: SharedCharacterDraftArtifact): str
     return 'Answer GM prompt';
   }
   return 'Draft snapshot';
+}
+
+function readReplyTargetLabel(messages: GameChatState['messages'], replyTarget: GameChatReplyTarget | null): string | null {
+  if (!replyTarget) {
+    return null;
+  }
+
+  const targetMessage = messages.find((message) => message.messageId === replyTarget.targetMessageId);
+  if (replyTarget.kind === 'CHARACTER_DRAFT') {
+    const targetArtifact = targetMessage?.artifact?.kind === 'CHARACTER_DRAFT' ? targetMessage.artifact : null;
+    if (!targetArtifact) {
+      return 'Replying to shared draft';
+    }
+    return `Replying to ${targetArtifact.characterName} v${targetArtifact.snapshotVersion}`;
+  }
+
+  const targetArtifact = targetMessage?.artifact?.kind === 'GAME_PROMPT' ? targetMessage.artifact : null;
+  if (!targetArtifact) {
+    return 'Replying to GM prompt';
+  }
+  return `Replying to prompt: ${targetArtifact.title}`;
 }

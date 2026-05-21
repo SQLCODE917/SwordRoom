@@ -9,7 +9,7 @@ import {
   submitCombatActionPayloadSchema,
   submitGameplayIntentPayloadSchema,
 } from './gameplay.js';
-import { sharedChatArtifactSchema } from './chat.js';
+import { gameChatReplyTargetSchema, sharedChatArtifactSchema } from './chat.js';
 
 export const COMMAND_TYPES = [
   'CreateGame',
@@ -163,6 +163,7 @@ export const deleteCharacterPayloadSchema = z.object({
 export const sendGameChatMessagePayloadSchema = z.object({
   body: z.string().trim().min(1).max(1000),
   artifact: sharedChatArtifactSchema.optional(),
+  replyTarget: gameChatReplyTargetSchema.optional(),
 });
 
 export const submitCharacterForApprovalPayloadSchema = z.object({

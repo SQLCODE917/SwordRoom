@@ -189,6 +189,8 @@ export function GMGameplayPage() {
                   error={chat.error}
                   draftBody={chat.draftBody}
                   setDraftBody={chat.setDraftBody}
+                  activeReplyTarget={chat.activeReplyTarget}
+                  onClearReplyTarget={chat.clearReplyTarget}
                   membersOpen={chat.membersOpen}
                   setMembersOpen={chat.setMembersOpen}
                   transcriptRef={chat.transcriptRef}
@@ -196,6 +198,8 @@ export function GMGameplayPage() {
                   commandStatus={chat.commandStatus}
                   onSendMessage={chat.sendMessage}
                   onReactToArtifact={chat.sendCharacterDraftReaction}
+                  onReplyToArtifact={chat.beginReplyToCharacterDraft}
+                  onReplyToPrompt={chat.beginReplyToPrompt}
                   activeArtifactMessageId={null}
                 />
               </Panel>

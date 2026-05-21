@@ -1114,6 +1114,25 @@ describe('game chat', () => {
         },
         createdAt: '2026-03-01T09:16:00.000Z',
       },
+      {
+        pk: 'GAME#game-1',
+        sk: 'CHAT#2026-03-01T09:17:00.000Z#msg-3',
+        type: 'GameChatMessage',
+        messageId: 'msg-3',
+        gameId: 'game-1',
+        senderPlayerId: 'player-2',
+        senderRole: 'PLAYER',
+        senderCharacterId: 'char-2',
+        senderNameSnapshot: 'Alice',
+        body: 'I think this build fits the party gap.',
+        replyTarget: {
+          kind: 'CHARACTER_DRAFT',
+          targetMessageId: 'msg-2',
+          characterId: 'char-1',
+          snapshotVersion: 2,
+        },
+        createdAt: '2026-03-01T09:17:00.000Z',
+      },
     ]);
 
     const api = createApiService({
@@ -1131,6 +1150,7 @@ describe('game chat', () => {
     expect(chat.messages.map((message) => `${message.senderDisplayName}:${message.body}`)).toEqual([
       '@Zed GM:Session starts soon.',
       'Borin:Ready.',
+      'Alice:I think this build fits the party gap.',
     ]);
     expect(chat.messages[1]?.artifact).toEqual({
       kind: 'CHARACTER_DRAFT',
@@ -1143,6 +1163,12 @@ describe('game chat', () => {
       contextNote: 'Option A stays Fighter 1. Option B pivots to Priest 2.',
       abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
       skillSummary: ['Fighter 1'],
+    });
+    expect(chat.messages[2]?.replyTarget).toEqual({
+      kind: 'CHARACTER_DRAFT',
+      targetMessageId: 'msg-2',
+      characterId: 'char-1',
+      snapshotVersion: 2,
     });
   });
 });

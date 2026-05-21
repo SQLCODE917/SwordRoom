@@ -1,5 +1,5 @@
 import type { CommandEnvelope, CommandType } from '@starter/shared';
-import type { SharedChatArtifact } from '@starter/shared';
+import type { GameChatReplyTarget, SharedChatArtifact } from '@starter/shared';
 import type {
   AddGmInboxItemInput,
   AddGameplayEventInput,
@@ -44,6 +44,7 @@ export type WriteEffect =
         senderNameSnapshot: string;
         body: string;
         artifact?: SharedChatArtifact;
+        replyTarget?: GameChatReplyTarget;
         createdAt: string;
       };
     }

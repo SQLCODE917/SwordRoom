@@ -23,8 +23,12 @@ These are the major product slices that still remain after the current pregame l
   - `docs/ux.phone-first-pregame-loop.md`
   - `docs/architecture.pregame-planning-loop.md`
   - `docs/metrics.pregame-planning-loop.md`
-- Slice 1 is underway as backend durable semantic metric emission for post-commit pregame commands.
-- The remaining work is implementation, not metric-definition discovery.
+- Completed:
+  - Slice 1: backend durable semantic metric emission for post-commit pregame commands
+  - Slice 2: creator-session start/completion and active-duration recording with stable entry-source semantics
+  - Slice 3: durable reply-target and prompt-response semantics for shared draft discussion
+- Remaining:
+  - Slice 4: end-to-end trace propagation across browser, HTTP, queue, and dispatcher
 - Track:
   - creator active minutes per invited player
   - creator return sessions before first play

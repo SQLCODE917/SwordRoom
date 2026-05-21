@@ -10,11 +10,48 @@ export const sendGameChatMessageHandler: CommandHandler<'SendGameChatMessage'> =
     throw error;
   }
 
+  const replyTarget = envelope.payload.replyTarget ?? null;
   const reactionArtifact = envelope.payload.artifact?.kind === 'CHARACTER_DRAFT_REACTION' ? envelope.payload.artifact : null;
+  const messages =
+    replyTarget || reactionArtifact
+      ? await ctx.db.chatRepository.queryMessages(envelope.gameId)
+      : [];
+
+  if (replyTarget?.kind === 'CHARACTER_DRAFT') {
+    const targetMessage = messages.find((message) => message.messageId === replyTarget.targetMessageId);
+    const targetDraftArtifact = targetMessage?.artifact?.kind === 'CHARACTER_DRAFT' ? targetMessage.artifact : null;
+    if (!targetDraftArtifact) {
+      const error = new Error(`reply target "${replyTarget.targetMessageId}" was not found in game "${envelope.gameId}"`);
+      (error as Error & { code?: string }).code = 'CHAT_REPLY_TARGET_NOT_FOUND';
+      throw error;
+    }
+    if (
+      targetDraftArtifact.characterId !== replyTarget.characterId ||
+      targetDraftArtifact.snapshotVersion !== replyTarget.snapshotVersion
+    ) {
+      const error = new Error(`reply target "${replyTarget.targetMessageId}" does not match the referenced draft snapshot`);
+      (error as Error & { code?: string }).code = 'CHAT_REPLY_TARGET_MISMATCH';
+      throw error;
+    }
+  }
+
+  if (replyTarget?.kind === 'GAME_PROMPT') {
+    const targetMessage = messages.find((message) => message.messageId === replyTarget.targetMessageId);
+    const targetPromptArtifact = targetMessage?.artifact?.kind === 'GAME_PROMPT' ? targetMessage.artifact : null;
+    if (!targetPromptArtifact) {
+      const error = new Error(`prompt reply target "${replyTarget.targetMessageId}" was not found in game "${envelope.gameId}"`);
+      (error as Error & { code?: string }).code = 'CHAT_PROMPT_TARGET_NOT_FOUND';
+      throw error;
+    }
+    if (targetPromptArtifact.promptId !== replyTarget.promptId) {
+      const error = new Error(`prompt reply target "${replyTarget.targetMessageId}" does not match the referenced prompt`);
+      (error as Error & { code?: string }).code = 'CHAT_PROMPT_TARGET_MISMATCH';
+      throw error;
+    }
+  }
+
   if (reactionArtifact) {
-    const targetMessage = (await ctx.db.chatRepository.queryMessages(envelope.gameId)).find(
-      (message) => message.messageId === reactionArtifact.targetMessageId
-    );
+    const targetMessage = messages.find((message) => message.messageId === reactionArtifact.targetMessageId);
     const targetDraftArtifact = targetMessage?.artifact?.kind === 'CHARACTER_DRAFT' ? targetMessage.artifact : null;
     if (!targetDraftArtifact) {
       const error = new Error(`reaction target "${reactionArtifact.targetMessageId}" was not found in game "${envelope.gameId}"`);
@@ -53,6 +90,7 @@ export const sendGameChatMessageHandler: CommandHandler<'SendGameChatMessage'> =
           senderNameSnapshot,
           body: envelope.payload.body,
           artifact: envelope.payload.artifact,
+          replyTarget: envelope.payload.replyTarget,
           createdAt: envelope.createdAt,
         },
       },

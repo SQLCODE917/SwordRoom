@@ -14,8 +14,13 @@ export function GameChatPage() {
   const [searchParams] = useSearchParams();
   const auth = useAuthProvider();
   const gameId = params.gameId ?? 'game-1';
-  const chat = useGameChat(gameId, searchParams.get('draft'));
   const activeArtifactMessageId = searchParams.get('artifact');
+  const activePromptMessageId = searchParams.get('prompt');
+  const chat = useGameChat(gameId, {
+    initialDraftBody: searchParams.get('draft'),
+    activeArtifactMessageId,
+    activePromptMessageId,
+  });
   const planning = usePregamePlanning(gameId, true);
   const creatorFocus = planning.state.status === 'ready' && planning.state.planning.activePrompt ? 'prompt' : 'revise';
   const creatorTarget = appendCharacterWizardEntryContext(readChatCreatorTarget(chat.chat, auth.actorId), {
@@ -41,6 +46,8 @@ export function GameChatPage() {
                 error={chat.error}
                 draftBody={chat.draftBody}
                 setDraftBody={chat.setDraftBody}
+                activeReplyTarget={chat.activeReplyTarget}
+                onClearReplyTarget={chat.clearReplyTarget}
                 membersOpen={chat.membersOpen}
                 setMembersOpen={chat.setMembersOpen}
                 transcriptRef={chat.transcriptRef}
@@ -48,6 +55,8 @@ export function GameChatPage() {
                 commandStatus={chat.commandStatus}
                 onSendMessage={chat.sendMessage}
                 onReactToArtifact={chat.sendCharacterDraftReaction}
+                onReplyToArtifact={chat.beginReplyToCharacterDraft}
+                onReplyToPrompt={chat.beginReplyToPrompt}
                 activeArtifactMessageId={activeArtifactMessageId}
               />
             </div>

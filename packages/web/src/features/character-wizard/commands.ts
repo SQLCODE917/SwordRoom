@@ -1,5 +1,5 @@
 import type { CommandEnvelopeInput } from '../../api/ApiClient';
-import type { SharedCharacterDraftArtifact, SharedCharacterDraftIntent } from '@starter/shared';
+import type { GameChatReplyTarget, SharedCharacterDraftArtifact, SharedCharacterDraftIntent } from '@starter/shared';
 import { createCommandId } from '../../hooks/useCommandStatus';
 import type { Race, SubAbilityScores } from '../../data/characterCreationReference';
 
@@ -125,6 +125,7 @@ export function buildShareCharacterDraftEnvelope(input: {
   gameId: string;
   body: string;
   artifact: SharedCharacterDraftArtifact;
+  replyTarget?: GameChatReplyTarget;
 }): CommandEnvelopeInput<'SendGameChatMessage'> {
   return {
     commandId: createCommandId(),
@@ -135,6 +136,7 @@ export function buildShareCharacterDraftEnvelope(input: {
     payload: {
       body: input.body,
       artifact: input.artifact,
+      replyTarget: input.replyTarget,
     },
   };
 }

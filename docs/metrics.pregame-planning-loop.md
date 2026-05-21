@@ -23,9 +23,9 @@ Today, the repo has useful flow logs in the web, API, and dispatcher, but those 
   - the handler has produced effects
   - the write transaction has succeeded
 - Current limitations that matter for metrics:
-  - there is no stable semantic metric stream yet
-  - creator time-in-flow and return sessions are not durably knowable from backend logs alone
-  - shared-draft reactions are durable, but shared-draft replies are not yet durable because reply context is currently staged in the web composer rather than stored as a structured backend relationship
+  - the metric stream now covers durable command-side events and creator-session start/completion, but end-to-end tracing is still incomplete
+  - creator time-in-flow and return sessions still require the browser-semantic session seam because backend writes alone cannot see abandoned or read-only creator visits
+  - creator answers to GM prompts can be joined durably through prompt identity on the shared draft artifact, but not every creator answer yet carries a direct chat-message reply target
   - end-to-end trace correlation across browser, HTTP, queue, and dispatcher does not yet exist
 
 ## 3. Target State
@@ -144,7 +144,7 @@ Create the first stable metric seam using existing durable behavior. This slice 
 **Handoff Notes for Next Agent**
 
 - You can rely on a stable backend semantic metric vocabulary for durable pregame events.
-- You cannot yet rely on durable reply-target metrics, creator-session timing, or digest re-entry metrics.
+- Slice 2 builds on this seam and must not rename the existing metric contract.
 
 ### Slice 2: Creator Session Anchors and Re-entry Semantics
 
@@ -195,7 +195,8 @@ Capture the two metrics the backend cannot infer alone: creator active minutes a
 
 **Handoff Notes for Next Agent**
 
-- You can rely on stable creator-session semantics, but not yet on full async trace joins.
+- You can rely on stable creator-session semantics and digest/chat/characters entry-source classification.
+- Full async trace joins are still out of scope for this slice.
 
 ### Slice 3: Durable Reply and Prompt-Response Semantics
 
@@ -217,6 +218,7 @@ Close the gap between UI-visible discussion and durable analytics by making shar
 
 - Replies to shared drafts and GM prompts become durable structured events.
 - Prompt response rate and replies-per-shared-artifact no longer depend on approximate frontend view-model logic.
+- Creator-originated GM prompt answers remain durably reportable even when they are published as shared draft artifacts instead of direct chat replies.
 
 **Contracts and Boundaries**
 
@@ -240,7 +242,8 @@ Close the gap between UI-visible discussion and durable analytics by making shar
 
 **Handoff Notes for Next Agent**
 
-- You can now aggregate replies and prompt responses without relying on composer-prefill text.
+- You can now aggregate shared-draft replies and direct GM-prompt chat replies from durable `replyTarget` relationships.
+- Creator answers to GM prompts remain durably reportable through shared draft artifact metadata when no direct prompt-message reply target exists.
 
 ### Slice 4: End-to-End Trace Propagation
 

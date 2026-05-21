@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import type { SharedCharacterDraftArtifact, SharedCharacterDraftReaction } from '@starter/shared';
+import type {
+  GameChatReplyTarget,
+  SharedCharacterDraftArtifact,
+  SharedCharacterDraftReaction,
+  SharedGamePromptArtifact,
+} from '@starter/shared';
 import { createApiClient, type CommandEnvelopeInput, type GameChatMessage, type GameChatParticipant } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
@@ -20,12 +25,29 @@ const emptyChatState: GameChatState = {
   messages: [],
 };
 
-export function useGameChat(gameId: string, initialDraftBody: string | null = null): {
+export function useGameChat(
+  gameId: string,
+  options?: {
+    initialDraftBody?: string | null;
+    activeArtifactMessageId?: string | null;
+    activePromptMessageId?: string | null;
+  }
+): {
   chat: GameChatState;
   initialLoading: boolean;
   error: string | null;
   draftBody: string;
   setDraftBody: (value: string) => void;
+  activeReplyTarget: GameChatReplyTarget | null;
+  clearReplyTarget: () => void;
+  beginReplyToCharacterDraft: (input: {
+    targetMessageId: string;
+    artifact: SharedCharacterDraftArtifact;
+  }) => void;
+  beginReplyToPrompt: (input: {
+    targetMessageId: string;
+    artifact: SharedGamePromptArtifact;
+  }) => void;
   membersOpen: boolean;
   setMembersOpen: (value: boolean) => void;
   transcriptRef: RefObject<HTMLDivElement>;
@@ -44,6 +66,7 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [draftBody, setDraftBody] = useState('');
+  const [activeReplyTarget, setActiveReplyTarget] = useState<GameChatReplyTarget | null>(null);
   const [membersOpen, setMembersOpen] = useState(false);
   const initialDraftAppliedRef = useRef<string | null>(null);
   const hasLoadedRef = useRef(false);
@@ -51,7 +74,7 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
   const { status: commandStatus, isRunning: isSending, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   useEffect(() => {
-    const normalizedDraft = typeof initialDraftBody === 'string' ? initialDraftBody : null;
+    const normalizedDraft = typeof options?.initialDraftBody === 'string' ? options.initialDraftBody : null;
     if (!normalizedDraft || normalizedDraft.trim() === '') {
       return;
     }
@@ -60,7 +83,7 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
     }
     setDraftBody((current) => (current.trim() === '' ? normalizedDraft : current));
     initialDraftAppliedRef.current = normalizedDraft;
-  }, [initialDraftBody]);
+  }, [options?.initialDraftBody]);
 
   useEffect(() => {
     let cancelled = false;
@@ -138,6 +161,67 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
     }
   }, [chat.messages.length]);
 
+  useEffect(() => {
+    if (activeReplyTarget !== null) {
+      return;
+    }
+
+    if (options?.activeArtifactMessageId) {
+      const targetMessage = chat.messages.find((message) => message.messageId === options.activeArtifactMessageId);
+      const targetArtifact = targetMessage?.artifact?.kind === 'CHARACTER_DRAFT' ? targetMessage.artifact : null;
+      if (targetMessage && targetArtifact) {
+        setActiveReplyTarget({
+          kind: 'CHARACTER_DRAFT',
+          targetMessageId: targetMessage.messageId,
+          characterId: targetArtifact.characterId,
+          snapshotVersion: targetArtifact.snapshotVersion,
+        });
+        return;
+      }
+    }
+
+    if (options?.activePromptMessageId) {
+      const targetMessage = chat.messages.find((message) => message.messageId === options.activePromptMessageId);
+      const targetArtifact = targetMessage?.artifact?.kind === 'GAME_PROMPT' ? targetMessage.artifact : null;
+      if (targetMessage && targetArtifact) {
+        setActiveReplyTarget({
+          kind: 'GAME_PROMPT',
+          targetMessageId: targetMessage.messageId,
+          promptId: targetArtifact.promptId,
+        });
+      }
+    }
+  }, [activeReplyTarget, chat.messages, options?.activeArtifactMessageId, options?.activePromptMessageId]);
+
+  function clearReplyTarget() {
+    setActiveReplyTarget(null);
+  }
+
+  function beginReplyToCharacterDraft(input: {
+    targetMessageId: string;
+    artifact: SharedCharacterDraftArtifact;
+  }) {
+    setDraftBody((current) => buildCharacterDraftReplyDraft(input.artifact, current));
+    setActiveReplyTarget({
+      kind: 'CHARACTER_DRAFT',
+      targetMessageId: input.targetMessageId,
+      characterId: input.artifact.characterId,
+      snapshotVersion: input.artifact.snapshotVersion,
+    });
+  }
+
+  function beginReplyToPrompt(input: {
+    targetMessageId: string;
+    artifact: SharedGamePromptArtifact;
+  }) {
+    setDraftBody((current) => buildPromptReplyDraft(input.artifact, current));
+    setActiveReplyTarget({
+      kind: 'GAME_PROMPT',
+      targetMessageId: input.targetMessageId,
+      promptId: input.artifact.promptId,
+    });
+  }
+
   async function sendMessage() {
     const body = draftBody.trim();
     if (!body) {
@@ -156,9 +240,11 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
         createdAt,
         payload: {
           body,
+          replyTarget: activeReplyTarget ?? undefined,
         },
       } satisfies CommandEnvelopeInput<'SendGameChatMessage'>);
       setDraftBody('');
+      setActiveReplyTarget(null);
       setChat((current) => ({
         ...current,
         messages: [
@@ -171,6 +257,7 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
             senderCharacterId: readSenderCharacterId(current.participants, auth.actorId),
             body,
             artifact: undefined,
+            replyTarget: activeReplyTarget ?? undefined,
             createdAt,
           },
         ],
@@ -238,6 +325,10 @@ export function useGameChat(gameId: string, initialDraftBody: string | null = nu
     error,
     draftBody,
     setDraftBody,
+    activeReplyTarget,
+    clearReplyTarget,
+    beginReplyToCharacterDraft,
+    beginReplyToPrompt,
     membersOpen,
     setMembersOpen,
     transcriptRef,
@@ -258,4 +349,25 @@ function readSenderRole(participants: GameChatParticipant[], actorId: string): '
 
 function readSenderCharacterId(participants: GameChatParticipant[], actorId: string): string | null {
   return participants.find((participant) => participant.playerId === actorId)?.characterId ?? null;
+}
+
+function buildCharacterDraftReplyDraft(artifact: SharedCharacterDraftArtifact, currentDraftBody: string): string {
+  const prefix = `About ${artifact.characterName} v${artifact.snapshotVersion}: `;
+  return appendReplyPrefix(prefix, currentDraftBody);
+}
+
+function buildPromptReplyDraft(artifact: SharedGamePromptArtifact, currentDraftBody: string): string {
+  const prefix = `About ${artifact.title}: `;
+  return appendReplyPrefix(prefix, currentDraftBody);
+}
+
+function appendReplyPrefix(prefix: string, currentDraftBody: string): string {
+  const trimmedDraft = currentDraftBody.trim();
+  if (!trimmedDraft) {
+    return prefix;
+  }
+  if (trimmedDraft.includes(prefix)) {
+    return currentDraftBody;
+  }
+  return `${currentDraftBody.trimEnd()}\n${prefix}`;
 }
