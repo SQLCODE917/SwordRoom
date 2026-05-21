@@ -1,0 +1,107 @@
+.statusRegion {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.commandRegion {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.quickStartNote {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--line);
+}
+
+.headerCell {
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  text-align: left;
+  padding: var(--s-2);
+  vertical-align: middle;
+}
+
+.bodyCell {
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  padding: var(--s-2);
+  vertical-align: top;
+}
+
+.actionDeck {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.primaryAction {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.secondaryActions {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.secondarySummary {
+  list-style: none;
+  width: fit-content;
+}
+
+.secondarySummary::-webkit-details-marker {
+  display: none;
+}
+
+.secondaryList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.secondaryPlaceholder {
+  display: flex;
+}
+
+.secondaryPlaceholderButton {
+  pointer-events: none;
+}
+
+.loadingRow {
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap);
+  flex-wrap: wrap;
+}
+
+.loadingActionPlaceholder {
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .actionDeck {
+    grid-template-columns: minmax(120px, max-content) 1fr;
+    align-items: start;
+  }
+
+  .secondaryActions {
+    align-self: start;
+  }
+}

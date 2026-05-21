@@ -1,19 +1,24 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { isPlayerCharacterLibraryGameId } from "@starter/shared/contracts/db";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import {
   createApiClient,
   type CharacterItem,
   type GameItem,
   type PregameDigestEntry,
-} from "../api/ApiClient";
-import { notifyAuthStateChanged, useAuthProvider } from "../auth/AuthProvider";
-import { ButtonLink } from "../components/ButtonLink";
-import { CommandStatusPanel } from "../components/CommandStatusPanel";
-import { Panel } from "../components/Panel";
-import { appendCharacterWizardEntryContext } from "../features/character-wizard";
-import { useMyProfile } from "../hooks/useMyProfile";
-import { createCommandId, useCommandWorkflow } from "../hooks/useCommandStatus";
-import { logWebFlow, summarizeError } from "../logging/flowLog";
+} from '../api/ApiClient';
+import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
+import { ButtonLink } from '../components/ButtonLink';
+import { CommandStatusPanel } from '../components/CommandStatusPanel';
+import { Panel } from '../components/Panel';
+import { appendCharacterWizardEntryContext } from '../features/character-wizard';
+import {
+  createCommandId,
+  type CommandStatusViewModel,
+  useCommandWorkflow,
+} from '../hooks/useCommandStatus';
+import { useMyProfile } from '../hooks/useMyProfile';
+import { logWebFlow, summarizeError } from '../logging/flowLog';
+import styles from './HomePage.module.css';
 
 interface DashboardState {
   characters: CharacterItem[];
@@ -21,6 +26,76 @@ interface DashboardState {
   gmGames: GameItem[];
   publicGames: GameItem[];
   pregameDigest: PregameDigestEntry[];
+}
+
+interface HomePageViewModel {
+  actorId: string;
+  loading: boolean;
+  pageStatusText: string;
+  identityStatusText: string;
+  errorText: string | null;
+  quickStartHeadline: string;
+  quickStartDetail: string;
+  quickStartActions: ActionDeckViewModel;
+  commandStatus: CommandStatusViewModel;
+  characterRows: CharacterRowViewModel[];
+  myGameRows: GameRowViewModel[];
+  publicGameRows: GameRowViewModel[];
+}
+
+type ActionVariant = 'default' | 'destructive';
+
+interface LinkActionViewModel {
+  kind: 'link';
+  key: string;
+  label: string;
+  to: string;
+  disabled: boolean;
+  disabledReason: string | null;
+  variant: ActionVariant;
+}
+
+interface ButtonActionViewModel {
+  kind: 'button';
+  key: string;
+  label: string;
+  onClick: () => void;
+  disabled: boolean;
+  variant: ActionVariant;
+}
+
+type ActionViewModel = LinkActionViewModel | ButtonActionViewModel;
+
+interface ActionDeckViewModel {
+  primary: ActionViewModel;
+  secondary: ActionViewModel[];
+  moreLabel: string;
+}
+
+interface CharacterRowViewModel {
+  key: string;
+  characterName: string;
+  status: string;
+  actions: ActionDeckViewModel;
+}
+
+interface GameRowViewModel {
+  key: string;
+  gameName: string;
+  visibility: string;
+  actions: ActionDeckViewModel;
+}
+
+interface QuickStartAction {
+  label: string;
+  to: string;
+}
+
+interface QuickStartViewModel {
+  headline: string;
+  detail: string;
+  primaryAction: QuickStartAction;
+  secondaryActions: QuickStartAction[];
 }
 
 const emptyState: DashboardState = {
@@ -32,9 +107,105 @@ const emptyState: DashboardState = {
 };
 
 const existingCharacterDisabledReason =
-  "You already have a character in this game.";
+  'You already have a character in this game.';
+
+const actionPriorityOrder = [
+  'Lobby',
+  'Play',
+  'Chat',
+  'Player Inbox',
+  'Sheet',
+  'Edit',
+  'New Character',
+  'Apply to Join',
+  'GM Play',
+  'GM Inbox',
+  'Delete',
+] as const;
 
 export function HomePage() {
+  const view = useHomePageViewModel();
+
+  return (
+    <div className="l-page">
+      <Panel title="Home" subtitle="Your characters and visible games.">
+        <section className={styles.statusRegion} aria-label="Home status region">
+          <div className="c-note c-note--info">
+            <span className="t-small">{view.pageStatusText}</span>
+          </div>
+          <div className="c-note c-note--info">
+            <span className="t-small">{view.identityStatusText}</span>
+          </div>
+          <div
+            className={`c-note ${
+              view.errorText ? 'c-note--error' : 'c-note--info'
+            }`}
+          >
+            <span className="t-small">
+              {view.errorText ?? 'No active errors.'}
+            </span>
+          </div>
+          <section
+            className={styles.commandRegion}
+            aria-label="Home command status"
+          >
+            <h3 className="t-h4">Command Status</h3>
+            <CommandStatusPanel status={view.commandStatus} />
+          </section>
+        </section>
+
+        <Panel
+          title="Pregame Quick Start"
+          subtitle="Fastest path into active planning on a phone."
+        >
+          <div className={`c-note c-note--info ${styles.quickStartNote}`}>
+            <div className="t-small">{view.quickStartHeadline}</div>
+            <div className="t-small">{view.quickStartDetail}</div>
+          </div>
+          <ActionDeck actions={view.quickStartActions} />
+        </Panel>
+
+        <div className="l-split">
+          <section className="l-col l-grow" aria-label="My Characters section">
+            <div className={styles.sectionHeader}>
+              <SectionTitle title="My Characters" />
+              <ButtonLink
+                to={`/player/${encodeURIComponent(view.actorId)}/character/new`}
+              >
+                New Character
+              </ButtonLink>
+            </div>
+            <CharactersTable
+              rows={view.characterRows}
+              loading={view.loading}
+              emptyText="No characters yet."
+            />
+          </section>
+
+          <section className="l-col l-grow" aria-label="My Games section">
+            <div className={styles.sectionHeader}>
+              <SectionTitle title="My Games" />
+              <ButtonLink to="/gm/games">Create Game</ButtonLink>
+            </div>
+            <MyGamesTable
+              rows={view.myGameRows}
+              loading={view.loading}
+              emptyText="You are not in any games yet."
+            />
+            <SectionTitle title="Public Games" />
+            <PublicGamesTable
+              rows={view.publicGameRows}
+              loading={view.loading}
+              emptyText="No public games found."
+            />
+          </section>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function useHomePageViewModel(): HomePageViewModel {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
   const { loading: profileLoading, error: profileError } = useMyProfile();
@@ -53,7 +224,7 @@ export function HomePage() {
 
   const refreshDashboard = useCallback(async () => {
     setDataLoading(true);
-    logWebFlow("WEB_HOME_LOAD_START", {
+    logWebFlow('WEB_HOME_LOAD_START', {
       actorId: auth.actorId,
       authMode: auth.mode,
     });
@@ -74,7 +245,7 @@ export function HomePage() {
         pregameDigest,
       });
       setDataError(null);
-      logWebFlow("WEB_HOME_LOAD_OK", {
+      logWebFlow('WEB_HOME_LOAD_OK', {
         actorId: auth.actorId,
         authMode: auth.mode,
         characterCount: characters.length,
@@ -87,7 +258,7 @@ export function HomePage() {
       setDataError(
         loadError instanceof Error ? loadError.message : String(loadError),
       );
-      logWebFlow("WEB_HOME_LOAD_FAILED", {
+      logWebFlow('WEB_HOME_LOAD_FAILED', {
         actorId: auth.actorId,
         authMode: auth.mode,
         ...summarizeError(loadError),
@@ -112,8 +283,67 @@ export function HomePage() {
     };
   }, [refreshDashboard]);
 
+  const removeCharacter = useCallback(
+    async (character: CharacterItem) => {
+      setRemovingCharacterId(character.characterId);
+      setDataError(null);
+      try {
+        await submitEnvelopeAndAwait('Delete character', {
+          commandId: createCommandId(),
+          gameId: character.gameId,
+          type: 'DeleteCharacter',
+          schemaVersion: 1,
+          createdAt: new Date().toISOString(),
+          payload: {
+            characterId: character.characterId,
+          },
+        });
+        await refreshDashboard();
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setRemovingCharacterId(null);
+      }
+    },
+    [refreshDashboard, submitEnvelopeAndAwait],
+  );
+
+  const archiveGame = useCallback(
+    async (game: GameItem) => {
+      const confirmed = window.confirm(
+        `Delete "${game.name}"? Players will be notified and the game will disappear from active lists.`,
+      );
+      if (!confirmed) {
+        return;
+      }
+
+      setArchivingGameId(game.gameId);
+      setDataError(null);
+      try {
+        await submitEnvelopeAndAwait('Delete game', {
+          commandId: createCommandId(),
+          gameId: game.gameId,
+          type: 'ArchiveGame',
+          schemaVersion: 1,
+          createdAt: new Date().toISOString(),
+          payload: {
+            gameId: game.gameId,
+            expectedVersion: game.version,
+          },
+        });
+        notifyAuthStateChanged();
+        await refreshDashboard();
+      } catch (error) {
+        setDataError(error instanceof Error ? error.message : String(error));
+      } finally {
+        setArchivingGameId(null);
+      }
+    },
+    [refreshDashboard, submitEnvelopeAndAwait],
+  );
+
   const loading = profileLoading || dataLoading;
-  const error = profileError ?? dataError;
+  const errorText = profileError ?? dataError;
   const joinedGameIds = useMemo(
     () => new Set(dashboard.myGames.map((game) => game.gameId)),
     [dashboard.myGames],
@@ -147,407 +377,630 @@ export function HomePage() {
     [auth.actorId, dashboard, joinedGameIds, gmGameIds, gameCharacterByGameId],
   );
 
-  return (
-    <div className="l-page">
-      <Panel title="Home" subtitle="Your characters and visible games.">
-        <div className={`c-note ${error ? "c-note--error" : "c-note--info"}`}>
-          <span className="t-small">
-            {error ??
-              (loading
-                ? "Loading dashboard..."
-                : `Signed in as ${auth.actorId}.`)}
-          </span>
-        </div>
-
-        <Panel
-          title="Pregame Quick Start"
-          subtitle="Fastest path into active planning on a phone."
-        >
-          <div className="c-note c-note--info">
-            <div className="t-small">{quickStart.headline}</div>
-            <div className="t-small">{quickStart.detail}</div>
-          </div>
-          <div className="l-row">
-            <ButtonLink to={quickStart.primaryAction.to}>
-              {quickStart.primaryAction.label}
-            </ButtonLink>
-            {quickStart.secondaryActions.map((action) => (
-              <ButtonLink key={`${action.label}:${action.to}`} to={action.to}>
-                {action.label}
-              </ButtonLink>
-            ))}
-          </div>
-        </Panel>
-
-        <div className="l-split">
-          <div className="l-col l-grow">
-            <div className="l-row">
-              <SectionTitle title="My Characters" />
-              <ButtonLink
-                to={`/player/${encodeURIComponent(auth.actorId)}/character/new`}
-              >
-                New Character
-              </ButtonLink>
-            </div>
-            <div className="c-table" role="table" aria-label="My characters">
-              <div className="c-table__head c-table__row" role="row">
-                <div className="c-table__cell t-small">Character</div>
-                <div className="c-table__cell t-small">Status</div>
-                <div className="c-table__cell t-small">Actions</div>
-              </div>
-              {dashboard.characters.length === 0 ? (
-                <div className="c-table__row" role="row">
-                  <div className="c-table__cell t-small">
-                    {loading ? "Loading characters..." : "No characters yet."}
-                  </div>
-                </div>
-              ) : (
-                dashboard.characters.map((character) => (
-                  <div
-                    className="c-table__row"
-                    role="row"
-                    key={`${character.gameId}:${character.characterId}`}
-                  >
-                    <div className="c-table__cell t-small">
-                      {readCharacterName(character)}
-                    </div>
-                    <div className="c-table__cell t-small">
-                      {character.status}
-                    </div>
-                    <div className="c-table__cell t-small">
-                      <div className="l-row">
-                        <ButtonLink to={getCharacterSheetPath(character)}>
-                          Sheet
-                        </ButtonLink>
-                        <ButtonLink to={getCharacterEditPath(character)}>
-                          Edit
-                        </ButtonLink>
-                        {isRemovableGameCharacter(character) ? (
-                          <button
-                            className={`c-btn ${removingCharacterId === character.characterId || isRunningCommand ? "is-disabled" : ""}`.trim()}
-                            type="button"
-                            disabled={
-                              removingCharacterId === character.characterId ||
-                              isRunningCommand
-                            }
-                            onClick={() => void removeCharacter(character)}
-                          >
-                            Leave Game
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="l-col l-grow">
-            <div className="l-row">
-              <SectionTitle title="My Games" />
-              <ButtonLink to="/gm/games">Create Game</ButtonLink>
-            </div>
-            <MyGamesTable
-              games={dashboard.myGames}
-              loading={loading}
-              emptyText="You are not in any games yet."
-              gmGameIds={gmGameIds}
-              characterByGameId={gameCharacterByGameId}
-              archivingGameId={archivingGameId}
-              isRunningCommand={isRunningCommand}
-              onArchiveGame={(game) => void archiveGame(game)}
-            />
-
-            <SectionTitle title="Public Games" />
-            <PublicGamesTable
-              games={dashboard.publicGames}
-              loading={loading}
-              emptyText="No public games found."
-              joinedGameIds={joinedGameIds}
-              gmGameIds={gmGameIds}
-              characterByGameId={gameCharacterByGameId}
-            />
-          </div>
-        </div>
-        <CommandStatusPanel status={commandStatus} />
-      </Panel>
-    </div>
+  const quickStartActions = useMemo<ActionDeckViewModel>(
+    () => ({
+      primary: createLinkAction({
+        key: `quick-start:${quickStart.primaryAction.label}`,
+        label: quickStart.primaryAction.label,
+        to: quickStart.primaryAction.to,
+      }),
+      secondary: quickStart.secondaryActions.map((action) =>
+        createLinkAction({
+          key: `quick-start:${action.label}`,
+          label: action.label,
+          to: action.to,
+        }),
+      ),
+      moreLabel: 'More Start Actions',
+    }),
+    [quickStart],
   );
 
-  async function removeCharacter(character: CharacterItem) {
-    setRemovingCharacterId(character.characterId);
-    setDataError(null);
-    try {
-      await submitEnvelopeAndAwait("Delete character", {
-        commandId: createCommandId(),
-        gameId: character.gameId,
-        type: "DeleteCharacter",
-        schemaVersion: 1,
-        createdAt: new Date().toISOString(),
-        payload: {
-          characterId: character.characterId,
+  const characterRows = useMemo(
+    () =>
+      buildCharacterRows({
+        characters: dashboard.characters,
+        isRunningCommand,
+        removingCharacterId,
+        onRemoveCharacter: (character) => {
+          void removeCharacter(character);
         },
-      });
-      await refreshDashboard();
-    } catch (error) {
-      setDataError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setRemovingCharacterId(null);
-    }
-  }
+      }),
+    [dashboard.characters, isRunningCommand, removeCharacter, removingCharacterId],
+  );
 
-  async function archiveGame(game: GameItem) {
-    const confirmed = window.confirm(
-      `Delete "${game.name}"? Players will be notified and the game will disappear from active lists.`,
-    );
-    if (!confirmed) {
-      return;
-    }
-
-    setArchivingGameId(game.gameId);
-    setDataError(null);
-    try {
-      await submitEnvelopeAndAwait("Delete game", {
-        commandId: createCommandId(),
-        gameId: game.gameId,
-        type: "ArchiveGame",
-        schemaVersion: 1,
-        createdAt: new Date().toISOString(),
-        payload: {
-          gameId: game.gameId,
-          expectedVersion: game.version,
+  const myGameRows = useMemo(
+    () =>
+      buildMyGameRows({
+        games: dashboard.myGames,
+        gmGameIds,
+        characterByGameId: gameCharacterByGameId,
+        archivingGameId,
+        isRunningCommand,
+        onArchiveGame: (game) => {
+          void archiveGame(game);
         },
-      });
-      notifyAuthStateChanged();
-      await refreshDashboard();
-    } catch (error) {
-      setDataError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setArchivingGameId(null);
-    }
-  }
+      }),
+    [
+      archivingGameId,
+      archiveGame,
+      dashboard.myGames,
+      gameCharacterByGameId,
+      gmGameIds,
+      isRunningCommand,
+    ],
+  );
+
+  const publicGameRows = useMemo(
+    () =>
+      buildPublicGameRows({
+        games: dashboard.publicGames,
+        joinedGameIds,
+        gmGameIds,
+        characterByGameId: gameCharacterByGameId,
+      }),
+    [dashboard.publicGames, gameCharacterByGameId, gmGameIds, joinedGameIds],
+  );
+
+  return {
+    actorId: auth.actorId,
+    loading,
+    pageStatusText: loading ? 'Loading dashboard...' : 'Dashboard ready.',
+    identityStatusText: `Signed in as ${auth.actorId}.`,
+    errorText,
+    quickStartHeadline: quickStart.headline,
+    quickStartDetail: quickStart.detail,
+    quickStartActions,
+    commandStatus,
+    characterRows,
+    myGameRows,
+    publicGameRows,
+  };
 }
 
 function SectionTitle({ title }: { title: string }) {
   return <h3 className="t-h4">{title}</h3>;
 }
 
-function MyGamesTable(input: {
-  games: GameItem[];
+function CharactersTable(input: {
+  rows: CharacterRowViewModel[];
   loading: boolean;
   emptyText: string;
+}) {
+  return (
+    <table className={styles.table} aria-label="My characters">
+      <thead>
+        <tr>
+          <th className={`${styles.headerCell} t-small`} scope="col">
+            Character
+          </th>
+          <th className={`${styles.headerCell} t-small`} scope="col">
+            Status
+          </th>
+          <th className={`${styles.headerCell} t-small`} scope="col">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {input.rows.length === 0 ? (
+          renderLoadingOrEmptyRows({
+            loading: input.loading,
+            emptyText: input.emptyText,
+            loadingLabel: 'Loading characters...',
+            columnCount: 3,
+          })
+        ) : (
+          input.rows.map((row) => (
+            <tr key={row.key}>
+              <td className={`${styles.bodyCell} t-small`}>{row.characterName}</td>
+              <td className={`${styles.bodyCell} t-small`}>{row.status}</td>
+              <td className={`${styles.bodyCell} t-small`}>
+                <ActionDeck actions={row.actions} />
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+function MyGamesTable(input: {
+  rows: GameRowViewModel[];
+  loading: boolean;
+  emptyText: string;
+}) {
+  return (
+    <table className={styles.table} aria-label="My games">
+      <thead>
+        <tr>
+          <th className={`${styles.headerCell} t-small`} scope="col">
+            Game
+          </th>
+          <th className={`${styles.headerCell} t-small`} scope="col">
+            Visibility
+          </th>
+          <th className={`${styles.headerCell} t-small`} scope="col">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {input.rows.length === 0 ? (
+          renderLoadingOrEmptyRows({
+            loading: input.loading,
+            emptyText: input.emptyText,
+            loadingLabel: 'Loading games...',
+            columnCount: 3,
+          })
+        ) : (
+          input.rows.map((row) => (
+            <tr key={row.key}>
+              <td className={`${styles.bodyCell} t-small`}>
+                <div>{row.gameName}</div>
+              </td>
+              <td className={`${styles.bodyCell} t-small`}>{row.visibility}</td>
+              <td className={`${styles.bodyCell} t-small`}>
+                <ActionDeck actions={row.actions} />
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+export function PublicGamesTable(input: {
+  rows: GameRowViewModel[];
+  loading: boolean;
+  emptyText: string;
+}) {
+  return (
+    <table className={styles.table} aria-label="Public games">
+      <thead>
+        <tr>
+          <th className={`${styles.headerCell} t-small`} scope="col">
+            Game
+          </th>
+          <th className={`${styles.headerCell} t-small`} scope="col">
+            Visibility
+          </th>
+          <th className={`${styles.headerCell} t-small`} scope="col">
+            Actions
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {input.rows.length === 0 ? (
+          renderLoadingOrEmptyRows({
+            loading: input.loading,
+            emptyText: input.emptyText,
+            loadingLabel: 'Loading games...',
+            columnCount: 3,
+          })
+        ) : (
+          input.rows.map((row) => (
+            <tr key={row.key}>
+              <td className={`${styles.bodyCell} t-small`}>
+                <div>{row.gameName}</div>
+              </td>
+              <td className={`${styles.bodyCell} t-small`}>{row.visibility}</td>
+              <td className={`${styles.bodyCell} t-small`}>
+                <ActionDeck actions={row.actions} />
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+}
+
+function ActionDeck(input: { actions: ActionDeckViewModel }) {
+  return (
+    <div className={styles.actionDeck}>
+      <div className={styles.primaryAction}>{renderAction(input.actions.primary)}</div>
+      {input.actions.secondary.length > 0 ? (
+        <details className={styles.secondaryActions}>
+          <summary className={`c-btn ${styles.secondarySummary}`}>
+            {input.actions.moreLabel}
+          </summary>
+          <div className={styles.secondaryList}>
+            {input.actions.secondary.map((action) => renderAction(action))}
+          </div>
+        </details>
+      ) : (
+        <div className={styles.secondaryPlaceholder}>
+          <span
+            className={`c-btn is-disabled ${styles.secondaryPlaceholderButton}`}
+            aria-hidden="true"
+          >
+            No Secondary Actions
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function renderAction(action: ActionViewModel) {
+  if (action.kind === 'link') {
+    return (
+      <ButtonLink
+        key={action.key}
+        to={action.to}
+        disabled={action.disabled}
+        disabledReason={action.disabledReason}
+        variant={action.variant}
+      >
+        {action.label}
+      </ButtonLink>
+    );
+  }
+
+  return (
+    <button
+      key={action.key}
+      className={[
+        'c-btn',
+        action.variant === 'destructive' ? 'c-btn--destructive' : '',
+        action.disabled ? 'is-disabled' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      type="button"
+      disabled={action.disabled}
+      onClick={action.onClick}
+    >
+      {action.label}
+    </button>
+  );
+}
+
+function renderLoadingOrEmptyRows(input: {
+  loading: boolean;
+  emptyText: string;
+  loadingLabel: string;
+  columnCount: number;
+}) {
+  if (input.loading) {
+    return Array.from({ length: 3 }, (_, index) => (
+      <tr key={`loading-${index}`}>
+        <td className={`${styles.bodyCell} t-small`} colSpan={input.columnCount}>
+          <div className={styles.loadingRow}>
+            <span>{input.loadingLabel}</span>
+            <span className={`c-btn is-disabled ${styles.loadingActionPlaceholder}`}>
+              Loading...
+            </span>
+          </div>
+        </td>
+      </tr>
+    ));
+  }
+
+  return (
+    <tr>
+      <td className={`${styles.bodyCell} t-small`} colSpan={input.columnCount}>
+        {input.emptyText}
+      </td>
+    </tr>
+  );
+}
+
+function createLinkAction(input: {
+  key: string;
+  label: string;
+  to: string;
+  disabled?: boolean;
+  disabledReason?: string | null;
+  variant?: ActionVariant;
+}): LinkActionViewModel {
+  return {
+    kind: 'link',
+    key: input.key,
+    label: input.label,
+    to: input.to,
+    disabled: input.disabled ?? false,
+    disabledReason: input.disabledReason ?? null,
+    variant: input.variant ?? 'default',
+  };
+}
+
+function createButtonAction(input: {
+  key: string;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  variant?: ActionVariant;
+}): ButtonActionViewModel {
+  return {
+    kind: 'button',
+    key: input.key,
+    label: input.label,
+    onClick: input.onClick,
+    disabled: input.disabled ?? false,
+    variant: input.variant ?? 'default',
+  };
+}
+
+function buildCharacterRows(input: {
+  characters: CharacterItem[];
+  isRunningCommand: boolean;
+  removingCharacterId: string | null;
+  onRemoveCharacter: (character: CharacterItem) => void;
+}): CharacterRowViewModel[] {
+  return input.characters.map((character) => {
+    const isRemoving =
+      input.removingCharacterId === character.characterId || input.isRunningCommand;
+    const secondaryActions: ActionViewModel[] = [
+      createLinkAction({
+        key: `${character.characterId}:edit`,
+        label: 'Edit',
+        to: getCharacterEditPath(character),
+      }),
+    ];
+
+    if (isRemovableGameCharacter(character)) {
+      secondaryActions.push(
+        createButtonAction({
+          key: `${character.characterId}:leave`,
+          label: 'Leave Game',
+          disabled: isRemoving,
+          onClick: () => input.onRemoveCharacter(character),
+        }),
+      );
+    }
+
+    return {
+      key: `${character.gameId}:${character.characterId}`,
+      characterName: readCharacterName(character),
+      status: character.status,
+      actions: {
+        primary: createLinkAction({
+          key: `${character.characterId}:sheet`,
+          label: 'Sheet',
+          to: getCharacterSheetPath(character),
+        }),
+        secondary: orderActions(secondaryActions),
+        moreLabel: 'More Actions',
+      },
+    };
+  });
+}
+
+function buildMyGameRows(input: {
+  games: GameItem[];
   gmGameIds: ReadonlySet<string>;
   characterByGameId: ReadonlyMap<string, CharacterItem>;
   archivingGameId: string | null;
   isRunningCommand: boolean;
   onArchiveGame: (game: GameItem) => void;
-}) {
-  return (
-    <div className="c-table" role="table" aria-label="My Games">
-      <div className="c-table__head c-table__row" role="row">
-        <div className="c-table__cell t-small">Game</div>
-        <div className="c-table__cell t-small">Visibility</div>
-        <div className="c-table__cell t-small">Actions</div>
-      </div>
-      {input.games.length === 0 ? (
-        <div className="c-table__row" role="row">
-          <div className="c-table__cell t-small">
-            {input.loading ? "Loading games..." : input.emptyText}
-          </div>
-        </div>
-      ) : (
-        input.games.map((game) => {
-          const character = input.characterByGameId.get(game.gameId) ?? null;
-          const canDelete = input.gmGameIds.has(game.gameId);
-          const isArchiving = input.archivingGameId === game.gameId;
-          return (
-            <div className="c-table__row" role="row" key={game.gameId}>
-              <div className="c-table__cell t-small">
-                <div>{game.name}</div>
-              </div>
-              <div className="c-table__cell t-small">{game.visibility}</div>
-              <div className="c-table__cell t-small">
-                <div className="l-row">
-                  {character ? (
-                    <>
-                      <ButtonLink to={getCharacterSheetPath(character)}>
-                        Sheet
-                      </ButtonLink>
-                      {canEditCharacter(character) ? (
-                        <ButtonLink to={getCharacterEditPath(character)}>
-                          Edit
-                        </ButtonLink>
-                      ) : null}
-                    </>
-                  ) : null}
-                  <ButtonLink
-                    to={`/games/${encodeURIComponent(game.gameId)}/character/new`}
-                    disabled={Boolean(character)}
-                    disabledReason={
-                      character ? existingCharacterDisabledReason : null
-                    }
-                  >
-                    New Character
-                  </ButtonLink>
-                  <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}`}>
-                    Lobby
-                  </ButtonLink>
-                  <ButtonLink
-                    to={`/games/${encodeURIComponent(game.gameId)}/play`}
-                  >
-                    Play
-                  </ButtonLink>
-                  <ButtonLink
-                    to={`/games/${encodeURIComponent(game.gameId)}/chat`}
-                  >
-                    Chat
-                  </ButtonLink>
-                  <ButtonLink to="/me/inbox">Player Inbox</ButtonLink>
-                  {input.gmGameIds.has(game.gameId) ? (
-                    <>
-                      <ButtonLink
-                        to={`/gm/${encodeURIComponent(game.gameId)}/play`}
-                      >
-                        GM Play
-                      </ButtonLink>
-                      <ButtonLink
-                        to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}
-                      >
-                        GM Inbox
-                      </ButtonLink>
-                    </>
-                  ) : null}
-                  {canDelete ? (
-                    <button
-                      className={`c-btn c-btn--destructive ${isArchiving || input.isRunningCommand ? "is-disabled" : ""}`.trim()}
-                      type="button"
-                      disabled={isArchiving || input.isRunningCommand}
-                      onClick={() => input.onArchiveGame(game)}
-                    >
-                      Delete
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
+}): GameRowViewModel[] {
+  return input.games.map((game) => {
+    const gameId = encodeURIComponent(game.gameId);
+    const character = input.characterByGameId.get(game.gameId) ?? null;
+    const isGmGame = input.gmGameIds.has(game.gameId);
+    const isArchiving = input.archivingGameId === game.gameId;
+
+    const secondaryActions: ActionViewModel[] = [
+      createLinkAction({
+        key: `${game.gameId}:play`,
+        label: 'Play',
+        to: `/games/${gameId}/play`,
+      }),
+      createLinkAction({
+        key: `${game.gameId}:chat`,
+        label: 'Chat',
+        to: `/games/${gameId}/chat`,
+      }),
+      createLinkAction({
+        key: `${game.gameId}:player-inbox`,
+        label: 'Player Inbox',
+        to: '/me/inbox',
+      }),
+      createLinkAction({
+        key: `${game.gameId}:new-character`,
+        label: 'New Character',
+        to: `/games/${gameId}/character/new`,
+        disabled: Boolean(character),
+        disabledReason: character ? existingCharacterDisabledReason : null,
+      }),
+    ];
+
+    if (character) {
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:sheet`,
+          label: 'Sheet',
+          to: getCharacterSheetPath(character),
+        }),
+      );
+      if (canEditCharacter(character)) {
+        secondaryActions.push(
+          createLinkAction({
+            key: `${game.gameId}:edit`,
+            label: 'Edit',
+            to: getCharacterEditPath(character),
+          }),
+        );
+      }
+    }
+
+    if (isGmGame) {
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:gm-play`,
+          label: 'GM Play',
+          to: `/gm/${gameId}/play`,
+        }),
+      );
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:gm-inbox`,
+          label: 'GM Inbox',
+          to: `/gm/${gameId}/inbox`,
+        }),
+      );
+      secondaryActions.push(
+        createButtonAction({
+          key: `${game.gameId}:delete`,
+          label: 'Delete',
+          variant: 'destructive',
+          disabled: isArchiving || input.isRunningCommand,
+          onClick: () => input.onArchiveGame(game),
+        }),
+      );
+    }
+
+    return {
+      key: game.gameId,
+      gameName: game.name,
+      visibility: game.visibility,
+      actions: {
+        primary: createLinkAction({
+          key: `${game.gameId}:lobby`,
+          label: 'Lobby',
+          to: `/games/${gameId}`,
+        }),
+        secondary: orderActions(secondaryActions),
+        moreLabel: 'More Actions',
+      },
+    };
+  });
 }
 
-export function PublicGamesTable(input: {
+function buildPublicGameRows(input: {
   games: GameItem[];
-  loading: boolean;
-  emptyText: string;
   joinedGameIds: ReadonlySet<string>;
   gmGameIds: ReadonlySet<string>;
   characterByGameId: ReadonlyMap<string, CharacterItem>;
-}) {
-  return (
-    <div className="c-table" role="table" aria-label="Public Games">
-      <div className="c-table__head c-table__row" role="row">
-        <div className="c-table__cell t-small">Game</div>
-        <div className="c-table__cell t-small">Visibility</div>
-        <div className="c-table__cell t-small">Actions</div>
-      </div>
-      {input.games.length === 0 ? (
-        <div className="c-table__row" role="row">
-          <div className="c-table__cell t-small">
-            {input.loading ? "Loading games..." : input.emptyText}
-          </div>
-        </div>
-      ) : (
-        input.games.map((game) => {
-          const character = input.characterByGameId.get(game.gameId) ?? null;
-          return (
-            <div className="c-table__row" role="row" key={game.gameId}>
-              <div className="c-table__cell t-small">
-                <div>{game.name}</div>
-              </div>
-              <div className="c-table__cell t-small">{game.visibility}</div>
-              <div className="c-table__cell t-small">
-                <div className="l-row">
-                  {character ? (
-                    <>
-                      <ButtonLink to={getCharacterSheetPath(character)}>
-                        Sheet
-                      </ButtonLink>
-                      {canEditCharacter(character) ? (
-                        <ButtonLink to={getCharacterEditPath(character)}>
-                          Edit
-                        </ButtonLink>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {input.joinedGameIds.has(game.gameId) ||
-                  input.gmGameIds.has(game.gameId) ? (
-                    <ButtonLink
-                      to={`/games/${encodeURIComponent(game.gameId)}`}
-                    >
-                      Lobby
-                    </ButtonLink>
-                  ) : null}
-                  {input.joinedGameIds.has(game.gameId) ? (
-                    <ButtonLink to="/me/inbox">Player Inbox</ButtonLink>
-                  ) : null}
-                  {input.joinedGameIds.has(game.gameId) ||
-                  input.gmGameIds.has(game.gameId) ? (
-                    <ButtonLink
-                      to={`/games/${encodeURIComponent(game.gameId)}/chat`}
-                    >
-                      Chat
-                    </ButtonLink>
-                  ) : null}
-                  {input.gmGameIds.has(game.gameId) ? (
-                    <ButtonLink
-                      to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}
-                    >
-                      GM Inbox
-                    </ButtonLink>
-                  ) : null}
-                  {!input.joinedGameIds.has(game.gameId) || character ? (
-                    <ButtonLink
-                      to={`/games/${encodeURIComponent(game.gameId)}/character/new`}
-                      disabled={Boolean(character)}
-                      disabledReason={
-                        character ? existingCharacterDisabledReason : null
-                      }
-                    >
-                      Apply to Join
-                    </ButtonLink>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
+}): GameRowViewModel[] {
+  return input.games.map((game) => {
+    const gameId = encodeURIComponent(game.gameId);
+    const joined = input.joinedGameIds.has(game.gameId);
+    const isGmGame = input.gmGameIds.has(game.gameId);
+    const canEnterLobby = joined || isGmGame;
+    const character = input.characterByGameId.get(game.gameId) ?? null;
+
+    const applyAction = createLinkAction({
+      key: `${game.gameId}:apply`,
+      label: 'Apply to Join',
+      to: `/games/${gameId}/character/new`,
+      disabled: Boolean(character),
+      disabledReason: character ? existingCharacterDisabledReason : null,
+    });
+
+    const secondaryActions: ActionViewModel[] = [];
+
+    if (canEnterLobby) {
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:play`,
+          label: 'Play',
+          to: `/games/${gameId}/play`,
+        }),
+      );
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:chat`,
+          label: 'Chat',
+          to: `/games/${gameId}/chat`,
+        }),
+      );
+    }
+    if (joined) {
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:player-inbox`,
+          label: 'Player Inbox',
+          to: '/me/inbox',
+        }),
+      );
+    }
+    if (character) {
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:sheet`,
+          label: 'Sheet',
+          to: getCharacterSheetPath(character),
+        }),
+      );
+      if (canEditCharacter(character)) {
+        secondaryActions.push(
+          createLinkAction({
+            key: `${game.gameId}:edit`,
+            label: 'Edit',
+            to: getCharacterEditPath(character),
+          }),
+        );
+      }
+    }
+    if (isGmGame) {
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:gm-play`,
+          label: 'GM Play',
+          to: `/gm/${gameId}/play`,
+        }),
+      );
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:gm-inbox`,
+          label: 'GM Inbox',
+          to: `/gm/${gameId}/inbox`,
+        }),
+      );
+    }
+
+    return {
+      key: game.gameId,
+      gameName: game.name,
+      visibility: game.visibility,
+      actions: {
+        primary: canEnterLobby
+          ? createLinkAction({
+              key: `${game.gameId}:lobby`,
+              label: 'Lobby',
+              to: `/games/${gameId}`,
+            })
+          : applyAction,
+        secondary: orderActions(secondaryActions),
+        moreLabel: 'More Actions',
+      },
+    };
+  });
+}
+
+function orderActions(actions: ActionViewModel[]): ActionViewModel[] {
+  const findPriority = (label: string): number => {
+    const index = actionPriorityOrder.findIndex((value) => value === label);
+    return index === -1 ? actionPriorityOrder.length : index;
+  };
+
+  return [...actions].sort((a, b) => {
+    return findPriority(a.label) - findPriority(b.label);
+  });
 }
 
 function readCharacterName(character: CharacterItem): string {
   const draft =
-    typeof character.draft === "object" && character.draft !== null
+    typeof character.draft === 'object' && character.draft !== null
       ? (character.draft as Record<string, unknown>)
       : null;
   const identity =
-    draft && typeof draft.identity === "object" && draft.identity !== null
+    draft && typeof draft.identity === 'object' && draft.identity !== null
       ? (draft.identity as Record<string, unknown>)
       : null;
-  const name = typeof identity?.name === "string" ? identity.name.trim() : "";
+  const name = typeof identity?.name === 'string' ? identity.name.trim() : '';
   return name || character.characterId;
 }
 
 function getCharacterSheetPath(character: CharacterItem): string {
   if (isPlayerCharacterLibraryGameId(character.gameId)) {
     const ownerPlayerId =
-      typeof character.ownerPlayerId === "string"
-        ? character.ownerPlayerId
-        : "";
+      typeof character.ownerPlayerId === 'string' ? character.ownerPlayerId : '';
     return `/player/${encodeURIComponent(ownerPlayerId)}/characters/${encodeURIComponent(character.characterId)}`;
   }
   return `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}`;
@@ -556,35 +1009,21 @@ function getCharacterSheetPath(character: CharacterItem): string {
 function getCharacterEditPath(character: CharacterItem): string {
   if (isPlayerCharacterLibraryGameId(character.gameId)) {
     const ownerPlayerId =
-      typeof character.ownerPlayerId === "string"
-        ? character.ownerPlayerId
-        : "";
+      typeof character.ownerPlayerId === 'string' ? character.ownerPlayerId : '';
     return `/player/${encodeURIComponent(ownerPlayerId)}/characters/${encodeURIComponent(character.characterId)}/edit`;
   }
   return appendCharacterWizardEntryContext(
     `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}/edit`,
-    { entrySource: "home", focus: "resume" },
+    { entrySource: 'home', focus: 'resume' },
   );
 }
 
 function canEditCharacter(character: CharacterItem): boolean {
-  return character.status !== "PENDING" && character.status !== "APPROVED";
+  return character.status !== 'PENDING' && character.status !== 'APPROVED';
 }
 
 function isRemovableGameCharacter(character: CharacterItem): boolean {
   return !isPlayerCharacterLibraryGameId(character.gameId);
-}
-
-interface QuickStartAction {
-  label: string;
-  to: string;
-}
-
-interface QuickStartViewModel {
-  headline: string;
-  detail: string;
-  primaryAction: QuickStartAction;
-  secondaryActions: QuickStartAction[];
 }
 
 function createQuickStartViewModel(input: {
@@ -628,14 +1067,14 @@ function createQuickStartViewModel(input: {
     return {
       headline: `Join ${joinableGame.name}`,
       detail:
-        "Start planning by creating a character draft for a visible game.",
+        'Start planning by creating a character draft for a visible game.',
       primaryAction: {
-        label: "Join a Game",
+        label: 'Join a Game',
         to: appendCharacterWizardEntryContext(
           `/games/${encodeURIComponent(joinableGame.gameId)}/character/new`,
           {
-            entrySource: "home",
-            focus: "start",
+            entrySource: 'home',
+            focus: 'start',
           },
         ),
       },
@@ -643,7 +1082,7 @@ function createQuickStartViewModel(input: {
         actorId: input.actorId,
         joinableGame,
         gameNeedingCharacter,
-      }).filter((action) => action.label !== "Join a Game"),
+      }).filter((action) => action.label !== 'Join a Game'),
     };
   }
 
@@ -651,14 +1090,14 @@ function createQuickStartViewModel(input: {
     return {
       headline: `Create for ${gameNeedingCharacter.name}`,
       detail:
-        "Enter the game-scoped creator and start the pregame loop immediately.",
+        'Enter the game-scoped creator and start the pregame loop immediately.',
       primaryAction: {
-        label: "Create a Character",
+        label: 'Create a Character',
         to: appendCharacterWizardEntryContext(
           `/games/${encodeURIComponent(gameNeedingCharacter.gameId)}/character/new`,
           {
-            entrySource: "home",
-            focus: "start",
+            entrySource: 'home',
+            focus: 'start',
           },
         ),
       },
@@ -666,23 +1105,23 @@ function createQuickStartViewModel(input: {
         actorId: input.actorId,
         joinableGame,
         gameNeedingCharacter,
-      }).filter((action) => action.label !== "Create a Character"),
+      }).filter((action) => action.label !== 'Create a Character'),
     };
   }
 
   return {
-    headline: "Start the pregame loop",
+    headline: 'Start the pregame loop',
     detail:
-      "Create a game, join a visible game, or start a character draft with the fewest possible steps.",
+      'Create a game, join a visible game, or start a character draft with the fewest possible steps.',
     primaryAction: {
-      label: "Start a Game",
-      to: "/gm/games",
+      label: 'Start a Game',
+      to: '/gm/games',
     },
     secondaryActions: buildSecondaryQuickStartActions({
       actorId: input.actorId,
       joinableGame,
       gameNeedingCharacter,
-    }).filter((action) => action.label !== "Start a Game"),
+    }).filter((action) => action.label !== 'Start a Game'),
   };
 }
 
@@ -694,28 +1133,28 @@ function buildSecondaryQuickStartActions(input: {
   const actions: QuickStartAction[] = [];
   if (input.joinableGame) {
     actions.push({
-      label: "Join a Game",
+      label: 'Join a Game',
       to: appendCharacterWizardEntryContext(
         `/games/${encodeURIComponent(input.joinableGame.gameId)}/character/new`,
         {
-          entrySource: "home",
-          focus: "start",
+          entrySource: 'home',
+          focus: 'start',
         },
       ),
     });
   }
   actions.push({
-    label: "Start a Game",
-    to: "/gm/games",
+    label: 'Start a Game',
+    to: '/gm/games',
   });
   actions.push({
-    label: "Create a Character",
+    label: 'Create a Character',
     to: input.gameNeedingCharacter
       ? appendCharacterWizardEntryContext(
           `/games/${encodeURIComponent(input.gameNeedingCharacter.gameId)}/character/new`,
           {
-            entrySource: "home",
-            focus: "start",
+            entrySource: 'home',
+            focus: 'start',
           },
         )
       : `/player/${encodeURIComponent(input.actorId)}/character/new`,
@@ -738,36 +1177,36 @@ function dedupeQuickStartActions(
 }
 
 function toPregameDigestPath(entry: PregameDigestEntry): string {
-  if (entry.destination === "CHAT") {
+  if (entry.destination === 'CHAT') {
     return `/games/${encodeURIComponent(entry.gameId)}/chat`;
   }
-  if (entry.destination === "CREATE_CHARACTER") {
+  if (entry.destination === 'CREATE_CHARACTER') {
     return appendCharacterWizardEntryContext(
       `/games/${encodeURIComponent(entry.gameId)}/character/new`,
       {
-        entrySource: "digest",
-        focus: "resume",
+        entrySource: 'digest',
+        focus: 'resume',
       },
     );
   }
-  if (entry.destination === "EDIT_CHARACTER" && entry.characterId) {
+  if (entry.destination === 'EDIT_CHARACTER' && entry.characterId) {
     return appendCharacterWizardEntryContext(
       `/games/${encodeURIComponent(entry.gameId)}/characters/${encodeURIComponent(entry.characterId)}/edit`,
-      { entrySource: "digest", focus: "resume" },
+      { entrySource: 'digest', focus: 'resume' },
     );
   }
   return `/games/${encodeURIComponent(entry.gameId)}`;
 }
 
 function readPregameDigestActionLabel(entry: PregameDigestEntry): string {
-  if (entry.destination === "CHAT") {
-    return "Open Chat";
+  if (entry.destination === 'CHAT') {
+    return 'Open Chat';
   }
-  if (entry.destination === "CREATE_CHARACTER") {
-    return "Create Character";
+  if (entry.destination === 'CREATE_CHARACTER') {
+    return 'Create Draft';
   }
-  if (entry.destination === "EDIT_CHARACTER") {
-    return "Edit Draft";
+  if (entry.destination === 'EDIT_CHARACTER') {
+    return 'Edit Draft';
   }
-  return "Resume Planning";
+  return 'Open Lobby';
 }
