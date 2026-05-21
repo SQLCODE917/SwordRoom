@@ -1,3 +1,4 @@
+import { parsePregameObservationSessionSummary } from '@starter/shared';
 import type { ApiRouteDefinition } from '../../httpRouteTypes.js';
 
 export const meRouteDefinitions: ApiRouteDefinition[] = [
@@ -93,6 +94,41 @@ export const meRouteDefinitions: ApiRouteDefinition[] = [
         count: digest.length,
       });
       context.sendJson(200, digest);
+    },
+  },
+  {
+    method: 'POST',
+    path: '/me/pregame/session',
+    auth: 'required',
+    handler: async (context) => {
+      const payload = (await context.readJsonBody()) as { session?: unknown; bypassActorId?: string };
+      const summary = parsePregameObservationSessionSummary(payload.session);
+      if (!summary) {
+        context.logFlow('API_POST_PREGAME_SESSION_REJECTED', {
+          requestId: context.requestId,
+          actorId: context.identity.actorId,
+          reason: 'INVALID_SESSION_SUMMARY',
+        });
+        context.sendJson(400, { error: 'request body must include a valid pregame session summary' });
+        return;
+      }
+      const metrics = await context.runtime.service.readApis.recordPregameObservationSession({
+        actorId: context.identity.actorId,
+        requestId: context.requestId,
+        summary,
+      });
+      for (const metric of metrics) {
+        context.logFlow('PREGAME_METRIC', metric as unknown as Record<string, unknown>);
+      }
+      context.logFlow('API_POST_PREGAME_SESSION', {
+        requestId: context.requestId,
+        actorId: context.identity.actorId,
+        creatorSessionId: summary.sessionId,
+        entrySource: summary.entrySource,
+        activeDurationMs: summary.activeDurationMs,
+        elapsedDurationMs: summary.elapsedDurationMs,
+      });
+      context.sendJson(202, { accepted: true });
     },
   },
 ];

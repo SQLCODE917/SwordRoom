@@ -126,4 +126,45 @@ describe('createApiClient', () => {
     expect(headers.get('x-swordworld-pregame-entry-source')).toBe('digest');
     expect(headers.get('x-swordworld-pregame-draft-mode')).toBe('existing');
   });
+
+  it('posts a creator session summary through the semantic pregame session route', async () => {
+    writeDevSession({ username: 'player-aaa', actorId: 'player-aaa' });
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ accepted: true }),
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const api = createApiClient({
+      baseUrl: 'http://localhost:3000',
+      auth: createDevAuthProvider({ VITE_AUTH_MODE: 'dev', VITE_DEV_ACTOR_ID: 'player-aaa' }),
+    });
+
+    await api.postPregameObservationSession({
+      keepalive: true,
+      session: {
+        surface: 'creator',
+        sessionId: 'creator-session-1',
+        sessionStartedAt: '2026-05-21T18:00:00.000Z',
+        entrySource: 'chat',
+        entryFocus: 'prompt',
+        wizardMode: 'apply',
+        draftMode: 'existing',
+        gameId: 'game-1',
+        characterId: 'char-1',
+        completedAt: '2026-05-21T18:02:00.000Z',
+        activeDurationMs: 45000,
+        elapsedDurationMs: 120000,
+        completionReason: 'pagehide',
+      },
+    });
+
+    const firstCall = (fetchMock.mock.calls as unknown[][])[0];
+    expect(firstCall?.[0]).toBe('http://localhost:3000/me/pregame/session');
+    const request = firstCall?.[1] as RequestInit | undefined;
+    expect(request?.keepalive).toBe(true);
+    const parsedBody = JSON.parse(String(request?.body)) as { bypassActorId?: string; session?: { entrySource?: string } };
+    expect(parsedBody.bypassActorId).toBe('player-aaa');
+    expect(parsedBody.session?.entrySource).toBe('chat');
+  });
 });

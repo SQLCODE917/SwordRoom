@@ -2,6 +2,7 @@ import type {
   AnyCommandEnvelope,
   CharacterItem,
   CommandStatus,
+  PregameObservationSessionSummary,
   PregameRole,
   SharedChatArtifact,
   GameChatSenderRole,
@@ -11,6 +12,7 @@ import type {
   PlayerInboxItem,
   PlayerProfileItem,
 } from '@starter/shared';
+import type { PregameMetricLogData } from '@starter/services-shared';
 
 export type ApiRouteMethod = 'POST' | 'GET';
 export type ApiRouteAuth = 'required' | 'gm_required' | 'admin_required';
@@ -150,6 +152,11 @@ export interface ReadApis {
   listGamesForGm(playerId: string): Promise<GameMetadataItem[]>;
   listUsers(): Promise<PlayerProfileItem[]>;
   getMyPregameDigest(playerId: string): Promise<PregameDigestEntryResponse[]>;
+  recordPregameObservationSession(input: {
+    actorId: string;
+    requestId: string;
+    summary: PregameObservationSessionSummary;
+  }): Promise<PregameMetricLogData[]>;
   getGameActorContext(gameId: string, actorId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getGameChat(gameId: string): Promise<GameChatResponse>;

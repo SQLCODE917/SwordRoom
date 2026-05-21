@@ -51,6 +51,7 @@ import { usePregamePlanning } from '../features/pregame-planning';
 import { useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow } from '../logging/flowLog';
 import { activatePregameObservationContext, deactivatePregameObservationContext } from '../logging/pregameObservationContext';
+import { beginPregameObservationSession } from '../logging/pregameObservationSession';
 
 const stepTitles = ['Race', 'Dice A-H', 'Background rolls', 'Name/identity', 'EXP spend', 'Equipment cart', 'Submit'];
 
@@ -82,6 +83,7 @@ function CharacterWizardPageContent({
   const stepPanelRefs = useRef<Array<HTMLElement | null>>([]);
   const commandStatusRef = useRef<HTMLDivElement | null>(null);
   const commandStatusScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const creatorSessionReportedRef = useRef(false);
   const [stepError, setStepError] = useState<string>(' ');
   const [snapshot, setSnapshot] = useState<CharacterSnapshot | null>(null);
   const [shareIntent, setShareIntent] = useState<CharacterShareIntent>('DRAFT_SNAPSHOT');
@@ -211,10 +213,26 @@ function CharacterWizardPageContent({
 
   useEffect(() => {
     const sessionId = creatorSessionIdRef.current;
+    creatorSessionReportedRef.current = false;
+    const sessionStartedAt = new Date().toISOString();
+    const submitObservationSession = (summary: Parameters<NonNullable<Parameters<typeof beginPregameObservationSession>[0]['onSummary']>>[0]) => {
+      void api
+        .postPregameObservationSession({
+          session: summary,
+          keepalive: summary.completionReason === 'pagehide',
+        })
+        .catch((error) => {
+          logWebFlow('WEB_PREGAME_CREATOR_SESSION_REPORT_FAILED', {
+            creatorSessionId: summary.sessionId,
+            completionReason: summary.completionReason,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          });
+        });
+    };
     activatePregameObservationContext({
       surface: 'creator',
       sessionId,
-      sessionStartedAt: new Date().toISOString(),
+      sessionStartedAt,
       entrySource: entryContext.entrySource,
       entryFocus: entryContext.focus,
       wizardMode,
@@ -222,10 +240,35 @@ function CharacterWizardPageContent({
       gameId: wizardMode === 'apply' ? routeGameId : null,
       characterId: routeCharacterId,
     });
+    const sessionController = beginPregameObservationSession({
+      context: {
+        surface: 'creator',
+        sessionId,
+        sessionStartedAt,
+        entrySource: entryContext.entrySource,
+        entryFocus: entryContext.focus,
+        wizardMode,
+        draftMode: isEditMode ? 'existing' : 'new',
+        gameId: wizardMode === 'apply' ? routeGameId : null,
+        characterId: routeCharacterId,
+      },
+      onSummary(summary) {
+        if (creatorSessionReportedRef.current) {
+          return;
+        }
+        creatorSessionReportedRef.current = true;
+        submitObservationSession(summary);
+      },
+    });
     return () => {
+      const summary = sessionController.finish('unmount');
+      if (summary && !creatorSessionReportedRef.current) {
+        creatorSessionReportedRef.current = true;
+        submitObservationSession(summary);
+      }
       deactivatePregameObservationContext(sessionId);
     };
-  }, [entryContext.entrySource, entryContext.focus, isEditMode, routeCharacterId, routeGameId, wizardMode]);
+  }, [api, entryContext.entrySource, entryContext.focus, isEditMode, routeCharacterId, routeGameId, wizardMode]);
 
   const { saveStateByStep, shareState, saveStepProgress, executeFinalAction, shareDraftToChat, claimPartyRoleInChat, refreshSnapshot } = useCharacterWizardWorkflow({
     api,
@@ -700,7 +743,7 @@ function readReturnActionLabel(entrySource: ReturnType<typeof readCharacterWizar
   if (entrySource === 'characters') {
     return 'Back To Characters';
   }
-  if (entrySource === 'inbox') {
+  if (entrySource === 'inbox' || entrySource === 'digest') {
     return 'Back To Inbox';
   }
   if (entrySource === 'home') {

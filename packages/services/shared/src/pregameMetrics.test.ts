@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildPregameMetricsFromCommand, buildPregameMetricsFromObservation } from './pregameMetrics.js';
+import {
+  buildPregameMetricsFromCommand,
+  buildPregameMetricsFromObservation,
+  buildPregameMetricsFromObservationSessionSummary,
+} from './pregameMetrics.js';
 
 describe('pregameMetrics', () => {
   it('derives semantic metrics for a shared draft publish command', () => {
@@ -129,6 +133,88 @@ describe('pregameMetrics', () => {
         },
         metricTrace: {
           requestId: 'req-1',
+          commandId: null,
+        },
+      },
+    ]);
+  });
+
+  it('emits completion and active-duration metrics for a creator session summary', () => {
+    const metrics = buildPregameMetricsFromObservationSessionSummary({
+      summary: {
+        surface: 'creator',
+        sessionId: 'creator-session-1',
+        sessionStartedAt: '2026-05-21T18:00:00.000Z',
+        entrySource: 'digest',
+        entryFocus: 'resume',
+        wizardMode: 'apply',
+        draftMode: 'existing',
+        gameId: 'game-1',
+        characterId: 'char-1',
+        completedAt: '2026-05-21T18:05:00.000Z',
+        activeDurationMs: 90000,
+        elapsedDurationMs: 300000,
+        completionReason: 'unmount',
+      },
+      actorId: 'player-1',
+      requestId: 'req-2',
+    });
+
+    expect(metrics).toEqual([
+      {
+        metricSchema: 'pregame.v1',
+        metricKind: 'counter',
+        metricName: 'CREATOR_SESSION_COMPLETED',
+        metricValue: 1,
+        metricUnit: 'Count',
+        metricDimensions: {
+          surface: 'creator',
+          entrySource: 'digest',
+          entryFocus: 'resume',
+          wizardMode: 'apply',
+          draftMode: 'existing',
+          completionReason: 'unmount',
+        },
+        metricContext: {
+          actorId: 'player-1',
+          gameId: 'game-1',
+          characterId: 'char-1',
+          creatorSessionId: 'creator-session-1',
+          creatorSessionStartedAt: '2026-05-21T18:00:00.000Z',
+          creatorSessionCompletedAt: '2026-05-21T18:05:00.000Z',
+          activeDurationMs: 90000,
+          elapsedDurationMs: 300000,
+        },
+        metricTrace: {
+          requestId: 'req-2',
+          commandId: null,
+        },
+      },
+      {
+        metricSchema: 'pregame.v1',
+        metricKind: 'duration',
+        metricName: 'CREATOR_ACTIVE_MILLISECONDS_RECORDED',
+        metricValue: 90000,
+        metricUnit: 'Milliseconds',
+        metricDimensions: {
+          surface: 'creator',
+          entrySource: 'digest',
+          entryFocus: 'resume',
+          wizardMode: 'apply',
+          draftMode: 'existing',
+        },
+        metricContext: {
+          actorId: 'player-1',
+          gameId: 'game-1',
+          characterId: 'char-1',
+          creatorSessionId: 'creator-session-1',
+          creatorSessionStartedAt: '2026-05-21T18:00:00.000Z',
+          creatorSessionCompletedAt: '2026-05-21T18:05:00.000Z',
+          elapsedDurationMs: 300000,
+          completionReason: 'unmount',
+        },
+        metricTrace: {
+          requestId: 'req-2',
           commandId: null,
         },
       },

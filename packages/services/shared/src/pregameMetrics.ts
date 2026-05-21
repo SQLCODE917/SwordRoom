@@ -1,7 +1,14 @@
-import type { AnyCommandEnvelope, PregameObservationContext, SharedChatArtifact } from '@starter/shared';
+import type {
+  AnyCommandEnvelope,
+  PregameObservationContext,
+  PregameObservationSessionSummary,
+  SharedChatArtifact,
+} from '@starter/shared';
 
 export type PregameMetricName =
   | 'CREATOR_SESSION_STARTED'
+  | 'CREATOR_SESSION_COMPLETED'
+  | 'CREATOR_ACTIVE_MILLISECONDS_RECORDED'
   | 'CHARACTER_DRAFT_CREATED'
   | 'CHARACTER_DRAFT_SAVED'
   | 'CHARACTER_SUBMITTED_FOR_APPROVAL'
@@ -12,10 +19,10 @@ export type PregameMetricName =
 
 export interface PregameMetricLogData {
   metricSchema: 'pregame.v1';
-  metricKind: 'counter';
+  metricKind: 'counter' | 'duration';
   metricName: PregameMetricName;
-  metricValue: 1;
-  metricUnit: 'Count';
+  metricValue: number;
+  metricUnit: 'Count' | 'Milliseconds';
   metricDimensions: Record<string, string>;
   metricContext: Record<string, string | number | boolean | null>;
   metricTrace: {
@@ -142,6 +149,68 @@ export function buildPregameMetricsFromObservation(input: {
   ];
 }
 
+export function buildPregameMetricsFromObservationSessionSummary(input: {
+  summary: PregameObservationSessionSummary;
+  actorId: string;
+  requestId: string;
+}): PregameMetricLogData[] {
+  return [
+    createPregameMetric({
+      metricName: 'CREATOR_SESSION_COMPLETED',
+      metricKind: 'counter',
+      metricValue: 1,
+      metricUnit: 'Count',
+      dimensions: {
+        surface: input.summary.surface,
+        entrySource: input.summary.entrySource,
+        entryFocus: input.summary.entryFocus,
+        wizardMode: input.summary.wizardMode,
+        draftMode: input.summary.draftMode,
+        completionReason: input.summary.completionReason,
+      },
+      context: {
+        actorId: input.actorId,
+        gameId: input.summary.gameId,
+        characterId: input.summary.characterId,
+        creatorSessionId: input.summary.sessionId,
+        creatorSessionStartedAt: input.summary.sessionStartedAt,
+        creatorSessionCompletedAt: input.summary.completedAt,
+        activeDurationMs: input.summary.activeDurationMs,
+        elapsedDurationMs: input.summary.elapsedDurationMs,
+      },
+      trace: {
+        requestId: input.requestId,
+      },
+    }),
+    createPregameMetric({
+      metricName: 'CREATOR_ACTIVE_MILLISECONDS_RECORDED',
+      metricKind: 'duration',
+      metricValue: input.summary.activeDurationMs,
+      metricUnit: 'Milliseconds',
+      dimensions: {
+        surface: input.summary.surface,
+        entrySource: input.summary.entrySource,
+        entryFocus: input.summary.entryFocus,
+        wizardMode: input.summary.wizardMode,
+        draftMode: input.summary.draftMode,
+      },
+      context: {
+        actorId: input.actorId,
+        gameId: input.summary.gameId,
+        characterId: input.summary.characterId,
+        creatorSessionId: input.summary.sessionId,
+        creatorSessionStartedAt: input.summary.sessionStartedAt,
+        creatorSessionCompletedAt: input.summary.completedAt,
+        elapsedDurationMs: input.summary.elapsedDurationMs,
+        completionReason: input.summary.completionReason,
+      },
+      trace: {
+        requestId: input.requestId,
+      },
+    }),
+  ];
+}
+
 function buildPregameMetricsFromArtifact(input: {
   envelope: Extract<AnyCommandEnvelope, { type: 'SendGameChatMessage' }>;
   artifact: SharedChatArtifact;
@@ -230,6 +299,9 @@ function buildPregameMetricsFromArtifact(input: {
 
 function createPregameMetric(input: {
   metricName: PregameMetricName;
+  metricKind?: 'counter' | 'duration';
+  metricValue?: number;
+  metricUnit?: 'Count' | 'Milliseconds';
   dimensions: Record<string, string>;
   context: Record<string, string | number | boolean | null>;
   trace: {
@@ -239,10 +311,10 @@ function createPregameMetric(input: {
 }): PregameMetricLogData {
   return {
     metricSchema: 'pregame.v1',
-    metricKind: 'counter',
+    metricKind: input.metricKind ?? 'counter',
     metricName: input.metricName,
-    metricValue: 1,
-    metricUnit: 'Count',
+    metricValue: input.metricValue ?? 1,
+    metricUnit: input.metricUnit ?? 'Count',
     metricDimensions: input.dimensions,
     metricContext: input.context,
     metricTrace: {

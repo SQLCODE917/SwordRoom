@@ -1,3 +1,4 @@
+import { buildPregameMetricsFromObservationSessionSummary } from '@starter/services-shared';
 import { resolveActorIdentity } from '../../auth.js';
 import type { ApiServiceDependencies } from '../../index.js';
 import { resolveApiAuthEnv, withEffectiveProfileRoles, type ReadApisSubset } from '../../serviceSupport.js';
@@ -6,7 +7,9 @@ export function createMeReadApis(
   deps: ApiServiceDependencies,
   flowLogEnabled: boolean,
   logServiceFlowFn: typeof import('@starter/services-shared').logServiceFlow
-): ReadApisSubset<'syncMyProfile' | 'getMyInbox' | 'getMyProfile' | 'listCharactersByOwner' | 'listGamesForPlayer'> {
+): ReadApisSubset<
+  'syncMyProfile' | 'getMyInbox' | 'getMyProfile' | 'listCharactersByOwner' | 'listGamesForPlayer' | 'recordPregameObservationSession'
+> {
   return {
     async syncMyProfile(input) {
       const authEnv = resolveApiAuthEnv(deps);
@@ -65,6 +68,14 @@ export function createMeReadApis(
 
     async listGamesForPlayer(playerId: string) {
       return deps.db.gameRepository.listGamesForPlayer(playerId);
+    },
+
+    async recordPregameObservationSession(input) {
+      return buildPregameMetricsFromObservationSessionSummary({
+        summary: input.summary,
+        actorId: input.actorId,
+        requestId: input.requestId,
+      });
     },
   };
 }

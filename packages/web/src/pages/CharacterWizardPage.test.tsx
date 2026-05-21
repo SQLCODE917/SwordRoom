@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '../api/ApiClient';
@@ -61,6 +61,7 @@ describe('CharacterWizardPage', () => {
   });
 
   it('allows a game-scoped draft route for a private invited game and shows planning focus', async () => {
+    const postPregameObservationSession = vi.fn(async () => undefined);
     vi.mocked(createApiClient).mockReturnValue({
       getGame: vi.fn(async () => ({
         gameId: 'game-private',
@@ -70,6 +71,52 @@ describe('CharacterWizardPage', () => {
         version: 1,
       })),
       getMyCharacters: vi.fn(async () => []),
+      getCharacter: vi.fn(async () => ({
+        characterId: 'char-1',
+        gameId: 'game-private',
+        ownerPlayerId: 'player-1',
+        version: 1,
+        status: 'DRAFT',
+        name: 'Mira',
+        race: 'HUMAN',
+        subAbility: { A: 10, B: 10, C: 10, D: 10, E: 10, F: 10, G: 10, H: 10 },
+        skillLevels: [],
+        noteToGm: null,
+        gmNote: null,
+        startedAt: null,
+        background: {
+          family: null,
+          status: null,
+          statusSkill: null,
+          statusBodyEnhancement: null,
+        },
+        abilities: {
+          technique: 0,
+          body: 0,
+          heart: 0,
+        },
+        money: {
+          starting: 0,
+          remaining: 0,
+        },
+        inventory: {
+          weapons: [],
+          armor: [],
+          shields: [],
+          gear: [],
+        },
+        identity: {
+          age: null,
+          gender: null,
+          faith: null,
+          heightCm: null,
+          weightKg: null,
+          hairColor: null,
+          eyeColor: null,
+          skinTone: null,
+        },
+        appearanceImage: null,
+      })),
       getPregamePlanning: vi.fn(async () => ({
         gameId: 'game-private',
         gameName: 'Private Delve',
@@ -93,9 +140,10 @@ describe('CharacterWizardPage', () => {
         ],
         recentClaims: [],
       })),
+      postPregameObservationSession,
     } as unknown as ReturnType<typeof createApiClient>);
 
-    render(
+    const view = render(
       <MemoryRouter initialEntries={['/games/game-private/character/new?entry=lobby&focus=role']}>
         <Routes>
           <Route path="/games/:gameId/character/new" element={<CharacterWizardPage />} />
@@ -110,5 +158,104 @@ describe('CharacterWizardPage', () => {
     expect(screen.getByRole('link', { name: 'Back To Lobby' }).getAttribute('href')).toBe('/games/game-private');
     expect(screen.queryByText('Route validation failed.')).toBeNull();
     expect(screen.getByText(/Create or revise a character inside this game's pregame planning loop\./)).toBeTruthy();
+
+    view.unmount();
+    await waitFor(() =>
+      expect(postPregameObservationSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          session: expect.objectContaining({
+            entrySource: 'lobby',
+            entryFocus: 'role',
+            wizardMode: 'apply',
+            draftMode: 'new',
+            gameId: 'game-private',
+          }),
+        })
+      )
+    );
+  });
+
+  it('shows a digest return action when creator re-entry comes from pregame digest', async () => {
+    vi.mocked(createApiClient).mockReturnValue({
+      getGame: vi.fn(async () => ({
+        gameId: 'game-private',
+        name: 'Private Delve',
+        visibility: 'PRIVATE',
+        gmPlayerId: 'gm-1',
+        version: 1,
+      })),
+      getMyCharacters: vi.fn(async () => []),
+      getCharacter: vi.fn(async () => ({
+        characterId: 'char-1',
+        gameId: 'game-private',
+        ownerPlayerId: 'player-1',
+        version: 1,
+        status: 'DRAFT',
+        name: 'Mira',
+        race: 'HUMAN',
+        subAbility: { A: 10, B: 10, C: 10, D: 10, E: 10, F: 10, G: 10, H: 10 },
+        skillLevels: [],
+        noteToGm: null,
+        gmNote: null,
+        startedAt: null,
+        background: {
+          family: null,
+          status: null,
+          statusSkill: null,
+          statusBodyEnhancement: null,
+        },
+        abilities: {
+          technique: 0,
+          body: 0,
+          heart: 0,
+        },
+        money: {
+          starting: 0,
+          remaining: 0,
+        },
+        inventory: {
+          weapons: [],
+          armor: [],
+          shields: [],
+          gear: [],
+        },
+        identity: {
+          age: null,
+          gender: null,
+          faith: null,
+          heightCm: null,
+          weightKg: null,
+          hairColor: null,
+          eyeColor: null,
+          skinTone: null,
+        },
+        appearanceImage: null,
+      })),
+      getPregamePlanning: vi.fn(async () => ({
+        gameId: 'game-private',
+        gameName: 'Private Delve',
+        viewer: {
+          isMember: true,
+          isGameMaster: false,
+        },
+        activePrompt: null,
+        partyNeeds: [{ role: 'FRONTLINE', label: 'Frontline', isOpen: true, claimedBy: [] }],
+        recentClaims: [],
+      })),
+      postPregameObservationSession: vi.fn(async () => undefined),
+    } as unknown as ReturnType<typeof createApiClient>);
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-private/characters/char-1/edit?entry=digest&focus=resume']}>
+        <Routes>
+          <Route path="/games/:gameId/characters/:characterId/edit" element={<CharacterWizardPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Edit Character Draft' })).toBeTruthy();
+    expect(screen.getByText('Resume this draft and keep the pregame loop moving')).toBeTruthy();
+    expect(screen.getByText('Opened from Pregame Digest as the shortest path back into the current planning loop.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Back To Inbox' }).getAttribute('href')).toBe('/me/inbox');
   });
 });

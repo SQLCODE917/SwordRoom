@@ -1,5 +1,6 @@
 import type { AuthProvider } from '../auth/AuthProvider';
 import type {
+  PregameObservationSessionSummary,
   PregameRole,
   SharedChatArtifact,
   GameplayCombatActionType,
@@ -348,6 +349,7 @@ export interface ApiClient {
   getMyCharacters(): Promise<CharacterItem[]>;
   getMyGames(): Promise<GameItem[]>;
   getMyPregameDigest(): Promise<PregameDigestEntry[]>;
+  postPregameObservationSession(input: { session: PregameObservationSessionSummary; keepalive?: boolean }): Promise<void>;
   getPublicGames(): Promise<GameItem[]>;
   getGmGames(): Promise<GameItem[]>;
   getAdminUsers(): Promise<PlayerProfile[]>;
@@ -521,6 +523,32 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         count: response.length,
       });
       return response;
+    },
+
+    async postPregameObservationSession(input: { session: PregameObservationSessionSummary; keepalive?: boolean }): Promise<void> {
+      logWebFlow('WEB_API_POST_PREGAME_SESSION_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        creatorSessionId: input.session.sessionId,
+        entrySource: input.session.entrySource,
+        activeDurationMs: input.session.activeDurationMs,
+        elapsedDurationMs: input.session.elapsedDurationMs,
+      });
+      await requestJson<{ accepted: true }>(`${baseUrl}/me/pregame/session`, {
+        method: 'POST',
+        headers: await withObservedAuthHeaders(auth, { 'content-type': 'application/json' }),
+        body: JSON.stringify(
+          auth.withActor({
+            session: input.session,
+          })
+        ),
+        keepalive: input.keepalive ?? false,
+      });
+      logWebFlow('WEB_API_POST_PREGAME_SESSION_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        creatorSessionId: input.session.sessionId,
+      });
     },
 
     async getPublicGames(): Promise<GameItem[]> {

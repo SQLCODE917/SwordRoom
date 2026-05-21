@@ -41,6 +41,13 @@ export interface PregameObservationContext {
   characterId: string | null;
 }
 
+export interface PregameObservationSessionSummary extends Omit<PregameObservationContext, 'sessionStart'> {
+  completedAt: string;
+  activeDurationMs: number;
+  elapsedDurationMs: number;
+  completionReason: 'unmount' | 'pagehide';
+}
+
 export function buildPregameObservationHeaders(context: PregameObservationContext): Record<string, string> {
   const headers: Record<string, string> = {
     [PREGAME_OBSERVABILITY_HEADERS.surface]: context.surface,
@@ -122,4 +129,53 @@ function isPregameObservationWizardMode(value: string | null): value is PregameO
 
 function isPregameObservationDraftMode(value: string | null): value is PregameObservationDraftMode {
   return value === 'new' || value === 'existing';
+}
+
+export function parsePregameObservationSessionSummary(input: unknown): PregameObservationSessionSummary | null {
+  if (!input || typeof input !== 'object') {
+    return null;
+  }
+  const record = input as Record<string, unknown>;
+  if (
+    record.surface !== 'creator' ||
+    typeof record.sessionId !== 'string' ||
+    record.sessionId.trim() === '' ||
+    typeof record.sessionStartedAt !== 'string' ||
+    record.sessionStartedAt.trim() === '' ||
+    !isPregameObservationEntrySource(readString(record.entrySource)) ||
+    !isPregameObservationEntryFocus(readString(record.entryFocus)) ||
+    !isPregameObservationWizardMode(readString(record.wizardMode)) ||
+    !isPregameObservationDraftMode(readString(record.draftMode)) ||
+    typeof record.completedAt !== 'string' ||
+    record.completedAt.trim() === '' ||
+    typeof record.activeDurationMs !== 'number' ||
+    !Number.isFinite(record.activeDurationMs) ||
+    record.activeDurationMs < 0 ||
+    typeof record.elapsedDurationMs !== 'number' ||
+    !Number.isFinite(record.elapsedDurationMs) ||
+    record.elapsedDurationMs < 0 ||
+    (record.completionReason !== 'unmount' && record.completionReason !== 'pagehide')
+  ) {
+    return null;
+  }
+
+  return {
+    surface: 'creator',
+    sessionId: record.sessionId,
+    sessionStartedAt: record.sessionStartedAt,
+    entrySource: readString(record.entrySource) as PregameObservationEntrySource,
+    entryFocus: readString(record.entryFocus) as PregameObservationEntryFocus,
+    wizardMode: readString(record.wizardMode) as PregameObservationWizardMode,
+    draftMode: readString(record.draftMode) as PregameObservationDraftMode,
+    gameId: typeof record.gameId === 'string' && record.gameId.trim() !== '' ? record.gameId : null,
+    characterId: typeof record.characterId === 'string' && record.characterId.trim() !== '' ? record.characterId : null,
+    completedAt: record.completedAt,
+    activeDurationMs: Math.round(record.activeDurationMs),
+    elapsedDurationMs: Math.round(record.elapsedDurationMs),
+    completionReason: record.completionReason,
+  };
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
 }

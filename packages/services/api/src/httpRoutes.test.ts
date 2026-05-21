@@ -245,4 +245,93 @@ describe('dispatchApiRoute', () => {
       })
     );
   });
+
+  it('accepts a creator session summary and emits completion metrics', async () => {
+    const logFlow = vi.fn();
+    const recordPregameObservationSession = vi.fn().mockResolvedValue([
+      {
+        metricSchema: 'pregame.v1',
+        metricKind: 'counter',
+        metricName: 'CREATOR_SESSION_COMPLETED',
+        metricValue: 1,
+        metricUnit: 'Count',
+        metricDimensions: { surface: 'creator', entrySource: 'digest' },
+        metricContext: { actorId: 'player-1', creatorSessionId: 'creator-session-1' },
+        metricTrace: { requestId: 'req-5', commandId: null },
+      },
+    ]);
+    const sendJson = vi.fn();
+
+    const handled = await dispatchApiRoute({
+      req: {
+        method: 'POST',
+        headers: {},
+      } as IncomingMessage,
+      res: {
+        statusCode: 200,
+        end: vi.fn(),
+      } as unknown as ServerResponse,
+      url: new URL('https://api.swordroom.online/me/pregame/session'),
+      requestId: 'req-5',
+      runtime: {
+        db: {} as never,
+        uploads: {} as never,
+        service: {
+          readApis: {
+            recordPregameObservationSession,
+          },
+        } as never,
+        authBypassAllowed: false,
+        maxUploadBytes: 5 * 1024 * 1024,
+        allowedContentTypes: new Set(),
+      },
+      trustedIdentity: {
+        actorId: 'player-1',
+        authMode: 'dev',
+        displayName: 'player-1',
+        email: null,
+        emailNormalized: null,
+        emailVerified: false,
+        roles: ['PLAYER'],
+      },
+      readJson: vi.fn().mockResolvedValue({
+        session: {
+          surface: 'creator',
+          sessionId: 'creator-session-1',
+          sessionStartedAt: '2026-05-21T18:00:00.000Z',
+          entrySource: 'digest',
+          entryFocus: 'resume',
+          wizardMode: 'apply',
+          draftMode: 'existing',
+          gameId: 'game-1',
+          characterId: 'char-1',
+          completedAt: '2026-05-21T18:05:00.000Z',
+          activeDurationMs: 90000,
+          elapsedDurationMs: 300000,
+          completionReason: 'unmount',
+        },
+      }),
+      sendJson,
+      logFlow,
+      readDevActorIdHeader: vi.fn(),
+    });
+
+    expect(handled).toBe(true);
+    expect(recordPregameObservationSession).toHaveBeenCalledWith({
+      actorId: 'player-1',
+      requestId: 'req-5',
+      summary: expect.objectContaining({
+        sessionId: 'creator-session-1',
+        entrySource: 'digest',
+        activeDurationMs: 90000,
+      }),
+    });
+    expect(logFlow).toHaveBeenCalledWith(
+      'PREGAME_METRIC',
+      expect.objectContaining({
+        metricName: 'CREATOR_SESSION_COMPLETED',
+      })
+    );
+    expect(sendJson).toHaveBeenCalledWith(expect.anything(), 202, { accepted: true });
+  });
 });
