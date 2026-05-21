@@ -52,6 +52,8 @@ The desired end state is a game-scoped planning system with stable artifact sema
 - Inbox surfaces are async-capable but remain largely approval- and notification-oriented rather than planning-oriented.
 - Chat is transcript-centric and does not yet preserve the semantics of discussing a particular draft revision.
 - Without explicit guardrails, future work could push social-planning concepts into the engine or leak persistence concerns upward into the web.
+- The system does not yet propagate a stable planning trace across browser activity, HTTP intake, queued command execution, and derived read models.
+- Pregame metrics are not yet expressed as backend-owned semantic events, so frontend-heavy iteration could otherwise make instrumentation brittle.
 
 ## 3. Target State
 
@@ -105,6 +107,7 @@ The system remains asynchronous by default. Live presence may improve responsive
 - A planning-hub read model that is distinct from transcript and sheet reads
 - A lightweight shared-artifact preview read that is distinct from the full character sheet
 - A digest layer derived from primary planning and conversation state
+- A tracing seam that can correlate browser session context, request context, command context, queue context, and async application context without changing product semantics
 
 ### Compatibility expectations
 
@@ -125,6 +128,8 @@ The product thesis is that busy groups need durable moves rather than synchronou
 - Do not collapse planning hub, conversation, full sheet, and digest into one oversized read model.
 - Do not expand the feature into cross-game social discovery or community browsing.
 - Do not redesign unrelated auth, gameplay, or approval architecture except where this feature requires narrow compatibility work.
+- Do not make pregame metrics depend on fragile frontend component names, DOM structure, or page-specific click handlers.
+- Do not require a browser telemetry SDK for metrics that can be derived from durable backend activity.
 
 ## 5. Guardrails
 
@@ -168,6 +173,30 @@ The product thesis is that busy groups need durable moves rather than synchronou
 - Important planning state must not exist only in a digest row.
 - Re-entry surfaces must route the user back to primary planning surfaces rather than becoming a long-term data silo.
 
+### Observability and tracing boundaries
+
+- Pregame metrics must be defined in terms of stable planning semantics such as `draft session started`, `draft session resumed`, `shared artifact published`, `artifact replied to`, `artifact reacted to`, `gm prompt published`, `gm prompt answered`, and `digest re-entry taken`.
+- Whenever one of those semantics already crosses a durable backend boundary, the backend log or command trace is the source of truth.
+- Frontend telemetry is allowed only for semantics that do not otherwise cross a durable boundary, primarily time-in-flow and explicit session boundary markers.
+- A future maximum tracing implementation must preserve correlation identifiers across:
+  - browser session or RUM session
+  - HTTP request to API
+  - command intake
+  - command log record
+  - SQS handoff
+  - dispatcher application
+  - any downstream AWS service calls
+- The correlation model must not assume synchronous completion. One user-visible planning move may span multiple traces and asynchronous workers.
+- The trace correlation contract must tolerate frontend refactors by using semantic event names and stable context fields such as actor, game, character, artifact revision, and prompt identity.
+- Trace or metric dimensions must avoid high-cardinality fields in CloudWatch metric identities. High-cardinality values belong in logs, annotations, metadata, or trace details, not in metric dimensions.
+
+### Metric ownership
+
+- `Creator active minutes per invited player` and `creator return sessions before first play` are product metrics owned by the planning-loop observability model, not by any individual page implementation.
+- `Share rate before first session`, `replies and reactions per shared artifact`, `chat-to-creator return rate`, and `GM prompt response rate` should be derived primarily from backend durable events and read-model context.
+- Aggregated business metrics should be emitted from backend logs in a form suitable for CloudWatch Logs Insights and CloudWatch Embedded Metric Format rather than from high-volume browser beacons.
+- If CloudWatch RUM is enabled later, it should provide session and performance context, not become the sole source of product-truth metrics.
+
 ### Failure behavior
 
 - Failed social actions must not destroy draft state or erase historical meaning.
@@ -179,6 +208,8 @@ The product thesis is that busy groups need durable moves rather than synchronou
 - Phone is the baseline interaction model.
 - Planning surfaces should load summary data first rather than requiring exhaustive sheet payloads to render useful state.
 - Desktop and tablet may reveal more simultaneous context, but they must not create a separate required workflow.
+- Metric capture should avoid adding steady-state network chatter from the browser when an equivalent backend trace already exists.
+- Aggregation should prefer logs, trace annotations, and EMF extraction over bespoke synchronous metric calls from request handlers.
 
 ### Test requirements
 

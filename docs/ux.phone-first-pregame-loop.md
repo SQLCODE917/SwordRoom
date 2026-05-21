@@ -54,6 +54,7 @@ The desired end state is a game-scoped planning experience with a default `Lobby
 - The full character sheet is authoritative, but it is too heavy for most quick pregame conversation.
 - Inbox surfaces support async status follow-up, but they do not yet act as planning re-entry surfaces.
 - The current experience supports async activity, but it does not yet make the draft-share-discuss-revise loop obvious.
+- Pregame success metrics exist as product goals, but not yet as durable semantic telemetry.
 
 ## 3. Target State
 
@@ -93,6 +94,24 @@ The final UX keeps character planning social without turning the product into li
 - Existing async command behavior remains the write model.
 - Existing inbox and approval flows remain valid during incremental rollout.
 - Tablet and desktop may show more simultaneous context, but the phone workflow remains the baseline and must stay complete.
+
+### Success measures
+
+The pregame loop should be evaluated with metrics that describe planning behavior semantically rather than mirroring a specific page layout.
+
+- `Creator active minutes per invited player` means time spent in game-scoped draft work before first play.
+- `Creator return sessions before first play` means distinct resumed drafting sessions after a player leaves and later re-enters the loop.
+- `Share rate before first session` means the percentage of invited players who publish at least one shared character artifact before the group's first live session.
+- `Replies and reactions per shared artifact` means social follow-up attached to a concrete shared draft revision.
+- `Chat-to-creator return rate` means the percentage of planning conversations that send a player back into draft editing or checkpoint sharing.
+- `GM prompt response rate` means the percentage of structured GM prompts that receive a relevant planning response during the pregame window.
+
+### Metric capture intent
+
+- Shared draft publication, replies, reactions, GM prompts, role claims, invite acceptance, and digest re-entry should be counted from backend durable events because they already cross stable system boundaries.
+- Creator session metrics should be derived from semantic route-entry, draft-save, share, submit, and route-exit style events rather than from specific component-level interactions.
+- Frontend telemetry should be limited to the minimum needed to understand time-in-flow and session boundaries. It must survive heavy UX iteration without requiring the metric model to be rewritten.
+- Future distributed tracing should treat browser session, HTTP request chain, command intake, queue handoff, and async command application as one correlated planning trace so later FE redesigns do not break observability.
 
 ### Phone shell
 

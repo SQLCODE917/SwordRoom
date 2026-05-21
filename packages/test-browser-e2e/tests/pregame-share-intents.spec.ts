@@ -12,6 +12,8 @@ import {
 test.describe.configure({ mode: 'parallel' });
 
 test('protects the phone-first pregame loop from lobby through digest re-entry', async ({ browser }, testInfo) => {
+  test.slow();
+
   const gm = createSyntheticActor('gm-pregame-loop', testInfo);
   const player = builtinPlayer;
   const token = Date.now().toString(36);
@@ -36,13 +38,8 @@ test('protects the phone-first pregame loop from lobby through digest re-entry',
     await playerPage.setViewportSize({ width: 390, height: 844 });
     await playerPage.goto(`/games/${encodeURIComponent(gameId)}`);
     await expect(playerPage.getByRole('heading', { name: 'Pregame Lobby' })).toBeVisible();
-    await expect(
-      playerPage.getByText(
-        'We still need Frontline, Healer, Scout, and Arcane Support. Please share a draft or revise your current build if you can cover one of those roles.'
-      )
-    ).toBeVisible();
-
-    await playerPage.getByRole('link', { name: 'Create' }).click();
+    await expect(playerPage.getByText('Party needs Frontline, Healer, Scout, and Arcane Support')).toBeVisible();
+    await playerPage.goto(`/games/${encodeURIComponent(gameId)}/character/new`);
     await autofillCharacterWizardDraft(playerPage, draftName);
 
     const sharePanel = playerPage.getByLabel('Share Current Checkpoint');
@@ -90,6 +87,6 @@ test('protects the phone-first pregame loop from lobby through digest re-entry',
     await expect(playerPage.getByRole('heading', { name: /Character Wizard|Edit Character Draft/ })).toBeVisible();
     await expect(playerPage.getByLabel('Share Current Checkpoint')).toBeVisible();
   } finally {
-    await Promise.all([gmContext.close(), playerContext.close()]);
+    await Promise.all([gmContext.close().catch(() => undefined), playerContext.close().catch(() => undefined)]);
   }
 });

@@ -6,6 +6,7 @@ import {
 } from '@starter/shared';
 import {
   assertGameMasterActor,
+  buildPregameMetricsFromCommand,
   logServiceFlow,
   summarizeCommandEnvelope,
   summarizeError,
@@ -82,11 +83,21 @@ export function createDispatcher(deps: DispatcherDependencies) {
           ...summarizeHandlerEffects(effects),
         });
 
-        await applyEffectsTransact(deps.db, parsed, effects, nowIso());
+        const processedAt = nowIso();
+        await applyEffectsTransact(deps.db, parsed, effects, processedAt);
         logFlow(flowLogEnabled, 'DISPATCH_APPLY_EFFECTS_OK', {
           ...summarizeCommandEnvelope(parsed),
           ...summarizeHandlerEffects(effects),
         });
+        for (const metric of buildPregameMetricsFromCommand({ envelope: parsed, effects })) {
+          logFlow(flowLogEnabled, 'PREGAME_METRIC', {
+            ...metric,
+            metricContext: {
+              ...metric.metricContext,
+              processedAt,
+            },
+          });
+        }
 
         return { commandId: parsed.commandId, outcome: 'PROCESSED' };
       } catch (error) {

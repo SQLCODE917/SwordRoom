@@ -98,6 +98,7 @@ The document must not over-specify ordinary implementation details that a compet
 - `docs/testing.md`
 - `docs/ui.md`
 - `docs/ux.phone-first-pregame-loop.md`
+- `docs/metrics.pregame-planning-loop.md`
 - `docs/performance.md`
 - `docs/operations.md`
 - `docs/writing-design-documents.md`
