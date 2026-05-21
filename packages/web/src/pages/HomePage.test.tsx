@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApiClient } from '../api/ApiClient';
+import { createApiClient, type GameItem, type PregameDigestEntry } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider, type AuthProvider } from '../auth/AuthProvider';
 import { useMyProfile } from '../hooks/useMyProfile';
 import { HomePage } from './HomePage';
@@ -42,6 +42,17 @@ function createAuth(): AuthProvider {
   };
 }
 
+function createApiClientMock(overrides?: Partial<ReturnType<typeof createApiClient>>): ReturnType<typeof createApiClient> {
+  return {
+    getMyCharacters: vi.fn(async () => []),
+    getMyGames: vi.fn(async () => []),
+    getGmGames: vi.fn(async () => []),
+    getPublicGames: vi.fn(async () => []),
+    getMyPregameDigest: vi.fn(async () => []),
+    ...overrides,
+  } as unknown as ReturnType<typeof createApiClient>;
+}
+
 describe('HomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,12 +71,7 @@ describe('HomePage', () => {
       loading: false,
       error: null,
     });
-    vi.mocked(createApiClient).mockReturnValue({
-      getMyCharacters: vi.fn(async () => []),
-      getMyGames: vi.fn(async () => []),
-      getGmGames: vi.fn(async () => []),
-      getPublicGames: vi.fn(async () => []),
-    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(createApiClient).mockReturnValue(createApiClientMock());
 
     render(
       <MemoryRouter>
@@ -89,7 +95,7 @@ describe('HomePage', () => {
       loading: false,
       error: null,
     });
-    vi.mocked(createApiClient).mockReturnValue({
+    vi.mocked(createApiClient).mockReturnValue(createApiClientMock({
       getMyCharacters: vi.fn(async () => [
         {
           gameId: 'PLAYER_CHARACTER_LIBRARY::player-aaa',
@@ -101,10 +107,7 @@ describe('HomePage', () => {
           },
         },
       ]),
-      getMyGames: vi.fn(async () => []),
-      getGmGames: vi.fn(async () => []),
-      getPublicGames: vi.fn(async () => []),
-    } as unknown as ReturnType<typeof createApiClient>);
+    }));
 
     render(
       <MemoryRouter>
@@ -132,7 +135,7 @@ describe('HomePage', () => {
       loading: false,
       error: null,
     });
-    vi.mocked(createApiClient).mockReturnValue({
+    vi.mocked(createApiClient).mockReturnValue(createApiClientMock({
       getMyCharacters: vi.fn(async () => [
         {
           gameId: 'game-1',
@@ -153,10 +156,7 @@ describe('HomePage', () => {
           },
         },
       ]),
-      getMyGames: vi.fn(async () => []),
-      getGmGames: vi.fn(async () => []),
-      getPublicGames: vi.fn(async () => []),
-    } as unknown as ReturnType<typeof createApiClient>);
+    }));
 
     render(
       <MemoryRouter>
@@ -180,7 +180,7 @@ describe('HomePage', () => {
       loading: false,
       error: null,
     });
-    vi.mocked(createApiClient).mockReturnValue({
+    vi.mocked(createApiClient).mockReturnValue(createApiClientMock({
       getMyCharacters: vi.fn(async () => [
         {
           gameId: 'game-1',
@@ -192,7 +192,7 @@ describe('HomePage', () => {
           },
         },
       ]),
-      getMyGames: vi.fn(async () => [
+      getMyGames: vi.fn(async (): Promise<GameItem[]> => [
         {
           gameId: 'game-1',
           name: 'Game One',
@@ -201,9 +201,7 @@ describe('HomePage', () => {
           version: 1,
         },
       ]),
-      getGmGames: vi.fn(async () => []),
-      getPublicGames: vi.fn(async () => []),
-    } as unknown as ReturnType<typeof createApiClient>);
+    }));
 
     render(
       <MemoryRouter>
@@ -232,9 +230,9 @@ describe('HomePage', () => {
       loading: false,
       error: null,
     });
-    vi.mocked(createApiClient).mockReturnValue({
+    vi.mocked(createApiClient).mockReturnValue(createApiClientMock({
       getMyCharacters: vi.fn(async () => []),
-      getMyGames: vi.fn(async () => [
+      getMyGames: vi.fn(async (): Promise<GameItem[]> => [
         {
           gameId: 'game-gm',
           name: 'GM Game',
@@ -243,7 +241,7 @@ describe('HomePage', () => {
           version: 3,
         },
       ]),
-      getGmGames: vi.fn(async () => [
+      getGmGames: vi.fn(async (): Promise<GameItem[]> => [
         {
           gameId: 'game-gm',
           name: 'GM Game',
@@ -252,8 +250,7 @@ describe('HomePage', () => {
           version: 3,
         },
       ]),
-      getPublicGames: vi.fn(async () => []),
-    } as unknown as ReturnType<typeof createApiClient>);
+    }));
 
     render(
       <MemoryRouter>
@@ -265,5 +262,83 @@ describe('HomePage', () => {
     expect(gameRow).toBeTruthy();
     const deleteButton = within(gameRow as HTMLElement).getByRole('button', { name: 'Delete' });
     expect(deleteButton.className).toContain('c-btn--destructive');
+  });
+
+  it('prioritizes resume planning when a pregame digest entry exists', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(createAuth());
+    vi.mocked(useMyProfile).mockReturnValue({
+      profile: {
+        playerId: 'player-aaa',
+        displayName: 'Local Player',
+        email: 'player@example.com',
+        roles: ['PLAYER'],
+      },
+      loading: false,
+      error: null,
+    });
+    vi.mocked(createApiClient).mockReturnValue(
+      createApiClientMock({
+        getMyPregameDigest: vi.fn(async (): Promise<PregameDigestEntry[]> => [
+          {
+            digestId: 'game-1:edit',
+            gameId: 'game-1',
+            gameName: 'Goblin Cave',
+            headline: 'Party needs Frontline',
+            detail: 'Your draft can still move toward Frontline.',
+            destination: 'EDIT_CHARACTER',
+            characterId: 'char-1',
+            createdAt: '2026-03-01T00:00:00.000Z',
+          },
+        ]),
+      })
+    );
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    const quickStart = await screen.findByText('Resume planning in Goblin Cave');
+    expect(quickStart).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
+  });
+
+  it('shows join, start, and create-first actions for phone-style quick entry', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(createAuth());
+    vi.mocked(useMyProfile).mockReturnValue({
+      profile: {
+        playerId: 'player-aaa',
+        displayName: 'Local Player',
+        email: 'player@example.com',
+        roles: ['PLAYER'],
+      },
+      loading: false,
+      error: null,
+    });
+    vi.mocked(createApiClient).mockReturnValue(
+      createApiClientMock({
+        getPublicGames: vi.fn(async (): Promise<GameItem[]> => [
+          {
+            gameId: 'game-public',
+            name: 'Goblin Cave',
+            visibility: 'PUBLIC',
+            gmPlayerId: 'gm-1',
+            version: 1,
+          },
+        ]),
+      })
+    );
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('Join Goblin Cave')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Join a Game' }).getAttribute('href')).toBe('/games/game-public/character/new');
+    expect(screen.getByRole('link', { name: 'Start a Game' }).getAttribute('href')).toBe('/gm/games');
+    expect(screen.getByRole('link', { name: 'Create a Character' }).getAttribute('href')).toBe('/games/game-public/character/new');
   });
 });

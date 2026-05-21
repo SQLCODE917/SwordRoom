@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { isPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
-import { createApiClient, type CharacterItem, type GameItem } from '../api/ApiClient';
+import { createApiClient, type CharacterItem, type GameItem, type PregameDigestEntry } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { CommandStatusPanel } from '../components/CommandStatusPanel';
@@ -14,6 +14,7 @@ interface DashboardState {
   myGames: GameItem[];
   gmGames: GameItem[];
   publicGames: GameItem[];
+  pregameDigest: PregameDigestEntry[];
 }
 
 const emptyState: DashboardState = {
@@ -21,6 +22,7 @@ const emptyState: DashboardState = {
   myGames: [],
   gmGames: [],
   publicGames: [],
+  pregameDigest: [],
 };
 
 const existingCharacterDisabledReason = 'You already have a character in this game.';
@@ -43,13 +45,14 @@ export function HomePage() {
       authMode: auth.mode,
     });
     try {
-      const [characters, myGames, gmGames, publicGames] = await Promise.all([
+      const [characters, myGames, gmGames, publicGames, pregameDigest] = await Promise.all([
         api.getMyCharacters(),
         api.getMyGames(),
         api.getGmGames(),
         api.getPublicGames(),
+        api.getMyPregameDigest(),
       ]);
-      setDashboard({ characters, myGames, gmGames, publicGames });
+      setDashboard({ characters, myGames, gmGames, publicGames, pregameDigest });
       setDataError(null);
       logWebFlow('WEB_HOME_LOAD_OK', {
         actorId: auth.actorId,
@@ -58,6 +61,7 @@ export function HomePage() {
         myGameCount: myGames.length,
         gmGameCount: gmGames.length,
         publicGameCount: publicGames.length,
+        pregameDigestCount: pregameDigest.length,
       });
     } catch (loadError) {
       setDataError(loadError instanceof Error ? loadError.message : String(loadError));
@@ -101,6 +105,17 @@ export function HomePage() {
     }
     return next;
   }, [dashboard.characters]);
+  const quickStart = useMemo(
+    () =>
+      createQuickStartViewModel({
+        actorId: auth.actorId,
+        dashboard,
+        joinedGameIds,
+        gmGameIds,
+        gameCharacterByGameId,
+      }),
+    [auth.actorId, dashboard, joinedGameIds, gmGameIds, gameCharacterByGameId]
+  );
 
   return (
     <div className="l-page">
@@ -109,6 +124,21 @@ export function HomePage() {
         <div className={`c-note ${error ? 'c-note--error' : 'c-note--info'}`}>
           <span className="t-small">{error ?? (loading ? 'Loading dashboard...' : `Signed in as ${profileName}.`)}</span>
         </div>
+
+        <Panel title="Pregame Quick Start" subtitle="Fastest path into active planning on a phone.">
+          <div className="c-note c-note--info">
+            <div className="t-small">{quickStart.headline}</div>
+            <div className="t-small">{quickStart.detail}</div>
+          </div>
+          <div className="l-row">
+            <ButtonLink to={quickStart.primaryAction.to}>{quickStart.primaryAction.label}</ButtonLink>
+            {quickStart.secondaryActions.map((action) => (
+              <ButtonLink key={`${action.label}:${action.to}`} to={action.to}>
+                {action.label}
+              </ButtonLink>
+            ))}
+          </div>
+        </Panel>
 
         <div className="l-split">
           <div className="l-col l-grow">
@@ -418,4 +448,156 @@ function canEditCharacter(character: CharacterItem): boolean {
 
 function isRemovableGameCharacter(character: CharacterItem): boolean {
   return !isPlayerCharacterLibraryGameId(character.gameId);
+}
+
+interface QuickStartAction {
+  label: string;
+  to: string;
+}
+
+interface QuickStartViewModel {
+  headline: string;
+  detail: string;
+  primaryAction: QuickStartAction;
+  secondaryActions: QuickStartAction[];
+}
+
+function createQuickStartViewModel(input: {
+  actorId: string;
+  dashboard: DashboardState;
+  joinedGameIds: ReadonlySet<string>;
+  gmGameIds: ReadonlySet<string>;
+  gameCharacterByGameId: ReadonlyMap<string, CharacterItem>;
+}): QuickStartViewModel {
+  const digestEntry = input.dashboard.pregameDigest[0] ?? null;
+  const joinableGame = input.dashboard.publicGames.find(
+    (game) => !input.joinedGameIds.has(game.gameId) && !input.gmGameIds.has(game.gameId)
+  ) ?? null;
+  const gameNeedingCharacter =
+    input.dashboard.myGames.find((game) => !input.gameCharacterByGameId.has(game.gameId)) ?? joinableGame ?? null;
+
+  if (digestEntry) {
+    return {
+      headline: `Resume planning in ${digestEntry.gameName}`,
+      detail: digestEntry.headline,
+      primaryAction: {
+        label: readPregameDigestActionLabel(digestEntry),
+        to: toPregameDigestPath(digestEntry),
+      },
+      secondaryActions: buildSecondaryQuickStartActions({
+        actorId: input.actorId,
+        joinableGame,
+        gameNeedingCharacter,
+      }),
+    };
+  }
+
+  if (joinableGame) {
+    return {
+      headline: `Join ${joinableGame.name}`,
+      detail: 'Start planning by creating a character draft for a visible game.',
+      primaryAction: {
+        label: 'Join a Game',
+        to: `/games/${encodeURIComponent(joinableGame.gameId)}/character/new`,
+      },
+      secondaryActions: buildSecondaryQuickStartActions({
+        actorId: input.actorId,
+        joinableGame,
+        gameNeedingCharacter,
+      }).filter((action) => action.label !== 'Join a Game'),
+    };
+  }
+
+  if (gameNeedingCharacter) {
+    return {
+      headline: `Create for ${gameNeedingCharacter.name}`,
+      detail: 'Enter the game-scoped creator and start the pregame loop immediately.',
+      primaryAction: {
+        label: 'Create a Character',
+        to: `/games/${encodeURIComponent(gameNeedingCharacter.gameId)}/character/new`,
+      },
+      secondaryActions: buildSecondaryQuickStartActions({
+        actorId: input.actorId,
+        joinableGame,
+        gameNeedingCharacter,
+      }).filter((action) => action.label !== 'Create a Character'),
+    };
+  }
+
+  return {
+    headline: 'Start the pregame loop',
+    detail: 'Create a game, join a visible game, or start a character draft with the fewest possible steps.',
+    primaryAction: {
+      label: 'Start a Game',
+      to: '/gm/games',
+    },
+    secondaryActions: buildSecondaryQuickStartActions({
+      actorId: input.actorId,
+      joinableGame,
+      gameNeedingCharacter,
+    }).filter((action) => action.label !== 'Start a Game'),
+  };
+}
+
+function buildSecondaryQuickStartActions(input: {
+  actorId: string;
+  joinableGame: GameItem | null;
+  gameNeedingCharacter: GameItem | null;
+}): QuickStartAction[] {
+  const actions: QuickStartAction[] = [];
+  if (input.joinableGame) {
+    actions.push({
+      label: 'Join a Game',
+      to: `/games/${encodeURIComponent(input.joinableGame.gameId)}/character/new`,
+    });
+  }
+  actions.push({
+    label: 'Start a Game',
+    to: '/gm/games',
+  });
+  actions.push({
+    label: 'Create a Character',
+    to: input.gameNeedingCharacter
+      ? `/games/${encodeURIComponent(input.gameNeedingCharacter.gameId)}/character/new`
+      : `/player/${encodeURIComponent(input.actorId)}/character/new`,
+  });
+  return dedupeQuickStartActions(actions);
+}
+
+function dedupeQuickStartActions(actions: QuickStartAction[]): QuickStartAction[] {
+  const seen = new Set<string>();
+  return actions.filter((action) => {
+    const key = `${action.label}:${action.to}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function toPregameDigestPath(entry: PregameDigestEntry): string {
+  if (entry.destination === 'CHAT') {
+    return `/games/${encodeURIComponent(entry.gameId)}/chat`;
+  }
+  if (entry.destination === 'CREATE_CHARACTER') {
+    return `/games/${encodeURIComponent(entry.gameId)}/character/new`;
+  }
+  if (entry.destination === 'EDIT_CHARACTER' && entry.characterId) {
+    return `/games/${encodeURIComponent(entry.gameId)}/characters/${encodeURIComponent(entry.characterId)}/edit`;
+  }
+  return `/games/${encodeURIComponent(entry.gameId)}`;
+}
+
+function readPregameDigestActionLabel(entry: PregameDigestEntry): string {
+  if (entry.destination === 'CHAT') {
+    return 'Open Chat';
+  }
+  if (entry.destination === 'CREATE_CHARACTER') {
+    return 'Create Character';
+  }
+  if (entry.destination === 'EDIT_CHARACTER') {
+    return 'Edit Draft';
+  }
+  return 'Resume Planning';
 }
