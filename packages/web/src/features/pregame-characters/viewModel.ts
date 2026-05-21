@@ -31,6 +31,7 @@ export type PregameCharactersViewModel =
       notice: string;
       workflow: PregameCharactersWorkflow;
       summaryLines: string[];
+      sharedReviewLines: string[];
       mineRows: CharacterWorkbenchMineRow[];
       sharedRows: CharacterWorkbenchSharedRow[];
       approvedRows: CharacterWorkbenchApprovedRow[];
@@ -128,6 +129,26 @@ export function createPregameCharactersViewModel(state: PregameCharactersState):
       ? `${state.gameCharacters.filter((character) => character.status === 'APPROVED').length} character${state.gameCharacters.filter((character) => character.status === 'APPROVED').length === 1 ? ' is' : 's are'} already approved for play.`
       : 'No characters are approved for play yet.',
   ];
+  const compareCount = state.sharedMessages.filter(
+    (message) => message.artifact?.kind === 'CHARACTER_DRAFT' && message.artifact.shareIntent === 'COMPARE_DIRECTIONS'
+  ).length;
+  const questionCount = state.sharedMessages.filter(
+    (message) => message.artifact?.kind === 'CHARACTER_DRAFT' && message.artifact.shareIntent === 'ASK_QUESTION'
+  ).length;
+  const promptAnswerCount = state.sharedMessages.filter(
+    (message) => message.artifact?.kind === 'CHARACTER_DRAFT' && message.artifact.shareIntent === 'ANSWER_GM_PROMPT'
+  ).length;
+  const sharedReviewLines = [
+    compareCount > 0
+      ? `${compareCount} shared ${compareCount === 1 ? 'draft is' : 'drafts are'} asking the table to compare directions.`
+      : 'No shared drafts are currently framed as compare-direction reviews.',
+    questionCount > 0
+      ? `${questionCount} shared ${questionCount === 1 ? 'draft is' : 'drafts are'} explicitly asking for discussion.`
+      : 'No shared drafts are currently waiting on an explicit question response.',
+    promptAnswerCount > 0
+      ? `${promptAnswerCount} shared ${promptAnswerCount === 1 ? 'draft is' : 'drafts are'} answering a GM planning prompt.`
+      : 'No shared drafts are currently marked as GM-prompt answers.',
+  ];
 
   return {
     status: 'ready',
@@ -149,6 +170,7 @@ export function createPregameCharactersViewModel(state: PregameCharactersState):
       charactersTo: `/games/${encodeURIComponent(state.game.gameId)}/characters`,
     },
     summaryLines,
+    sharedReviewLines,
     mineRows: state.myCharacters.map((character) => buildMineRow(character, latestShareByCharacterId.get(character.characterId) ?? null)),
     sharedRows: Array.from(latestShareByCharacterId.values())
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
@@ -217,12 +239,13 @@ function buildSharedRow(gameId: string, allChatMessages: readonly GameChatMessag
     discussionLabel,
     reactionSummaryLabel: buildCharacterDraftReactionSummaryLabel(allChatMessages, message.messageId),
     sheetTo: `/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(artifact.characterId)}`,
-    chatTo: buildSharedArtifactChatTo(gameId, artifact.characterName, artifact.snapshotVersion),
+    chatTo: buildSharedArtifactChatTo(gameId, message.messageId, artifact.characterName, artifact.snapshotVersion),
   };
 }
 
-function buildSharedArtifactChatTo(gameId: string, characterName: string, snapshotVersion: number): string {
+function buildSharedArtifactChatTo(gameId: string, messageId: string, characterName: string, snapshotVersion: number): string {
   const searchParams = new URLSearchParams();
+  searchParams.set('artifact', messageId);
   searchParams.set('draft', `About ${characterName} v${snapshotVersion}: `);
   return `/games/${encodeURIComponent(gameId)}/chat?${searchParams.toString()}`;
 }

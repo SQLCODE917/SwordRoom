@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { PregameWorkflowNav } from '../components/PregameWorkflowNav';
@@ -9,13 +9,19 @@ type WorkbenchTabId = 'mine' | 'shared' | 'approved';
 
 export function PregameCharactersPage() {
   const params = useParams<{ gameId: string }>();
+  const [searchParams] = useSearchParams();
   const gameId = params.gameId ?? 'game-1';
   const workbench = usePregameCharacters(gameId);
   const view = useMemo(() => createPregameCharactersViewModel(workbench.state), [workbench.state]);
-  const [activeTabId, setActiveTabId] = useState<WorkbenchTabId>('mine');
-  const [selectedSharedRowKey, setSelectedSharedRowKey] = useState<string | null>(null);
+  const initialSharedRowKey = searchParams.get('shared');
+  const [activeTabId, setActiveTabId] = useState<WorkbenchTabId>(initialSharedRowKey ? 'shared' : 'mine');
+  const [selectedSharedRowKey, setSelectedSharedRowKey] = useState<string | null>(initialSharedRowKey);
 
   useEffect(() => {
+    const requestedSharedRowKey = searchParams.get('shared');
+    if (requestedSharedRowKey) {
+      setActiveTabId('shared');
+    }
     if (view.status !== 'ready') {
       setSelectedSharedRowKey(null);
       return;
@@ -24,10 +30,14 @@ export function PregameCharactersPage() {
       setSelectedSharedRowKey(null);
       return;
     }
+    if (requestedSharedRowKey && view.sharedRows.some((row) => row.key === requestedSharedRowKey)) {
+      setSelectedSharedRowKey(requestedSharedRowKey);
+      return;
+    }
     if (!selectedSharedRowKey || !view.sharedRows.some((row) => row.key === selectedSharedRowKey)) {
       setSelectedSharedRowKey(view.sharedRows[0]!.key);
     }
-  }, [selectedSharedRowKey, view]);
+  }, [searchParams, selectedSharedRowKey, view]);
 
   const selectedSharedRow =
     view.status === 'ready' ? view.sharedRows.find((row) => row.key === selectedSharedRowKey) ?? view.sharedRows[0] ?? null : null;
@@ -104,6 +114,13 @@ export function PregameCharactersPage() {
             {activeTabId === 'shared' ? (
               <div className="c-pregame-workspace c-characters-workbench">
                 <div className="c-pregame-workspace__main">
+                  <div className="c-note c-note--info c-pregame-planning__summary">
+                    {view.sharedReviewLines.map((line) => (
+                      <div className="t-small" key={line}>
+                        {line}
+                      </div>
+                    ))}
+                  </div>
                   <div className="c-table" role="table" aria-label="Characters workbench shared">
                     <div className="c-table__head c-table__row" role="row">
                       <div className="c-table__cell t-small">Character</div>
@@ -154,6 +171,7 @@ export function PregameCharactersPage() {
                     {selectedSharedRow ? (
                       <div className="l-col">
                         <div className="c-note c-note--info c-pregame-planning__summary">
+                          <div className="t-small">Review focus</div>
                           <div className="t-small">{selectedSharedRow.shareIntentLabel}</div>
                           <div className="t-small">{selectedSharedRow.snapshotLabel}</div>
                           {selectedSharedRow.contextNote ? <div className="t-small">{selectedSharedRow.contextNote}</div> : null}
@@ -164,7 +182,7 @@ export function PregameCharactersPage() {
                         <div className="c-note c-note--info c-pregame-planning__summary">
                           <div className="t-small">Discussion</div>
                           <div className="t-small">{selectedSharedRow.discussionLabel}</div>
-                          <div className="t-small">Use Continue Discussion to jump into chat with reply context already staged.</div>
+                          <div className="t-small">Use Continue Discussion to jump into chat with this shared draft already foregrounded.</div>
                         </div>
                       </div>
                     ) : (

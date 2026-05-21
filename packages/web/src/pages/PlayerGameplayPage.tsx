@@ -175,6 +175,7 @@ export function PlayerGameplayPage() {
                 commandStatus={chat.commandStatus}
                 onSendMessage={chat.sendMessage}
                 onReactToArtifact={chat.sendCharacterDraftReaction}
+                activeArtifactMessageId={null}
               />
             </Panel>
           </aside>

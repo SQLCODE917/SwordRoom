@@ -356,6 +356,7 @@ describe('GameChatPage', () => {
     expect(screen.queryByText('Reaction: Party fit')).toBeNull();
     expect(screen.getByRole('button', { name: 'Preview' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reply' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Open In Characters' }).getAttribute('href')).toBe('/games/game-1/characters?shared=msg-1');
     expect(screen.getByRole('link', { name: 'Open Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
   });
 
@@ -646,6 +647,77 @@ describe('GameChatPage', () => {
 
     expect(await screen.findByText('Dungeon Delvers')).toBeTruthy();
     expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).value).toBe('About Aline v3: ');
+  });
+
+  it('foregrounds the active shared draft when discussion is opened from the workbench', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-1',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-1' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [
+          {
+            messageId: 'msg-1',
+            senderPlayerId: 'player-1',
+            senderDisplayName: 'Borin',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-1',
+            body: 'Sharing Borin for party feedback.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-1',
+              snapshotVersion: 2,
+              characterName: 'Borin',
+              race: 'HUMAN',
+              status: 'DRAFT',
+              shareIntent: 'ASK_QUESTION',
+              contextNote: 'Should I trade damage for more party support?',
+              abilitySummary: ['STR 16', 'DEX 10', 'MP 12'],
+              skillSummary: ['Fighter 1'],
+            },
+            createdAt: '2026-03-01T09:16:00.000Z',
+          },
+        ],
+      })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat?artifact=msg-1&draft=About%20Borin%20v2%3A%20']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('region', { name: 'Active draft discussion' })).toBeTruthy();
+    expect(screen.getByText('Borin v2 is the current draft under discussion.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reply To Active Draft' })).toBeTruthy();
+    expect(screen.getAllByRole('link', { name: 'Open In Characters' })[0]?.getAttribute('href')).toBe(
+      '/games/game-1/characters?shared=msg-1'
+    );
   });
 
   it('renders structured GM prompts and party role claims inside chat', async () => {

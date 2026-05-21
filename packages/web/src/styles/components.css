@@ -273,6 +273,11 @@
   line-height: 1.5;
 }
 
+.c-chat__line--active {
+  border-left: 4px solid var(--focus);
+  padding-left: var(--s-2);
+}
+
 .c-chat__speaker {
   font-weight: 600;
 }
@@ -285,6 +290,12 @@
 
 .c-chat__artifact-card {
   margin-top: var(--s-2);
+}
+
+.c-chat__focus {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--s-2);
 }
 
 .c-chat__artifact-actions {

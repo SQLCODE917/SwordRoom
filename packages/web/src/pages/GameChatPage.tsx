@@ -13,6 +13,7 @@ export function GameChatPage() {
   const [searchParams] = useSearchParams();
   const gameId = params.gameId ?? 'game-1';
   const chat = useGameChat(gameId, searchParams.get('draft'));
+  const activeArtifactMessageId = searchParams.get('artifact');
   const planning = usePregamePlanning(gameId, true);
 
   return (
@@ -40,6 +41,7 @@ export function GameChatPage() {
                 commandStatus={chat.commandStatus}
                 onSendMessage={chat.sendMessage}
                 onReactToArtifact={chat.sendCharacterDraftReaction}
+                activeArtifactMessageId={activeArtifactMessageId}
               />
             </div>
 

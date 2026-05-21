@@ -161,11 +161,12 @@ describe('PregameCharactersPage', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Shared (1)' }));
     const sharedTable = await screen.findByRole('table', { name: 'Characters workbench shared' });
+    expect(screen.getByText('1 shared draft is asking the table to compare directions.')).toBeTruthy();
     expect(within(sharedTable).getByText('Aline')).toBeTruthy();
     expect(within(sharedTable).getByText('Snapshot v3 · DRAFT')).toBeTruthy();
     expect(within(sharedTable).getByText('1 follow-up message · 1 reaction')).toBeTruthy();
     expect(within(sharedTable).getByRole('link', { name: 'Discuss' }).getAttribute('href')).toBe(
-      '/games/game-1/chat?draft=About+Aline+v3%3A+'
+      '/games/game-1/chat?artifact=msg-1&draft=About+Aline+v3%3A+'
     );
     expect(await screen.findByRole('heading', { name: 'Aline Preview' })).toBeTruthy();
     expect(screen.getByText('Compare directions')).toBeTruthy();
@@ -174,7 +175,7 @@ describe('PregameCharactersPage', () => {
     expect(screen.getByText('INT 17')).toBeTruthy();
     expect(screen.getByText('Skills: Priest 2')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Continue Discussion' }).getAttribute('href')).toBe(
-      '/games/game-1/chat?draft=About+Aline+v3%3A+'
+      '/games/game-1/chat?artifact=msg-1&draft=About+Aline+v3%3A+'
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Approved (1)' }));
@@ -182,5 +183,65 @@ describe('PregameCharactersPage', () => {
     expect(within(approvedTable).getByText('Aline')).toBeTruthy();
     expect(within(approvedTable).getByText('player-2')).toBeTruthy();
     expect(within(approvedTable).getByText('APPROVED')).toBeTruthy();
+  });
+
+  it('opens the shared review tab directly when a shared row key is requested', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(createAuth());
+    vi.mocked(createApiClient).mockReturnValue({
+      getGame: vi.fn(async () => ({
+        gameId: 'game-1',
+        name: 'Dungeon Delvers',
+        visibility: 'PUBLIC',
+        gmPlayerId: 'gm-1',
+        version: 1,
+      })),
+      getMyCharacters: vi.fn(async () => []),
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [{ playerId: 'player-2', displayName: 'Alice', role: 'PLAYER', characterId: 'char-2' }],
+        messages: [
+          {
+            messageId: 'msg-1',
+            senderPlayerId: 'player-2',
+            senderDisplayName: 'Alice',
+            senderRole: 'PLAYER',
+            senderCharacterId: 'char-2',
+            body: 'Sharing my healer draft.',
+            artifact: {
+              kind: 'CHARACTER_DRAFT',
+              characterId: 'char-2',
+              snapshotVersion: 3,
+              characterName: 'Aline',
+              race: 'ELF',
+              status: 'DRAFT',
+              shareIntent: 'COMPARE_DIRECTIONS',
+              contextNote: 'Option A stays Priest-heavy. Option B shifts into frontline support.',
+              abilitySummary: ['INT 17'],
+              skillSummary: ['Priest 2'],
+            },
+            createdAt: '2026-03-01T09:15:00.000Z',
+          },
+        ],
+      })),
+      getCharacter: vi.fn(async () => ({
+        gameId: 'game-1',
+        characterId: 'char-2',
+        ownerPlayerId: 'player-2',
+        status: 'DRAFT',
+        draft: { identity: { name: 'Aline' } },
+      })),
+    } as unknown as ReturnType<typeof createApiClient>);
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/characters?shared=msg-1']}>
+        <Routes>
+          <Route path="/games/:gameId/characters" element={<PregameCharactersPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('table', { name: 'Characters workbench shared' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Aline Preview' })).toBeTruthy();
   });
 });

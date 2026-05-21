@@ -32,6 +32,7 @@ interface GameChatPanelProps {
     artifact: SharedCharacterDraftArtifact;
     reaction: SharedCharacterDraftReaction;
   }) => Promise<void>;
+  activeArtifactMessageId: string | null;
 }
 
 export function GameChatPanel({
@@ -47,9 +48,11 @@ export function GameChatPanel({
   commandStatus,
   onSendMessage,
   onReactToArtifact,
+  activeArtifactMessageId,
 }: GameChatPanelProps) {
   const [previewArtifact, setPreviewArtifact] = useState<PreviewArtifactState | null>(null);
   const visibleMessages = chat.messages.filter((message) => message.artifact?.kind !== 'CHARACTER_DRAFT_REACTION');
+  const activeArtifactEntry = findActiveArtifactEntry(visibleMessages, activeArtifactMessageId);
 
   const closePreview = () => setPreviewArtifact(null);
   const replyToArtifact = (artifact: SharedCharacterDraftArtifact) => {
@@ -65,6 +68,27 @@ export function GameChatPanel({
           {error ?? (initialLoading ? 'Loading chat...' : 'IRC-style table chat for current game members.')}
         </span>
       </div>
+
+      {activeArtifactEntry && activeArtifactEntry.artifact?.kind === 'CHARACTER_DRAFT' ? (
+        <section className="c-note c-note--info c-chat__focus" aria-label="Active draft discussion">
+          <div className="l-col">
+            <div className="t-small">Active discussion</div>
+            <div className="t-small">{`${activeArtifactEntry.artifact.characterName} v${activeArtifactEntry.artifact.snapshotVersion} is the current draft under discussion.`}</div>
+            <div className="t-small">{`Share: ${formatCharacterDraftIntent(activeArtifactEntry.artifact)}`}</div>
+            {activeArtifactEntry.artifact.contextNote ? <div className="t-small">{activeArtifactEntry.artifact.contextNote}</div> : null}
+            <div className="t-small">Reply here to discuss it, or open Characters to review it in the workbench.</div>
+          </div>
+          <div className="l-row c-chat__artifact-actions">
+            <button className="c-btn" type="button" onClick={() => replyToArtifact(activeArtifactEntry.artifact)}>
+              Reply To Active Draft
+            </button>
+            <ButtonLink to={buildCharacterReviewTo(chat.gameId, activeArtifactEntry.messageId)}>Open In Characters</ButtonLink>
+            <ButtonLink to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(activeArtifactEntry.artifact.characterId)}`}>
+              Open Sheet
+            </ButtonLink>
+          </div>
+        </section>
+      ) : null}
 
       <div className="l-row c-chat__mobile-controls">
         <button className="c-btn" type="button" onClick={() => setMembersOpen(true)}>
@@ -87,7 +111,10 @@ export function GameChatPanel({
                   : null;
 
                 return (
-                  <div className="c-chat__line" key={message.messageId}>
+                  <div
+                    className={`c-chat__line ${message.messageId === activeArtifactMessageId ? 'c-chat__line--active' : ''}`.trim()}
+                    key={message.messageId}
+                  >
                     <span className="c-chat__time">[{formatChatTimestamp(message.createdAt)}]</span>{' '}
                     <span className="c-chat__speaker">{`<${message.senderDisplayName}>`}</span>{' '}
                     <span className="c-chat__body">{message.body}</span>
@@ -119,6 +146,7 @@ export function GameChatPanel({
                           <button className="c-btn" type="button" onClick={() => replyToArtifact(characterArtifact)}>
                             Reply
                           </button>
+                          <ButtonLink to={buildCharacterReviewTo(chat.gameId, message.messageId)}>Open In Characters</ButtonLink>
                           <ButtonLink to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(characterArtifact.characterId)}`}>
                             Open Sheet
                           </ButtonLink>
@@ -261,6 +289,7 @@ export function GameChatPanel({
                   {reactionOption.label}
                 </button>
               ))}
+              <ButtonLink to={buildCharacterReviewTo(chat.gameId, previewArtifact.messageId)}>Open In Characters</ButtonLink>
               <ButtonLink
                 to={`/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(previewArtifact.artifact.characterId)}`}
               >
@@ -302,6 +331,11 @@ interface PreviewArtifactState {
   artifact: SharedCharacterDraftArtifact;
 }
 
+interface ActiveArtifactEntry {
+  messageId: string;
+  artifact: SharedCharacterDraftArtifact;
+}
+
 function ChatMemberList({ participants }: { participants: GameChatState['participants'] }) {
   return (
     <div className="c-chat__members">
@@ -320,6 +354,27 @@ function ChatMemberList({ participants }: { participants: GameChatState['partici
       </ul>
     </div>
   );
+}
+
+function findActiveArtifactEntry(messages: GameChatState['messages'], activeArtifactMessageId: string | null): ActiveArtifactEntry | null {
+  if (activeArtifactMessageId === null) {
+    return null;
+  }
+
+  for (const message of messages) {
+    if (message.messageId !== activeArtifactMessageId) {
+      continue;
+    }
+    if (message.artifact?.kind !== 'CHARACTER_DRAFT') {
+      return null;
+    }
+    return {
+      messageId: message.messageId,
+      artifact: message.artifact,
+    };
+  }
+
+  return null;
 }
 
 function formatChatTimestamp(value: string): string {
@@ -347,6 +402,12 @@ function buildArtifactReplyDraft(artifact: SharedCharacterDraftArtifact, current
     return currentDraftBody;
   }
   return `${currentDraftBody.trimEnd()}\n${prefix}`;
+}
+
+function buildCharacterReviewTo(gameId: string, sharedRowKey: string): string {
+  const searchParams = new URLSearchParams();
+  searchParams.set('shared', sharedRowKey);
+  return `/games/${encodeURIComponent(gameId)}/characters?${searchParams.toString()}`;
 }
 
 function formatCharacterDraftIntent(artifact: SharedCharacterDraftArtifact): string {
