@@ -70,6 +70,7 @@ test('keeps shared character review and chat handoff usable from the phone-sized
 
     await playerPage.getByRole('tab', { name: /Shared \(1\)/ }).click();
     const previewPanel = playerPage.getByLabel(`${characterName} Preview`);
+    await expect(playerPage.getByText('No shared drafts are currently waiting on an explicit question response.')).toBeVisible();
     await expect(previewPanel.getByRole('heading', { name: `${characterName} Preview` })).toBeVisible();
     await expect(previewPanel.getByText('Snapshot v2 · DRAFT')).toBeVisible();
     await expect(previewPanel.getByText('INT 17 | MP 18')).toBeVisible();
@@ -77,7 +78,14 @@ test('keeps shared character review and chat handoff usable from the phone-sized
 
     await previewPanel.getByRole('link', { name: 'Continue Discussion' }).click();
     await expect(playerPage.getByRole('heading', { name: 'Game Chat' })).toBeVisible();
+    const activeDiscussion = playerPage.getByRole('region', { name: 'Active draft discussion' });
+    await expect(activeDiscussion).toBeVisible();
+    await expect(activeDiscussion.getByText(`${characterName} v2 is the current draft under discussion.`)).toBeVisible();
     await expect(playerPage.getByLabel('Message')).toHaveValue(`About ${characterName} v2: `);
+    await activeDiscussion.getByRole('link', { name: 'Open In Characters' }).click();
+    await expect(playerPage.getByRole('heading', { name: 'Characters Workbench' })).toBeVisible();
+    await expect(playerPage.getByRole('table', { name: 'Characters workbench shared' })).toBeVisible();
+    await expect(playerPage.getByRole('heading', { name: `${characterName} Preview` })).toBeVisible();
   } finally {
     await Promise.all([gmContext.close(), playerContext.close()]);
   }
