@@ -11,6 +11,7 @@ import type {
   GameplayViewResponse,
 } from '@starter/shared';
 import { logWebFlow, summarizeCommandEnvelope, summarizeError } from '../logging/flowLog';
+import { readActivePregameObservationHeaders } from '../logging/pregameObservationContext';
 
 export type CommandType =
   | 'CreateGame'
@@ -382,7 +383,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
   return {
     async postCommand<T extends CommandType>(input: { envelope: CommandEnvelopeInput<T> }): Promise<PostCommandResponse> {
-      const headers = await auth.withAuthHeaders({ 'content-type': 'application/json' });
+      const headers = await withObservedAuthHeaders(auth, { 'content-type': 'application/json' });
       const body = auth.withActor({
         envelope: input.envelope,
       });
@@ -412,7 +413,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       });
       const response = await requestJson<PlayerProfile>(`${baseUrl}/me/profile/sync`, {
         method: 'POST',
-        headers: await auth.withAuthHeaders({ 'content-type': 'application/json' }),
+        headers: await withObservedAuthHeaders(auth, { 'content-type': 'application/json' }),
         body: JSON.stringify(auth.withActor({})),
       });
       logWebFlow('WEB_API_POST_PROFILE_SYNC_OK', {
@@ -447,7 +448,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
       });
       const response = await requestJson<PlayerProfile>(`${baseUrl}/me`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_ME_OK', {
         actorId: auth.actorId,
@@ -480,7 +481,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
       });
       const response = await requestJson<CharacterItem[]>(`${baseUrl}/me/characters`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_MY_CHARACTERS_OK', {
         actorId: auth.actorId,
@@ -496,7 +497,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
       });
       const response = await requestJson<GameItem[]>(`${baseUrl}/me/games`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_MY_GAMES_OK', {
         actorId: auth.actorId,
@@ -512,7 +513,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
       });
       const response = await requestJson<PregameDigestEntry[]>(`${baseUrl}/me/pregame`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_PREGAME_DIGEST_OK', {
         actorId: auth.actorId,
@@ -528,7 +529,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
       });
       const response = await requestJson<GameItem[]>(`${baseUrl}/games/public`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_PUBLIC_GAMES_OK', {
         actorId: auth.actorId,
@@ -544,7 +545,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
       });
       const response = await requestJson<GameItem[]>(`${baseUrl}/gm/games`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_GM_GAMES_OK', {
         actorId: auth.actorId,
@@ -560,7 +561,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
       });
       const response = await requestJson<PlayerProfile[]>(`${baseUrl}/admin/users`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_ADMIN_USERS_OK', {
         actorId: auth.actorId,
@@ -576,7 +577,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
       });
       const response = await requestJson<GameItem[]>(`${baseUrl}/admin/games`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_ADMIN_GAMES_OK', {
         actorId: auth.actorId,
@@ -592,7 +593,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
       });
       const response = await requestJson<PlayerInboxItem[]>(`${baseUrl}/me/inbox`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_PLAYER_INBOX_OK', {
         actorId: auth.actorId,
@@ -611,7 +612,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       const response = await requestJson<GameActorContextResponse>(
         `${baseUrl}/games/${encodeURIComponent(gameId)}/me`,
         {
-          headers: await auth.withAuthHeaders(),
+          headers: await withObservedAuthHeaders(auth),
         }
       );
       logWebFlow('WEB_API_GET_GAME_ACTOR_CONTEXT_OK', {
@@ -631,7 +632,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         gameId,
       });
       const response = await requestJson<GMInboxItem[]>(`${baseUrl}/gm/${encodeURIComponent(gameId)}/inbox`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_GM_INBOX_OK', {
         actorId: auth.actorId,
@@ -649,7 +650,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         gameId,
       });
       const response = await requestJson<GameChatResponse>(`${baseUrl}/games/${encodeURIComponent(gameId)}/chat`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_GAME_CHAT_OK', {
         actorId: auth.actorId,
@@ -668,7 +669,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         gameId,
       });
       const response = await requestJson<PregamePlanningResponse>(`${baseUrl}/games/${encodeURIComponent(gameId)}/pregame`, {
-        headers: await auth.withAuthHeaders(),
+        headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_PREGAME_PLANNING_OK', {
         actorId: auth.actorId,
@@ -785,7 +786,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         `${baseUrl}/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(characterId)}/appearance/upload-url`,
         {
           method: 'POST',
-          headers: await auth.withAuthHeaders({ 'content-type': 'application/json' }),
+          headers: await withObservedAuthHeaders(auth, { 'content-type': 'application/json' }),
           body: JSON.stringify(input),
         }
       );
@@ -808,7 +809,7 @@ function normalizeBaseUrl(baseUrl: string): string {
 
 async function requestJsonOrNull<T>(url: string, auth: AuthProvider): Promise<T | null> {
   try {
-    const response = await fetch(url, { headers: await auth.withAuthHeaders() });
+    const response = await fetch(url, { headers: await withObservedAuthHeaders(auth) });
     if (response.status === 404) {
       return null;
     }
@@ -825,6 +826,16 @@ async function requestJsonOrNull<T>(url: string, auth: AuthProvider): Promise<T 
     });
     throw error;
   }
+}
+
+async function withObservedAuthHeaders(auth: AuthProvider, headers?: HeadersInit): Promise<Headers> {
+  const authHeaders = await auth.withAuthHeaders(headers);
+  const next = new Headers(authHeaders);
+  const observationHeaders = readActivePregameObservationHeaders();
+  for (const [name, value] of Object.entries(observationHeaders)) {
+    next.set(name, value);
+  }
+  return next;
 }
 
 async function requestJson<T>(url: string, init: RequestInit): Promise<T> {

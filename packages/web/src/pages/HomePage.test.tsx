@@ -302,7 +302,7 @@ describe('HomePage', () => {
     const quickStart = await screen.findByText('Resume planning in Goblin Cave');
     expect(quickStart).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe(
-      '/games/game-1/characters/char-1/edit?entry=home&focus=resume'
+      '/games/game-1/characters/char-1/edit?entry=digest&focus=resume'
     );
   });
 

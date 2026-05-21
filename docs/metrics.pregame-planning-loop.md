@@ -169,6 +169,7 @@ Capture the two metrics the backend cannot infer alone: creator active minutes a
 
 - Creator sessions can be counted and timed semantically.
 - Creator entries can be classified by stable sources such as `lobby`, `chat`, `digest`, or `characters`.
+- Creator-session semantics should piggyback on existing creator reads and commands through a stable shared request-context contract, rather than adding a new browser analytics request.
 
 **Contracts and Boundaries**
 

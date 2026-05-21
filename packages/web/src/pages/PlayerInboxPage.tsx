@@ -258,14 +258,14 @@ function toPregameDigestPath(entry: PregameDigestEntry): string {
   }
   if (entry.destination === 'CREATE_CHARACTER') {
     return appendCharacterWizardEntryContext(`/games/${encodeURIComponent(entry.gameId)}/character/new`, {
-      entrySource: 'inbox',
+      entrySource: 'digest',
       focus: 'resume',
     });
   }
   if (entry.destination === 'EDIT_CHARACTER' && entry.characterId) {
     return appendCharacterWizardEntryContext(
       `/games/${encodeURIComponent(entry.gameId)}/characters/${encodeURIComponent(entry.characterId)}/edit`,
-      { entrySource: 'inbox', focus: 'resume' }
+      { entrySource: 'digest', focus: 'resume' }
     );
   }
   return `/games/${encodeURIComponent(entry.gameId)}`;

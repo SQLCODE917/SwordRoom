@@ -50,6 +50,7 @@ import {
 import { usePregamePlanning } from '../features/pregame-planning';
 import { useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow } from '../logging/flowLog';
+import { activatePregameObservationContext, deactivatePregameObservationContext } from '../logging/pregameObservationContext';
 
 const stepTitles = ['Race', 'Dice A-H', 'Background rolls', 'Name/identity', 'EXP spend', 'Equipment cart', 'Submit'];
 
@@ -71,6 +72,7 @@ function CharacterWizardPageContent({
   const wizardMode: WizardMode = routePlayerId ? 'library' : 'apply';
   const routeGameId = params.gameId ?? (routePlayerId ? toPlayerCharacterLibraryGameId(routePlayerId) : 'game-1');
   const generatedCharacterIdRef = useRef<string>(createCharacterId());
+  const creatorSessionIdRef = useRef<string>(createCreatorSessionId());
   const routeCharacterId = params.characterId ?? generatedCharacterIdRef.current;
   const isEditMode = typeof params.characterId === 'string' && params.characterId.trim() !== '';
   const api = useMemo(() => createApiClient({ auth }), [auth]);
@@ -206,6 +208,24 @@ function CharacterWizardPageContent({
     ]
   );
   const returnToPath = wizardMode === 'apply' ? getCharacterWizardReturnPath(routeGameId, entryContext.entrySource) : null;
+
+  useEffect(() => {
+    const sessionId = creatorSessionIdRef.current;
+    activatePregameObservationContext({
+      surface: 'creator',
+      sessionId,
+      sessionStartedAt: new Date().toISOString(),
+      entrySource: entryContext.entrySource,
+      entryFocus: entryContext.focus,
+      wizardMode,
+      draftMode: isEditMode ? 'existing' : 'new',
+      gameId: wizardMode === 'apply' ? routeGameId : null,
+      characterId: routeCharacterId,
+    });
+    return () => {
+      deactivatePregameObservationContext(sessionId);
+    };
+  }, [entryContext.entrySource, entryContext.focus, isEditMode, routeCharacterId, routeGameId, wizardMode]);
 
   const { saveStateByStep, shareState, saveStepProgress, executeFinalAction, shareDraftToChat, claimPartyRoleInChat, refreshSnapshot } = useCharacterWizardWorkflow({
     api,
@@ -661,6 +681,13 @@ function CharacterWizardPageContent({
     });
   }
 
+}
+
+function createCreatorSessionId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `creator-${Date.now().toString(16)}`;
 }
 
 function readReturnActionLabel(entrySource: ReturnType<typeof readCharacterWizardEntryContext>['entrySource']): string {

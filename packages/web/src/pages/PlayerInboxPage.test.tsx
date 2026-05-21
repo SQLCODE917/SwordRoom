@@ -109,7 +109,7 @@ describe('PlayerInboxPage', () => {
     expect(resumePanel).toBeTruthy();
     expect(within(resumePanel as HTMLElement).getByText('Resume planning in Dungeon Delvers')).toBeTruthy();
     expect(within(resumePanel as HTMLElement).getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe(
-      '/games/game-1/characters/char-1/edit?entry=inbox&focus=resume'
+      '/games/game-1/characters/char-1/edit?entry=digest&focus=resume'
     );
     expect(within(resumePanel as HTMLElement).getByRole('link', { name: 'Open Chat: Forest Watch' }).getAttribute('href')).toBe(
       '/games/game-2/chat'
@@ -119,7 +119,7 @@ describe('PlayerInboxPage', () => {
     expect(within(digestTable).getByText('Dungeon Delvers')).toBeTruthy();
     expect(within(digestTable).getByText('Party needs Frontline')).toBeTruthy();
     expect(within(digestTable).getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe(
-      '/games/game-1/characters/char-1/edit?entry=inbox&focus=resume'
+      '/games/game-1/characters/char-1/edit?entry=digest&focus=resume'
     );
     expect(within(digestTable).getByRole('link', { name: 'Open Chat' }).getAttribute('href')).toBe('/games/game-2/chat');
 

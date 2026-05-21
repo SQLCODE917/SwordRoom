@@ -1,6 +1,7 @@
-import type { AnyCommandEnvelope, SharedChatArtifact } from '@starter/shared';
+import type { AnyCommandEnvelope, PregameObservationContext, SharedChatArtifact } from '@starter/shared';
 
 export type PregameMetricName =
+  | 'CREATOR_SESSION_STARTED'
   | 'CHARACTER_DRAFT_CREATED'
   | 'CHARACTER_DRAFT_SAVED'
   | 'CHARACTER_SUBMITTED_FOR_APPROVAL'
@@ -104,6 +105,41 @@ export function buildPregameMetricsFromCommand(input: {
   );
 
   return metrics;
+}
+
+export function buildPregameMetricsFromObservation(input: {
+  observation: PregameObservationContext;
+  actorId: string;
+  requestId: string;
+  path: string;
+}): PregameMetricLogData[] {
+  if (input.observation.surface !== 'creator' || !input.observation.sessionStart) {
+    return [];
+  }
+
+  return [
+    createPregameMetric({
+      metricName: 'CREATOR_SESSION_STARTED',
+      dimensions: {
+        surface: input.observation.surface,
+        entrySource: input.observation.entrySource,
+        entryFocus: input.observation.entryFocus,
+        wizardMode: input.observation.wizardMode,
+        draftMode: input.observation.draftMode,
+      },
+      context: {
+        actorId: input.actorId,
+        gameId: input.observation.gameId,
+        characterId: input.observation.characterId,
+        creatorSessionId: input.observation.sessionId,
+        creatorSessionStartedAt: input.observation.sessionStartedAt,
+        path: input.path,
+      },
+      trace: {
+        requestId: input.requestId,
+      },
+    }),
+  ];
 }
 
 function buildPregameMetricsFromArtifact(input: {

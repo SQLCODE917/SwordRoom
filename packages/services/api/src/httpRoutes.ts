@@ -1,4 +1,5 @@
 import type { IncomingMessage } from 'node:http';
+import { buildPregameMetricsFromObservation, readPregameObservationContext } from '@starter/services-shared';
 import type { DbAccess } from '@starter/services-shared';
 import type { ResolvedActorIdentity } from './auth.js';
 import type { ApiRoute } from './apiTypes.js';
@@ -63,6 +64,18 @@ export async function dispatchApiRoute(input: ApiRouteDispatchInput): Promise<bo
     readDevActorIdHeader: input.readDevActorIdHeader,
     readJsonBody,
   });
+
+  const observation = readPregameObservationContext(input.req.headers as Record<string, string | string[] | undefined>);
+  if (observation) {
+    for (const metric of buildPregameMetricsFromObservation({
+      observation,
+      actorId: identity.actorId,
+      requestId: input.requestId,
+      path: input.url.pathname,
+    })) {
+      input.logFlow('PREGAME_METRIC', metric as unknown as Record<string, unknown>);
+    }
+  }
 
   await matched.route.handler({
     req: input.req,

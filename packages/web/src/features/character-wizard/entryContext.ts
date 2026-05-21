@@ -1,4 +1,4 @@
-export type CharacterWizardEntrySource = 'direct' | 'home' | 'inbox' | 'lobby' | 'chat' | 'characters';
+export type CharacterWizardEntrySource = 'direct' | 'home' | 'inbox' | 'digest' | 'lobby' | 'chat' | 'characters';
 
 export type CharacterWizardEntryFocus = 'start' | 'resume' | 'prompt' | 'role' | 'revise' | 'review';
 
@@ -36,7 +36,7 @@ export function getCharacterWizardReturnPath(gameId: string, entrySource: Charac
   if (entrySource === 'characters') {
     return `/games/${encodeURIComponent(gameId)}/characters`;
   }
-  if (entrySource === 'inbox') {
+  if (entrySource === 'inbox' || entrySource === 'digest') {
     return '/me/inbox';
   }
   if (entrySource === 'home') {
@@ -46,7 +46,7 @@ export function getCharacterWizardReturnPath(gameId: string, entrySource: Charac
 }
 
 function readEntrySource(value: string | null): CharacterWizardEntrySource {
-  if (value === 'home' || value === 'inbox' || value === 'lobby' || value === 'chat' || value === 'characters') {
+  if (value === 'home' || value === 'inbox' || value === 'digest' || value === 'lobby' || value === 'chat' || value === 'characters') {
     return value;
   }
   return 'direct';

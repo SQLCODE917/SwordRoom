@@ -75,6 +75,9 @@ function readDetail(entryContext: CharacterWizardEntryContext): string {
   if (entryContext.entrySource === 'inbox') {
     return 'Opened from Inbox as the shortest path back into active planning work.';
   }
+  if (entryContext.entrySource === 'digest') {
+    return 'Opened from Pregame Digest as the shortest path back into the current planning loop.';
+  }
   if (entryContext.entrySource === 'home') {
     return 'Opened from Home to get you into the pregame loop with minimal navigation.';
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPregameMetricsFromCommand } from './pregameMetrics.js';
+import { buildPregameMetricsFromCommand, buildPregameMetricsFromObservation } from './pregameMetrics.js';
 
 describe('pregameMetrics', () => {
   it('derives semantic metrics for a shared draft publish command', () => {
@@ -84,5 +84,54 @@ describe('pregameMetrics', () => {
     });
 
     expect(metrics).toEqual([]);
+  });
+
+  it('emits a creator session metric when a creator session first becomes observable', () => {
+    const metrics = buildPregameMetricsFromObservation({
+      observation: {
+        surface: 'creator',
+        sessionId: 'creator-session-1',
+        sessionStartedAt: '2026-05-21T18:00:00.000Z',
+        sessionStart: true,
+        entrySource: 'chat',
+        entryFocus: 'prompt',
+        wizardMode: 'apply',
+        draftMode: 'existing',
+        gameId: 'game-1',
+        characterId: 'char-1',
+      },
+      actorId: 'player-1',
+      requestId: 'req-1',
+      path: '/games/game-1/characters/char-1/edit',
+    });
+
+    expect(metrics).toEqual([
+      {
+        metricSchema: 'pregame.v1',
+        metricKind: 'counter',
+        metricName: 'CREATOR_SESSION_STARTED',
+        metricValue: 1,
+        metricUnit: 'Count',
+        metricDimensions: {
+          surface: 'creator',
+          entrySource: 'chat',
+          entryFocus: 'prompt',
+          wizardMode: 'apply',
+          draftMode: 'existing',
+        },
+        metricContext: {
+          actorId: 'player-1',
+          gameId: 'game-1',
+          characterId: 'char-1',
+          creatorSessionId: 'creator-session-1',
+          creatorSessionStartedAt: '2026-05-21T18:00:00.000Z',
+          path: '/games/game-1/characters/char-1/edit',
+        },
+        metricTrace: {
+          requestId: 'req-1',
+          commandId: null,
+        },
+      },
+    ]);
   });
 });

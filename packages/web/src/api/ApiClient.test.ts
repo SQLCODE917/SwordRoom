@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient, getApiBaseUrl } from './ApiClient';
 import { createDevAuthProvider, writeDevSession } from '../auth/DevAuthProvider';
+import { activatePregameObservationContext, deactivatePregameObservationContext } from '../logging/pregameObservationContext';
 
 describe('getApiBaseUrl', () => {
   it('uses default local API base when env is unset', () => {
@@ -12,6 +13,7 @@ describe('createApiClient', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     window.localStorage.clear();
+    deactivatePregameObservationContext('creator-session-1');
   });
 
   it('posts one command with dev bypass actor id', async () => {
@@ -85,5 +87,43 @@ describe('createApiClient', () => {
     const request = firstCall?.[1] as RequestInit | undefined;
     const parsedBody = JSON.parse(String(request?.body)) as { bypassActorId?: string };
     expect(parsedBody.bypassActorId).toBe('player-aaa');
+  });
+
+  it('adds semantic creator observation headers to existing requests without an extra network call', async () => {
+    writeDevSession({ username: 'player-aaa', actorId: 'player-aaa' });
+    activatePregameObservationContext({
+      surface: 'creator',
+      sessionId: 'creator-session-1',
+      sessionStartedAt: '2026-05-21T18:00:00.000Z',
+      entrySource: 'digest',
+      entryFocus: 'resume',
+      wizardMode: 'apply',
+      draftMode: 'existing',
+      gameId: 'game-1',
+      characterId: 'char-1',
+    });
+
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => [],
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const api = createApiClient({
+      baseUrl: 'http://localhost:3000',
+      auth: createDevAuthProvider({ VITE_AUTH_MODE: 'dev', VITE_DEV_ACTOR_ID: 'player-aaa' }),
+    });
+
+    await api.getMyCharacters();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const firstCall = (fetchMock.mock.calls as unknown[][])[0];
+    const request = firstCall?.[1] as RequestInit | undefined;
+    const headers = new Headers(request?.headers);
+    expect(headers.get('x-swordworld-pregame-surface')).toBe('creator');
+    expect(headers.get('x-swordworld-pregame-session-id')).toBe('creator-session-1');
+    expect(headers.get('x-swordworld-pregame-session-start')).toBe('1');
+    expect(headers.get('x-swordworld-pregame-entry-source')).toBe('digest');
+    expect(headers.get('x-swordworld-pregame-draft-mode')).toBe('existing');
   });
 });
