@@ -452,7 +452,7 @@ describe('POST /commands', () => {
     });
   });
 
-  it('rejects a new game-scoped draft save when the target game is not public', async () => {
+  it('allows a new game-scoped draft save for a private game member', async () => {
     const db = makeDbMock();
     db.gameRepository.getGameMetadata = async () =>
       ({
@@ -469,6 +469,18 @@ describe('POST /commands', () => {
         version: 1,
       }) as any;
     db.characterRepository.getCharacter = async () => null;
+    db.membershipRepository.getMembership = async () =>
+      ({
+        pk: 'GAME#game-1',
+        sk: 'MEMBERSHIP#player-1',
+        type: 'GameMembership',
+        gameId: 'game-1',
+        playerId: 'player-1',
+        roles: ['PLAYER'],
+        joinedAt: '2026-03-01T00:00:00.000Z',
+        invitedByPlayerId: 'gm-1',
+        source: 'INVITE',
+      }) as any;
 
     const api = createApiService({
       db,
@@ -498,8 +510,61 @@ describe('POST /commands', () => {
           },
         },
       })
+    ).resolves.toMatchObject({
+      accepted: true,
+      commandId: '33333333-3333-4333-8333-333333333333',
+      status: 'ACCEPTED',
+    });
+  });
+
+  it('rejects a new game-scoped draft save when the actor lacks access to a private game', async () => {
+    const db = makeDbMock();
+    db.gameRepository.getGameMetadata = async () =>
+      ({
+        pk: 'GAME#game-1',
+        sk: 'METADATA',
+        type: 'GameMetadata',
+        gameId: 'game-1',
+        name: 'Private Game',
+        visibility: 'PRIVATE',
+        createdByPlayerId: 'gm-1',
+        gmPlayerId: 'gm-1',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+        version: 1,
+      }) as any;
+    db.characterRepository.getCharacter = async () => null;
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: new InMemoryFifoQueue(),
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    await expect(
+      api.postCommands({
+        bypassActorId: 'player-1',
+        envelope: {
+          commandId: '34333333-3333-4333-8333-333333333333',
+          gameId: 'game-1',
+          type: 'SaveCharacterDraft',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          payload: {
+            characterId: 'char-new',
+            race: 'HUMAN',
+            raisedBy: 'HUMANS',
+            subAbility: { A: 1, B: 1, C: 1, D: 1, E: 1, F: 1, G: 1, H: 1 },
+            identity: { name: 'Private Draft', age: null, gender: null },
+            purchases: [],
+            cart: {},
+          },
+        },
+      })
     ).rejects.toMatchObject({
-      code: 'GAME_NOT_PUBLIC',
+      code: 'GAME_ACCESS_REQUIRED',
       statusCode: 403,
     });
   });
@@ -536,6 +601,65 @@ describe('POST /commands', () => {
     ).rejects.toMatchObject({
       code: 'PLAYER_CHARACTER_OWNER_REQUIRED',
       statusCode: 403,
+    });
+  });
+
+  it('allows character submission for approval in a private game when the owner is a member', async () => {
+    const db = makeDbMock();
+    db.gameRepository.getGameMetadata = async () =>
+      ({
+        pk: 'GAME#game-1',
+        sk: 'METADATA',
+        type: 'GameMetadata',
+        gameId: 'game-1',
+        name: 'Private Game',
+        visibility: 'PRIVATE',
+        createdByPlayerId: 'gm-1',
+        gmPlayerId: 'gm-1',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z',
+        version: 1,
+      }) as any;
+    db.membershipRepository.getMembership = async () =>
+      ({
+        pk: 'GAME#game-1',
+        sk: 'MEMBERSHIP#player-1',
+        type: 'GameMembership',
+        gameId: 'game-1',
+        playerId: 'player-1',
+        roles: ['PLAYER'],
+        joinedAt: '2026-03-01T00:00:00.000Z',
+        invitedByPlayerId: 'gm-1',
+        source: 'INVITE',
+      }) as any;
+
+    const api = createApiService({
+      db,
+      uploads: makeUploadsMock(),
+      queue: new InMemoryFifoQueue(),
+      queueUrl: 'commands.fifo',
+      jwtBypass: true,
+    });
+
+    await expect(
+      api.postCommands({
+        bypassActorId: 'player-1',
+        envelope: {
+          commandId: '55555555-5555-4555-8555-555555555555',
+          gameId: 'game-1',
+          type: 'SubmitCharacterForApproval',
+          schemaVersion: 1,
+          createdAt: '2026-03-01T00:00:00.000Z',
+          payload: {
+            characterId: 'char-1',
+            expectedVersion: 1,
+          },
+        },
+      })
+    ).resolves.toMatchObject({
+      accepted: true,
+      commandId: '55555555-5555-4555-8555-555555555555',
+      status: 'ACCEPTED',
     });
   });
 

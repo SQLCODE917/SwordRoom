@@ -4,7 +4,7 @@ import type { CharacterItem, GameItem } from '../../api/ApiClient';
 export function useCharacterWizardRouteContext(input: {
   actorId: string | null;
   api: {
-    getPublicGames(): Promise<GameItem[]>;
+    getGame(gameId: string): Promise<GameItem | null>;
     getMyCharacters(): Promise<CharacterItem[]>;
   };
   isEditMode: boolean;
@@ -28,12 +28,9 @@ export function useCharacterWizardRouteContext(input: {
             throw new Error(`Player "${input.routePlayerId ?? 'unknown'}" does not match the signed-in actor.`);
           }
         } else if (!input.isEditMode) {
-          const game = (await input.api.getPublicGames()).find((item) => item.gameId === input.routeGameId) ?? null;
+          const game = await input.api.getGame(input.routeGameId);
           if (!game) {
             throw new Error(`Game ${input.routeGameId} was not found.`);
-          }
-          if (game.visibility !== 'PUBLIC') {
-            throw new Error(`${game.name} is not a public game`);
           }
         }
 

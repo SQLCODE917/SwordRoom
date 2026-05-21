@@ -5,7 +5,19 @@ source scripts/local/load-env.sh
 aws_ddb() { aws --region "$AWS_REGION" --endpoint-url "$DDB_ENDPOINT" dynamodb "$@"; }
 
 put_item() {
-  aws_ddb put-item --table-name "$GAMESTATE_TABLE" --item "$1" || true
+  local item="$1"
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    if aws_ddb put-item --table-name "$GAMESTATE_TABLE" --item "$item"; then
+      return 0
+    fi
+    if [[ "$attempt" -lt 5 ]]; then
+      sleep 1
+    fi
+  done
+
+  echo "Failed to seed item into $GAMESTATE_TABLE after 5 attempts" >&2
+  return 1
 }
 
 now="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"

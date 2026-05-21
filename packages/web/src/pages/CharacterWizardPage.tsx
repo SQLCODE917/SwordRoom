@@ -371,7 +371,7 @@ function CharacterWizardPageContent({
             ? 'Edit an existing character draft. Each save and final action sends one command, then polls until terminal.'
             : wizardMode === 'library'
               ? 'Create a character in your saved character library. Saving and creating persist drafts owned by the signed-in player.'
-              : 'Create a new character application for a public game. Each save and submit sends one command, then polls until terminal.'
+              : "Create or revise a character inside this game's pregame planning loop. Each save and submit sends one command, then polls until terminal."
         }
       >
         <div className="l-col">

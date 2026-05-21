@@ -802,6 +802,104 @@ describe('GameChatPage', () => {
     expect(screen.getByText('Current plan is to cover Frontline.')).toBeTruthy();
   });
 
+  it('routes Answer In Creator to the existing game draft when the viewer already has one', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-1',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-1' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-1', displayName: 'Borin', role: 'PLAYER', characterId: 'char-1' },
+        ],
+        messages: [],
+      })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const planningPanel = await screen.findByRole('heading', { name: 'Pregame Planning' });
+    const panel = planningPanel.closest('section') ?? planningPanel.parentElement;
+    expect(panel).toBeTruthy();
+    expect(within(panel as HTMLElement).getByRole('link', { name: 'Answer In Creator' }).getAttribute('href')).toBe(
+      '/games/game-1/characters/char-1/edit?entry=chat&focus=prompt'
+    );
+  });
+
+  it('routes Answer In Creator to a new game draft when the viewer does not have one yet', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'player-2',
+        withActor: <T extends Record<string, unknown>>(body: T) => ({ ...body, bypassActorId: 'player-2' }),
+      })
+    );
+    vi.mocked(createApiClient).mockReturnValue({
+      getGameChat: vi.fn(async () => ({
+        gameId: 'game-1',
+        gameName: 'Dungeon Delvers',
+        participants: [
+          { playerId: 'gm-1', displayName: '@Zed GM', role: 'GM', characterId: null },
+          { playerId: 'player-2', displayName: 'Mira', role: 'PLAYER', characterId: null },
+        ],
+        messages: [],
+      })),
+      getPregamePlanning: vi.fn(async () => createPregamePlanningResponse()),
+    } as unknown as ReturnType<typeof createApiClient>);
+    vi.mocked(useCommandWorkflow).mockReturnValue({
+      status: {
+        state: 'Idle',
+        commandId: null,
+        message: 'No command submitted yet.',
+        errorCode: null,
+        errorMessage: null,
+      },
+      isRunning: false,
+      resetStatus: vi.fn(),
+      submitAndAwait: vi.fn(),
+      submitEnvelopeAndAwait: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+        <Routes>
+          <Route path="/games/:gameId/chat" element={<GameChatPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    const planningPanel = await screen.findByRole('heading', { name: 'Pregame Planning' });
+    const panel = planningPanel.closest('section') ?? planningPanel.parentElement;
+    expect(panel).toBeTruthy();
+    expect(within(panel as HTMLElement).getByRole('link', { name: 'Answer In Creator' }).getAttribute('href')).toBe(
+      '/games/game-1/character/new?entry=chat&focus=prompt'
+    );
+  });
+
   it('keeps the steady loaded state visible during background polling', async () => {
     let resolveRefresh!: (value: GameChatResponse) => void;
     const setIntervalSpy = vi.spyOn(window, 'setInterval').mockImplementation(((handler: TimerHandler) => {

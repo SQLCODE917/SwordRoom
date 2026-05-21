@@ -330,9 +330,11 @@ async function assertSaveCharacterDraftAuthorized(
   }
 
   const game = await requireActiveGameMetadata(deps.db, envelope.gameId);
-  if (game.visibility !== 'PUBLIC') {
-    throw createApiError(`game "${game.name}" is not public`, 'GAME_NOT_PUBLIC', 403);
+  if (game.visibility === 'PUBLIC') {
+    return;
   }
+
+  await requireMembership(deps, envelope.gameId, envelope.actorId);
 }
 
 async function assertSubmitCharacterForApprovalAuthorized(
@@ -348,9 +350,11 @@ async function assertSubmitCharacterForApprovalAuthorized(
   }
 
   const game = await requireActiveGameMetadata(deps.db, envelope.gameId);
-  if (game.visibility !== 'PUBLIC') {
-    throw createApiError(`game "${game.name}" is not public`, 'GAME_NOT_PUBLIC', 403);
+  if (game.visibility === 'PUBLIC') {
+    return;
   }
+
+  await requireMembership(deps, envelope.gameId, envelope.actorId);
 }
 
 async function assertSendGameChatMessageAuthorized(

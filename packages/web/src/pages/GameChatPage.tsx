@@ -3,6 +3,7 @@ import { GameChatPanel } from '../components/GameChatPanel';
 import { Panel } from '../components/Panel';
 import { PregamePlanningPanel } from '../components/PregamePlanningPanel';
 import { PregameWorkflowNav } from '../components/PregameWorkflowNav';
+import { useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { appendCharacterWizardEntryContext } from '../features/character-wizard';
 import { usePregamePlanning } from '../features/pregame-planning';
@@ -11,10 +12,16 @@ import { useGameChat } from '../hooks/useGameChat';
 export function GameChatPage() {
   const params = useParams<{ gameId: string }>();
   const [searchParams] = useSearchParams();
+  const auth = useAuthProvider();
   const gameId = params.gameId ?? 'game-1';
   const chat = useGameChat(gameId, searchParams.get('draft'));
   const activeArtifactMessageId = searchParams.get('artifact');
   const planning = usePregamePlanning(gameId, true);
+  const creatorFocus = planning.state.status === 'ready' && planning.state.planning.activePrompt ? 'prompt' : 'revise';
+  const creatorTarget = appendCharacterWizardEntryContext(readChatCreatorTarget(chat.chat, auth.actorId), {
+    entrySource: 'chat',
+    focus: creatorFocus,
+  });
 
   return (
     <div className="l-page">
@@ -51,14 +58,7 @@ export function GameChatPage() {
                 actions={
                   <div className="l-row">
                     <ButtonLink to={`/games/${encodeURIComponent(gameId)}`}>Open Lobby</ButtonLink>
-                    <ButtonLink
-                      to={appendCharacterWizardEntryContext(`/games/${encodeURIComponent(gameId)}/character/new`, {
-                        entrySource: 'chat',
-                        focus: planning.state.status === 'ready' && planning.state.planning.activePrompt ? 'prompt' : 'revise',
-                      })}
-                    >
-                      Answer In Creator
-                    </ButtonLink>
+                    <ButtonLink to={creatorTarget}>Answer In Creator</ButtonLink>
                   </div>
                 }
               />
@@ -68,4 +68,12 @@ export function GameChatPage() {
       </Panel>
     </div>
   );
+}
+
+function readChatCreatorTarget(chat: { gameId: string; participants: Array<{ playerId: string; characterId: string | null }> }, actorId: string): string {
+  const actorCharacterId = chat.participants.find((participant) => participant.playerId === actorId)?.characterId ?? null;
+  if (actorCharacterId) {
+    return `/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(actorCharacterId)}/edit`;
+  }
+  return `/games/${encodeURIComponent(chat.gameId)}/character/new`;
 }
