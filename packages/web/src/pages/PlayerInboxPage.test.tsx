@@ -105,6 +105,16 @@ describe('PlayerInboxPage', () => {
       </MemoryRouter>
     );
 
+    const resumePanel = (await screen.findByRole('heading', { name: 'Resume Planning' })).closest('section');
+    expect(resumePanel).toBeTruthy();
+    expect(within(resumePanel as HTMLElement).getByText('Resume planning in Dungeon Delvers')).toBeTruthy();
+    expect(within(resumePanel as HTMLElement).getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe(
+      '/games/game-1/characters/char-1/edit'
+    );
+    expect(within(resumePanel as HTMLElement).getByRole('link', { name: 'Open Chat: Forest Watch' }).getAttribute('href')).toBe(
+      '/games/game-2/chat'
+    );
+
     const digestTable = await screen.findByRole('table', { name: 'Pregame Digest Items' });
     expect(within(digestTable).getByText('Dungeon Delvers')).toBeTruthy();
     expect(within(digestTable).getByText('Party needs Frontline')).toBeTruthy();

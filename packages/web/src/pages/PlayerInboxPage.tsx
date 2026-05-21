@@ -100,6 +100,7 @@ export function PlayerInboxPage() {
 
   const noticeClassName = useMemo(() => `c-note ${error ? 'c-note--error' : 'c-note--info'}`, [error]);
   const placeholderText = loading ? 'Loading inbox...' : 'No inbox items yet.';
+  const quickResume = useMemo(() => createPregameResumeViewModel(pregameDigest), [pregameDigest]);
 
   return (
     <div className="l-page">
@@ -108,6 +109,21 @@ export function PlayerInboxPage() {
         <div className={noticeClassName} role="note" aria-live="polite">
           <span className="t-small">{error ?? 'Inbox refreshes automatically.'}</span>
         </div>
+
+        <Panel title="Resume Planning" subtitle="Fastest path back into active pregame work.">
+          <div className="c-note c-note--info">
+            <div className="t-small">{quickResume.headline}</div>
+            <div className="t-small">{quickResume.detail}</div>
+          </div>
+          <div className="l-row">
+            <ButtonLink to={quickResume.primaryAction.to}>{quickResume.primaryAction.label}</ButtonLink>
+            {quickResume.secondaryActions.map((action) => (
+              <ButtonLink key={`${action.label}:${action.to}`} to={action.to}>
+                {action.label}
+              </ButtonLink>
+            ))}
+          </div>
+        </Panel>
 
         <Panel title="Pregame Digest" subtitle="Re-entry back into active planning loops.">
           <div className="c-table" role="table" aria-label="Pregame Digest Items">
@@ -259,6 +275,46 @@ function readPregameDigestActionLabel(entry: PregameDigestEntry): string {
     return 'Edit Draft';
   }
   return 'Open Lobby';
+}
+
+interface ResumeAction {
+  label: string;
+  to: string;
+}
+
+interface PregameResumeViewModel {
+  headline: string;
+  detail: string;
+  primaryAction: ResumeAction;
+  secondaryActions: ResumeAction[];
+}
+
+function createPregameResumeViewModel(entries: readonly PregameDigestEntry[]): PregameResumeViewModel {
+  const primary = entries[0] ?? null;
+  if (!primary) {
+    return {
+      headline: 'No active pregame re-entry items',
+      detail: 'When a game needs your attention, the next planning move will appear here.',
+      primaryAction: {
+        label: 'Open Home',
+        to: '/',
+      },
+      secondaryActions: [],
+    };
+  }
+
+  return {
+    headline: `Resume planning in ${primary.gameName}`,
+    detail: primary.headline,
+    primaryAction: {
+      label: readPregameDigestActionLabel(primary),
+      to: toPregameDigestPath(primary),
+    },
+    secondaryActions: entries.slice(1, 3).map((entry) => ({
+      label: `${readPregameDigestActionLabel(entry)}: ${entry.gameName}`,
+      to: toPregameDigestPath(entry),
+    })),
+  };
 }
 
 function normalizeRows(items: PlayerInboxItem[]): InboxRow[] {
