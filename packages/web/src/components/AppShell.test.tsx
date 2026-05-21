@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProviderContext, type AuthProvider } from '../auth/AuthProvider';
@@ -16,6 +16,11 @@ vi.mock('../hooks/useMyProfile', () => ({
 }));
 
 describe('AppShell', () => {
+  beforeEach(() => {
+    useGmGamesMock.mockReset();
+    useMyProfileMock.mockReset();
+  });
+
   it('keeps GM Games available for players and disables GM Inbox when they have no GM games', () => {
     useMyProfileMock.mockReturnValue({
       profile: { playerId: 'player-aaa', roles: ['PLAYER'] },
@@ -35,6 +40,7 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
     expect(screen.getByText('GM Inbox').getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
     expect(screen.getByText('Admin').getAttribute('aria-disabled')).toBe('true');
   });
 
@@ -65,6 +71,7 @@ describe('AppShell', () => {
 
     expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
     expect(screen.getByRole('link', { name: 'GM Inbox' }).getAttribute('href')).toBe('/gm/game-2/inbox');
+    expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
     expect(screen.getByRole('link', { name: 'Admin' }).getAttribute('href')).toBe('/admin');
   });
 
@@ -86,6 +93,7 @@ describe('AppShell', () => {
     });
 
     expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
+    expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
     expect(screen.getByText('GM Inbox').getAttribute('aria-disabled')).toBe('true');
   });
 });

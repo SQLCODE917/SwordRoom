@@ -1,14 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
-import { createApiClient, type CharacterItem, type GameItem, type PregameDigestEntry } from '../api/ApiClient';
-import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
-import { ButtonLink } from '../components/ButtonLink';
-import { CommandStatusPanel } from '../components/CommandStatusPanel';
-import { Panel } from '../components/Panel';
-import { appendCharacterWizardEntryContext } from '../features/character-wizard';
-import { useMyProfile } from '../hooks/useMyProfile';
-import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
-import { logWebFlow, summarizeError } from '../logging/flowLog';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { isPlayerCharacterLibraryGameId } from "@starter/shared/contracts/db";
+import {
+  createApiClient,
+  type CharacterItem,
+  type GameItem,
+  type PregameDigestEntry,
+} from "../api/ApiClient";
+import { notifyAuthStateChanged, useAuthProvider } from "../auth/AuthProvider";
+import { ButtonLink } from "../components/ButtonLink";
+import { CommandStatusPanel } from "../components/CommandStatusPanel";
+import { Panel } from "../components/Panel";
+import { appendCharacterWizardEntryContext } from "../features/character-wizard";
+import { useMyProfile } from "../hooks/useMyProfile";
+import { createCommandId, useCommandWorkflow } from "../hooks/useCommandStatus";
+import { logWebFlow, summarizeError } from "../logging/flowLog";
 
 interface DashboardState {
   characters: CharacterItem[];
@@ -26,36 +31,50 @@ const emptyState: DashboardState = {
   pregameDigest: [],
 };
 
-const existingCharacterDisabledReason = 'You already have a character in this game.';
+const existingCharacterDisabledReason =
+  "You already have a character in this game.";
 
 export function HomePage() {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
-  const { profile, loading: profileLoading, error: profileError } = useMyProfile();
+  const { loading: profileLoading, error: profileError } = useMyProfile();
   const [dashboard, setDashboard] = useState<DashboardState>(emptyState);
   const [dataLoading, setDataLoading] = useState(true);
   const [dataError, setDataError] = useState<string | null>(null);
-  const [removingCharacterId, setRemovingCharacterId] = useState<string | null>(null);
+  const [removingCharacterId, setRemovingCharacterId] = useState<string | null>(
+    null,
+  );
   const [archivingGameId, setArchivingGameId] = useState<string | null>(null);
-  const { status: commandStatus, isRunning: isRunningCommand, submitEnvelopeAndAwait } = useCommandWorkflow();
+  const {
+    status: commandStatus,
+    isRunning: isRunningCommand,
+    submitEnvelopeAndAwait,
+  } = useCommandWorkflow();
 
   const refreshDashboard = useCallback(async () => {
     setDataLoading(true);
-    logWebFlow('WEB_HOME_LOAD_START', {
+    logWebFlow("WEB_HOME_LOAD_START", {
       actorId: auth.actorId,
       authMode: auth.mode,
     });
     try {
-      const [characters, myGames, gmGames, publicGames, pregameDigest] = await Promise.all([
-        api.getMyCharacters(),
-        api.getMyGames(),
-        api.getGmGames(),
-        api.getPublicGames(),
-        api.getMyPregameDigest(),
-      ]);
-      setDashboard({ characters, myGames, gmGames, publicGames, pregameDigest });
+      const [characters, myGames, gmGames, publicGames, pregameDigest] =
+        await Promise.all([
+          api.getMyCharacters(),
+          api.getMyGames(),
+          api.getGmGames(),
+          api.getPublicGames(),
+          api.getMyPregameDigest(),
+        ]);
+      setDashboard({
+        characters,
+        myGames,
+        gmGames,
+        publicGames,
+        pregameDigest,
+      });
       setDataError(null);
-      logWebFlow('WEB_HOME_LOAD_OK', {
+      logWebFlow("WEB_HOME_LOAD_OK", {
         actorId: auth.actorId,
         authMode: auth.mode,
         characterCount: characters.length,
@@ -65,8 +84,10 @@ export function HomePage() {
         pregameDigestCount: pregameDigest.length,
       });
     } catch (loadError) {
-      setDataError(loadError instanceof Error ? loadError.message : String(loadError));
-      logWebFlow('WEB_HOME_LOAD_FAILED', {
+      setDataError(
+        loadError instanceof Error ? loadError.message : String(loadError),
+      );
+      logWebFlow("WEB_HOME_LOAD_FAILED", {
         actorId: auth.actorId,
         authMode: auth.mode,
         ...summarizeError(loadError),
@@ -93,13 +114,21 @@ export function HomePage() {
 
   const loading = profileLoading || dataLoading;
   const error = profileError ?? dataError;
-  const profileName = profile?.displayName ?? profile?.playerId ?? auth.actorId;
-  const joinedGameIds = useMemo(() => new Set(dashboard.myGames.map((game) => game.gameId)), [dashboard.myGames]);
-  const gmGameIds = useMemo(() => new Set(dashboard.gmGames.map((game) => game.gameId)), [dashboard.gmGames]);
+  const joinedGameIds = useMemo(
+    () => new Set(dashboard.myGames.map((game) => game.gameId)),
+    [dashboard.myGames],
+  );
+  const gmGameIds = useMemo(
+    () => new Set(dashboard.gmGames.map((game) => game.gameId)),
+    [dashboard.gmGames],
+  );
   const gameCharacterByGameId = useMemo(() => {
     const next = new Map<string, CharacterItem>();
     for (const character of dashboard.characters) {
-      if (isPlayerCharacterLibraryGameId(character.gameId) || next.has(character.gameId)) {
+      if (
+        isPlayerCharacterLibraryGameId(character.gameId) ||
+        next.has(character.gameId)
+      ) {
         continue;
       }
       next.set(character.gameId, character);
@@ -115,24 +144,33 @@ export function HomePage() {
         gmGameIds,
         gameCharacterByGameId,
       }),
-    [auth.actorId, dashboard, joinedGameIds, gmGameIds, gameCharacterByGameId]
+    [auth.actorId, dashboard, joinedGameIds, gmGameIds, gameCharacterByGameId],
   );
 
   return (
     <div className="l-page">
-      <Panel title="Home" subtitle="Your account, characters, and visible games.">
-        <CommandStatusPanel status={commandStatus} />
-        <div className={`c-note ${error ? 'c-note--error' : 'c-note--info'}`}>
-          <span className="t-small">{error ?? (loading ? 'Loading dashboard...' : `Signed in as ${profileName}.`)}</span>
+      <Panel title="Home" subtitle="Your characters and visible games.">
+        <div className={`c-note ${error ? "c-note--error" : "c-note--info"}`}>
+          <span className="t-small">
+            {error ??
+              (loading
+                ? "Loading dashboard..."
+                : `Signed in as ${auth.actorId}.`)}
+          </span>
         </div>
 
-        <Panel title="Pregame Quick Start" subtitle="Fastest path into active planning on a phone.">
+        <Panel
+          title="Pregame Quick Start"
+          subtitle="Fastest path into active planning on a phone."
+        >
           <div className="c-note c-note--info">
             <div className="t-small">{quickStart.headline}</div>
             <div className="t-small">{quickStart.detail}</div>
           </div>
           <div className="l-row">
-            <ButtonLink to={quickStart.primaryAction.to}>{quickStart.primaryAction.label}</ButtonLink>
+            <ButtonLink to={quickStart.primaryAction.to}>
+              {quickStart.primaryAction.label}
+            </ButtonLink>
             {quickStart.secondaryActions.map((action) => (
               <ButtonLink key={`${action.label}:${action.to}`} to={action.to}>
                 {action.label}
@@ -143,16 +181,13 @@ export function HomePage() {
 
         <div className="l-split">
           <div className="l-col l-grow">
-            <SectionTitle title="Profile" />
-            <div className="c-note c-note--info">
-              <span className="t-small">
-                {profileName} | {(profile?.roles ?? []).join(', ') || 'PLAYER'} | {profile?.email ?? ' '}
-              </span>
-            </div>
-
             <SectionTitle title="My Characters" />
             <div className="l-row">
-              <ButtonLink to={`/player/${encodeURIComponent(auth.actorId)}/character/new`}>New Character</ButtonLink>
+              <ButtonLink
+                to={`/player/${encodeURIComponent(auth.actorId)}/character/new`}
+              >
+                New Character
+              </ButtonLink>
             </div>
             <div className="c-table" role="table" aria-label="My characters">
               <div className="c-table__head c-table__row" role="row">
@@ -162,22 +197,39 @@ export function HomePage() {
               </div>
               {dashboard.characters.length === 0 ? (
                 <div className="c-table__row" role="row">
-                  <div className="c-table__cell t-small">{loading ? 'Loading characters...' : 'No characters yet.'}</div>
+                  <div className="c-table__cell t-small">
+                    {loading ? "Loading characters..." : "No characters yet."}
+                  </div>
                 </div>
               ) : (
                 dashboard.characters.map((character) => (
-                  <div className="c-table__row" role="row" key={`${character.gameId}:${character.characterId}`}>
-                    <div className="c-table__cell t-small">{readCharacterName(character)}</div>
-                    <div className="c-table__cell t-small">{character.status}</div>
+                  <div
+                    className="c-table__row"
+                    role="row"
+                    key={`${character.gameId}:${character.characterId}`}
+                  >
+                    <div className="c-table__cell t-small">
+                      {readCharacterName(character)}
+                    </div>
+                    <div className="c-table__cell t-small">
+                      {character.status}
+                    </div>
                     <div className="c-table__cell t-small">
                       <div className="l-row">
-                        <ButtonLink to={getCharacterSheetPath(character)}>Sheet</ButtonLink>
-                        <ButtonLink to={getCharacterEditPath(character)}>Edit</ButtonLink>
+                        <ButtonLink to={getCharacterSheetPath(character)}>
+                          Sheet
+                        </ButtonLink>
+                        <ButtonLink to={getCharacterEditPath(character)}>
+                          Edit
+                        </ButtonLink>
                         {isRemovableGameCharacter(character) ? (
                           <button
-                            className={`c-btn ${removingCharacterId === character.characterId || isRunningCommand ? 'is-disabled' : ''}`.trim()}
+                            className={`c-btn ${removingCharacterId === character.characterId || isRunningCommand ? "is-disabled" : ""}`.trim()}
                             type="button"
-                            disabled={removingCharacterId === character.characterId || isRunningCommand}
+                            disabled={
+                              removingCharacterId === character.characterId ||
+                              isRunningCommand
+                            }
                             onClick={() => void removeCharacter(character)}
                           >
                             Leave Game
@@ -218,6 +270,7 @@ export function HomePage() {
             />
           </div>
         </div>
+        <CommandStatusPanel status={commandStatus} />
       </Panel>
     </div>
   );
@@ -226,10 +279,10 @@ export function HomePage() {
     setRemovingCharacterId(character.characterId);
     setDataError(null);
     try {
-      await submitEnvelopeAndAwait('Delete character', {
+      await submitEnvelopeAndAwait("Delete character", {
         commandId: createCommandId(),
         gameId: character.gameId,
-        type: 'DeleteCharacter',
+        type: "DeleteCharacter",
         schemaVersion: 1,
         createdAt: new Date().toISOString(),
         payload: {
@@ -245,7 +298,9 @@ export function HomePage() {
   }
 
   async function archiveGame(game: GameItem) {
-    const confirmed = window.confirm(`Delete "${game.name}"? Players will be notified and the game will disappear from active lists.`);
+    const confirmed = window.confirm(
+      `Delete "${game.name}"? Players will be notified and the game will disappear from active lists.`,
+    );
     if (!confirmed) {
       return;
     }
@@ -253,10 +308,10 @@ export function HomePage() {
     setArchivingGameId(game.gameId);
     setDataError(null);
     try {
-      await submitEnvelopeAndAwait('Delete game', {
+      await submitEnvelopeAndAwait("Delete game", {
         commandId: createCommandId(),
         gameId: game.gameId,
-        type: 'ArchiveGame',
+        type: "ArchiveGame",
         schemaVersion: 1,
         createdAt: new Date().toISOString(),
         payload: {
@@ -297,7 +352,9 @@ function MyGamesTable(input: {
       </div>
       {input.games.length === 0 ? (
         <div className="c-table__row" role="row">
-          <div className="c-table__cell t-small">{input.loading ? 'Loading games...' : input.emptyText}</div>
+          <div className="c-table__cell t-small">
+            {input.loading ? "Loading games..." : input.emptyText}
+          </div>
         </div>
       ) : (
         input.games.map((game) => {
@@ -314,30 +371,56 @@ function MyGamesTable(input: {
                 <div className="l-row">
                   {character ? (
                     <>
-                      <ButtonLink to={getCharacterSheetPath(character)}>Sheet</ButtonLink>
-                      {canEditCharacter(character) ? <ButtonLink to={getCharacterEditPath(character)}>Edit</ButtonLink> : null}
+                      <ButtonLink to={getCharacterSheetPath(character)}>
+                        Sheet
+                      </ButtonLink>
+                      {canEditCharacter(character) ? (
+                        <ButtonLink to={getCharacterEditPath(character)}>
+                          Edit
+                        </ButtonLink>
+                      ) : null}
                     </>
                   ) : null}
                   <ButtonLink
                     to={`/games/${encodeURIComponent(game.gameId)}/character/new`}
                     disabled={Boolean(character)}
-                    disabledReason={character ? existingCharacterDisabledReason : null}
+                    disabledReason={
+                      character ? existingCharacterDisabledReason : null
+                    }
                   >
                     New Character
                   </ButtonLink>
-                  <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}`}>Lobby</ButtonLink>
-                  <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/play`}>Play</ButtonLink>
-                  <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
+                  <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}`}>
+                    Lobby
+                  </ButtonLink>
+                  <ButtonLink
+                    to={`/games/${encodeURIComponent(game.gameId)}/play`}
+                  >
+                    Play
+                  </ButtonLink>
+                  <ButtonLink
+                    to={`/games/${encodeURIComponent(game.gameId)}/chat`}
+                  >
+                    Chat
+                  </ButtonLink>
                   <ButtonLink to="/me/inbox">Player Inbox</ButtonLink>
                   {input.gmGameIds.has(game.gameId) ? (
                     <>
-                      <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/play`}>GM Play</ButtonLink>
-                      <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
+                      <ButtonLink
+                        to={`/gm/${encodeURIComponent(game.gameId)}/play`}
+                      >
+                        GM Play
+                      </ButtonLink>
+                      <ButtonLink
+                        to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}
+                      >
+                        GM Inbox
+                      </ButtonLink>
                     </>
                   ) : null}
                   {canDelete ? (
                     <button
-                      className={`c-btn c-btn--destructive ${isArchiving || input.isRunningCommand ? 'is-disabled' : ''}`.trim()}
+                      className={`c-btn c-btn--destructive ${isArchiving || input.isRunningCommand ? "is-disabled" : ""}`.trim()}
                       type="button"
                       disabled={isArchiving || input.isRunningCommand}
                       onClick={() => input.onArchiveGame(game)}
@@ -372,7 +455,9 @@ export function PublicGamesTable(input: {
       </div>
       {input.games.length === 0 ? (
         <div className="c-table__row" role="row">
-          <div className="c-table__cell t-small">{input.loading ? 'Loading games...' : input.emptyText}</div>
+          <div className="c-table__cell t-small">
+            {input.loading ? "Loading games..." : input.emptyText}
+          </div>
         </div>
       ) : (
         input.games.map((game) => {
@@ -387,25 +472,49 @@ export function PublicGamesTable(input: {
                 <div className="l-row">
                   {character ? (
                     <>
-                      <ButtonLink to={getCharacterSheetPath(character)}>Sheet</ButtonLink>
-                      {canEditCharacter(character) ? <ButtonLink to={getCharacterEditPath(character)}>Edit</ButtonLink> : null}
+                      <ButtonLink to={getCharacterSheetPath(character)}>
+                        Sheet
+                      </ButtonLink>
+                      {canEditCharacter(character) ? (
+                        <ButtonLink to={getCharacterEditPath(character)}>
+                          Edit
+                        </ButtonLink>
+                      ) : null}
                     </>
                   ) : null}
-                  {input.joinedGameIds.has(game.gameId) || input.gmGameIds.has(game.gameId) ? (
-                    <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}`}>Lobby</ButtonLink>
+                  {input.joinedGameIds.has(game.gameId) ||
+                  input.gmGameIds.has(game.gameId) ? (
+                    <ButtonLink
+                      to={`/games/${encodeURIComponent(game.gameId)}`}
+                    >
+                      Lobby
+                    </ButtonLink>
                   ) : null}
-                  {input.joinedGameIds.has(game.gameId) ? <ButtonLink to="/me/inbox">Player Inbox</ButtonLink> : null}
-                  {input.joinedGameIds.has(game.gameId) || input.gmGameIds.has(game.gameId) ? (
-                    <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
+                  {input.joinedGameIds.has(game.gameId) ? (
+                    <ButtonLink to="/me/inbox">Player Inbox</ButtonLink>
+                  ) : null}
+                  {input.joinedGameIds.has(game.gameId) ||
+                  input.gmGameIds.has(game.gameId) ? (
+                    <ButtonLink
+                      to={`/games/${encodeURIComponent(game.gameId)}/chat`}
+                    >
+                      Chat
+                    </ButtonLink>
                   ) : null}
                   {input.gmGameIds.has(game.gameId) ? (
-                    <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
+                    <ButtonLink
+                      to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}
+                    >
+                      GM Inbox
+                    </ButtonLink>
                   ) : null}
                   {!input.joinedGameIds.has(game.gameId) || character ? (
                     <ButtonLink
                       to={`/games/${encodeURIComponent(game.gameId)}/character/new`}
                       disabled={Boolean(character)}
-                      disabledReason={character ? existingCharacterDisabledReason : null}
+                      disabledReason={
+                        character ? existingCharacterDisabledReason : null
+                      }
                     >
                       Apply to Join
                     </ButtonLink>
@@ -421,15 +530,24 @@ export function PublicGamesTable(input: {
 }
 
 function readCharacterName(character: CharacterItem): string {
-  const draft = typeof character.draft === 'object' && character.draft !== null ? (character.draft as Record<string, unknown>) : null;
-  const identity = draft && typeof draft.identity === 'object' && draft.identity !== null ? (draft.identity as Record<string, unknown>) : null;
-  const name = typeof identity?.name === 'string' ? identity.name.trim() : '';
+  const draft =
+    typeof character.draft === "object" && character.draft !== null
+      ? (character.draft as Record<string, unknown>)
+      : null;
+  const identity =
+    draft && typeof draft.identity === "object" && draft.identity !== null
+      ? (draft.identity as Record<string, unknown>)
+      : null;
+  const name = typeof identity?.name === "string" ? identity.name.trim() : "";
   return name || character.characterId;
 }
 
 function getCharacterSheetPath(character: CharacterItem): string {
   if (isPlayerCharacterLibraryGameId(character.gameId)) {
-    const ownerPlayerId = typeof character.ownerPlayerId === 'string' ? character.ownerPlayerId : '';
+    const ownerPlayerId =
+      typeof character.ownerPlayerId === "string"
+        ? character.ownerPlayerId
+        : "";
     return `/player/${encodeURIComponent(ownerPlayerId)}/characters/${encodeURIComponent(character.characterId)}`;
   }
   return `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}`;
@@ -437,17 +555,20 @@ function getCharacterSheetPath(character: CharacterItem): string {
 
 function getCharacterEditPath(character: CharacterItem): string {
   if (isPlayerCharacterLibraryGameId(character.gameId)) {
-    const ownerPlayerId = typeof character.ownerPlayerId === 'string' ? character.ownerPlayerId : '';
+    const ownerPlayerId =
+      typeof character.ownerPlayerId === "string"
+        ? character.ownerPlayerId
+        : "";
     return `/player/${encodeURIComponent(ownerPlayerId)}/characters/${encodeURIComponent(character.characterId)}/edit`;
   }
   return appendCharacterWizardEntryContext(
     `/games/${encodeURIComponent(character.gameId)}/characters/${encodeURIComponent(character.characterId)}/edit`,
-    { entrySource: 'home', focus: 'resume' }
+    { entrySource: "home", focus: "resume" },
   );
 }
 
 function canEditCharacter(character: CharacterItem): boolean {
-  return character.status !== 'PENDING' && character.status !== 'APPROVED';
+  return character.status !== "PENDING" && character.status !== "APPROVED";
 }
 
 function isRemovableGameCharacter(character: CharacterItem): boolean {
@@ -474,11 +595,18 @@ function createQuickStartViewModel(input: {
   gameCharacterByGameId: ReadonlyMap<string, CharacterItem>;
 }): QuickStartViewModel {
   const digestEntry = input.dashboard.pregameDigest[0] ?? null;
-  const joinableGame = input.dashboard.publicGames.find(
-    (game) => !input.joinedGameIds.has(game.gameId) && !input.gmGameIds.has(game.gameId)
-  ) ?? null;
+  const joinableGame =
+    input.dashboard.publicGames.find(
+      (game) =>
+        !input.joinedGameIds.has(game.gameId) &&
+        !input.gmGameIds.has(game.gameId),
+    ) ?? null;
   const gameNeedingCharacter =
-    input.dashboard.myGames.find((game) => !input.gameCharacterByGameId.has(game.gameId)) ?? joinableGame ?? null;
+    input.dashboard.myGames.find(
+      (game) => !input.gameCharacterByGameId.has(game.gameId),
+    ) ??
+    joinableGame ??
+    null;
 
   if (digestEntry) {
     return {
@@ -499,53 +627,62 @@ function createQuickStartViewModel(input: {
   if (joinableGame) {
     return {
       headline: `Join ${joinableGame.name}`,
-      detail: 'Start planning by creating a character draft for a visible game.',
+      detail:
+        "Start planning by creating a character draft for a visible game.",
       primaryAction: {
-        label: 'Join a Game',
-        to: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(joinableGame.gameId)}/character/new`, {
-          entrySource: 'home',
-          focus: 'start',
-        }),
+        label: "Join a Game",
+        to: appendCharacterWizardEntryContext(
+          `/games/${encodeURIComponent(joinableGame.gameId)}/character/new`,
+          {
+            entrySource: "home",
+            focus: "start",
+          },
+        ),
       },
       secondaryActions: buildSecondaryQuickStartActions({
         actorId: input.actorId,
         joinableGame,
         gameNeedingCharacter,
-      }).filter((action) => action.label !== 'Join a Game'),
+      }).filter((action) => action.label !== "Join a Game"),
     };
   }
 
   if (gameNeedingCharacter) {
     return {
       headline: `Create for ${gameNeedingCharacter.name}`,
-      detail: 'Enter the game-scoped creator and start the pregame loop immediately.',
+      detail:
+        "Enter the game-scoped creator and start the pregame loop immediately.",
       primaryAction: {
-        label: 'Create a Character',
-        to: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(gameNeedingCharacter.gameId)}/character/new`, {
-          entrySource: 'home',
-          focus: 'start',
-        }),
+        label: "Create a Character",
+        to: appendCharacterWizardEntryContext(
+          `/games/${encodeURIComponent(gameNeedingCharacter.gameId)}/character/new`,
+          {
+            entrySource: "home",
+            focus: "start",
+          },
+        ),
       },
       secondaryActions: buildSecondaryQuickStartActions({
         actorId: input.actorId,
         joinableGame,
         gameNeedingCharacter,
-      }).filter((action) => action.label !== 'Create a Character'),
+      }).filter((action) => action.label !== "Create a Character"),
     };
   }
 
   return {
-    headline: 'Start the pregame loop',
-    detail: 'Create a game, join a visible game, or start a character draft with the fewest possible steps.',
+    headline: "Start the pregame loop",
+    detail:
+      "Create a game, join a visible game, or start a character draft with the fewest possible steps.",
     primaryAction: {
-      label: 'Start a Game',
-      to: '/gm/games',
+      label: "Start a Game",
+      to: "/gm/games",
     },
     secondaryActions: buildSecondaryQuickStartActions({
       actorId: input.actorId,
       joinableGame,
       gameNeedingCharacter,
-    }).filter((action) => action.label !== 'Start a Game'),
+    }).filter((action) => action.label !== "Start a Game"),
   };
 }
 
@@ -557,30 +694,38 @@ function buildSecondaryQuickStartActions(input: {
   const actions: QuickStartAction[] = [];
   if (input.joinableGame) {
     actions.push({
-      label: 'Join a Game',
-      to: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(input.joinableGame.gameId)}/character/new`, {
-        entrySource: 'home',
-        focus: 'start',
-      }),
+      label: "Join a Game",
+      to: appendCharacterWizardEntryContext(
+        `/games/${encodeURIComponent(input.joinableGame.gameId)}/character/new`,
+        {
+          entrySource: "home",
+          focus: "start",
+        },
+      ),
     });
   }
   actions.push({
-    label: 'Start a Game',
-    to: '/gm/games',
+    label: "Start a Game",
+    to: "/gm/games",
   });
   actions.push({
-    label: 'Create a Character',
+    label: "Create a Character",
     to: input.gameNeedingCharacter
-      ? appendCharacterWizardEntryContext(`/games/${encodeURIComponent(input.gameNeedingCharacter.gameId)}/character/new`, {
-          entrySource: 'home',
-          focus: 'start',
-        })
+      ? appendCharacterWizardEntryContext(
+          `/games/${encodeURIComponent(input.gameNeedingCharacter.gameId)}/character/new`,
+          {
+            entrySource: "home",
+            focus: "start",
+          },
+        )
       : `/player/${encodeURIComponent(input.actorId)}/character/new`,
   });
   return dedupeQuickStartActions(actions);
 }
 
-function dedupeQuickStartActions(actions: QuickStartAction[]): QuickStartAction[] {
+function dedupeQuickStartActions(
+  actions: QuickStartAction[],
+): QuickStartAction[] {
   const seen = new Set<string>();
   return actions.filter((action) => {
     const key = `${action.label}:${action.to}`;
@@ -593,33 +738,36 @@ function dedupeQuickStartActions(actions: QuickStartAction[]): QuickStartAction[
 }
 
 function toPregameDigestPath(entry: PregameDigestEntry): string {
-  if (entry.destination === 'CHAT') {
+  if (entry.destination === "CHAT") {
     return `/games/${encodeURIComponent(entry.gameId)}/chat`;
   }
-  if (entry.destination === 'CREATE_CHARACTER') {
-    return appendCharacterWizardEntryContext(`/games/${encodeURIComponent(entry.gameId)}/character/new`, {
-      entrySource: 'digest',
-      focus: 'resume',
-    });
+  if (entry.destination === "CREATE_CHARACTER") {
+    return appendCharacterWizardEntryContext(
+      `/games/${encodeURIComponent(entry.gameId)}/character/new`,
+      {
+        entrySource: "digest",
+        focus: "resume",
+      },
+    );
   }
-  if (entry.destination === 'EDIT_CHARACTER' && entry.characterId) {
+  if (entry.destination === "EDIT_CHARACTER" && entry.characterId) {
     return appendCharacterWizardEntryContext(
       `/games/${encodeURIComponent(entry.gameId)}/characters/${encodeURIComponent(entry.characterId)}/edit`,
-      { entrySource: 'digest', focus: 'resume' }
+      { entrySource: "digest", focus: "resume" },
     );
   }
   return `/games/${encodeURIComponent(entry.gameId)}`;
 }
 
 function readPregameDigestActionLabel(entry: PregameDigestEntry): string {
-  if (entry.destination === 'CHAT') {
-    return 'Open Chat';
+  if (entry.destination === "CHAT") {
+    return "Open Chat";
   }
-  if (entry.destination === 'CREATE_CHARACTER') {
-    return 'Create Character';
+  if (entry.destination === "CREATE_CHARACTER") {
+    return "Create Character";
   }
-  if (entry.destination === 'EDIT_CHARACTER') {
-    return 'Edit Draft';
+  if (entry.destination === "EDIT_CHARACTER") {
+    return "Edit Draft";
   }
-  return 'Resume Planning';
+  return "Resume Planning";
 }

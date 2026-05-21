@@ -24,6 +24,15 @@ describe('App shell routes', () => {
     expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
   });
 
+  it('renders account page when /account is opened by an authenticated user', async () => {
+    writeDevSession({ username: 'player-aaa', actorId: 'player-aaa' });
+    window.history.pushState({}, '', '/account');
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Account' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Profile' })).toBeTruthy();
+  });
+
   it('lets a player open GM Games before they have any GM games', async () => {
     writeDevSession({ username: 'player-aaa', actorId: 'player-aaa' });
     window.history.pushState({}, '', '/gm/games');

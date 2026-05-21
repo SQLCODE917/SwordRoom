@@ -13,6 +13,7 @@ import { GMGamesPage } from './routes/GMGamesPage';
 import { GMGameplayPage } from './routes/GMGameplayPage';
 import { GameChatPage } from './routes/GameChatPage';
 import { HomePage } from './routes/HomePage';
+import { AccountPage } from './routes/AccountPage';
 import { LoginPage } from './routes/LoginPage';
 import { PlayerGameplayPage } from './routes/PlayerGameplayPage';
 import { PlayerInboxPage } from './routes/PlayerInboxPage';
@@ -84,6 +85,7 @@ export default function App() {
               path="/games/:gameId/characters/:characterId"
               element={<RequireAuthRoute><CharacterSheetPage /></RequireAuthRoute>}
             />
+            <Route path="/account" element={<RequireAuthRoute><AccountPage /></RequireAuthRoute>} />
             <Route
               path="/player/:playerId/characters/:characterId"
               element={<RequireAuthRoute><RequireOwnPlayerRoute><CharacterSheetPage /></RequireOwnPlayerRoute></RequireAuthRoute>}

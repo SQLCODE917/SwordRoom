@@ -1,8 +1,8 @@
-import type { PropsWithChildren } from "react";
-import { NavLink } from "react-router-dom";
-import { useAuthProvider } from "../auth/AuthProvider";
-import { useGmGames } from "../hooks/useGmGames";
-import { useMyProfile } from "../hooks/useMyProfile";
+import type { PropsWithChildren } from 'react';
+import { NavLink } from 'react-router-dom';
+import { useAuthProvider } from '../auth/AuthProvider';
+import { useGmGames } from '../hooks/useGmGames';
+import { useMyProfile } from '../hooks/useMyProfile';
 
 export function AppShell({ children }: PropsWithChildren) {
   const auth = useAuthProvider();
@@ -11,7 +11,7 @@ export function AppShell({ children }: PropsWithChildren) {
   const roles = new Set(profile?.roles ?? []);
   const canOpenGmGames = auth.isAuthenticated;
   const canOpenAdmin =
-    auth.isAuthenticated && !profileLoading && roles.has("ADMIN");
+    auth.isAuthenticated && !profileLoading && roles.has('ADMIN');
   const firstGmGameId = gmGames[0]?.gameId ?? null;
   const gmInboxDisabled =
     !auth.isAuthenticated || gmGamesLoading || !firstGmGameId;
@@ -21,7 +21,7 @@ export function AppShell({ children }: PropsWithChildren) {
       <header className="c-shell__header l-header">
         <div className="l-col l-tight">
           <h1 className="t-h2">Sword Room Online</h1>
-          <p className="t-small">Gameplay Loop vertical slice</p>
+          <p className="t-small">The Pregame Release</p>
         </div>
         <nav className="l-row" aria-label="Primary">
           <AppShellNavButton label="Home" to="/" end />
@@ -45,7 +45,7 @@ export function AppShell({ children }: PropsWithChildren) {
             to="/admin"
             disabled={!canOpenAdmin}
           />
-          <AppShellNavButton label="Account" to="/login" />
+          <AppShellNavButton label="Account" to="/account" />
         </nav>
       </header>
       <main className="c-shell__main l-main">{children}</main>

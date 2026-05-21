@@ -9,7 +9,6 @@
 }
 
 .c-shell__main {
-  padding: var(--page-pad);
   width: 100%;
   max-width: var(--max-content);
   margin: 0 auto;
@@ -120,21 +119,27 @@
   --c-btn-active-shadow: var(--btn-shadow-danger-active);
 }
 
-.c-btn:hover:not(:disabled):not(.is-disabled):not(.is-active):not([aria-current='page']):not([aria-current='step']):not([aria-selected='true']),
-.c-navlink:hover:not([aria-disabled='true']):not(.is-disabled):not(.is-active):not([aria-current='page']):not([aria-current='step']):not([aria-selected='true']) {
+.c-btn:hover:not(:disabled):not(.is-disabled):not(.is-active):not(
+    [aria-current="page"]
+  ):not([aria-current="step"]):not([aria-selected="true"]),
+.c-navlink:hover:not([aria-disabled="true"]):not(.is-disabled):not(
+    .is-active
+  ):not([aria-current="page"]):not([aria-current="step"]):not(
+    [aria-selected="true"]
+  ) {
   --c-btn-bg: var(--c-btn-hover-bg);
   --c-btn-border: var(--c-btn-hover-border);
   --c-btn-shadow: var(--c-btn-hover-shadow);
 }
 
 .c-btn.is-active,
-.c-btn[aria-current='page'],
-.c-btn[aria-current='step'],
-.c-btn[aria-selected='true'],
+.c-btn[aria-current="page"],
+.c-btn[aria-current="step"],
+.c-btn[aria-selected="true"],
 .c-navlink.is-active,
-.c-navlink[aria-current='page'],
-.c-navlink[aria-current='step'],
-.c-navlink[aria-selected='true'] {
+.c-navlink[aria-current="page"],
+.c-navlink[aria-current="step"],
+.c-navlink[aria-selected="true"] {
   --c-btn-bg: var(--c-btn-active-bg);
   --c-btn-fg: var(--c-btn-active-fg);
   --c-btn-border: var(--c-btn-active-border);
@@ -144,9 +149,9 @@
 
 .c-btn.is-disabled,
 .c-btn:disabled,
-.c-btn[aria-disabled='true'],
+.c-btn[aria-disabled="true"],
 .c-navlink.is-disabled,
-.c-navlink[aria-disabled='true'] {
+.c-navlink[aria-disabled="true"] {
   --c-btn-bg: var(--c-btn-disabled-bg);
   --c-btn-fg: var(--c-btn-disabled-fg);
   --c-btn-border: var(--c-btn-disabled-border);
@@ -263,7 +268,15 @@
   border: 1px solid var(--line);
   background: var(--bg);
   padding: var(--s-3);
-  font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    Liberation Mono,
+    monospace;
 }
 
 .c-chat__line,
@@ -371,7 +384,7 @@
 }
 
 .c-cmd.is-loading .c-cmd__spinner::before {
-  content: '...';
+  content: "...";
 }
 
 .c-cmd.is-ok {

@@ -58,6 +58,27 @@ kill_orphan_api_runtime() {
   done < <(pgrep -f 'node(.+)?packages/services/api/dist/server\.js' || true)
 }
 
+wait_for_api_ready() {
+  local api_port="${API_PORT:-3000}"
+  local api_url="http://127.0.0.1:${api_port}/me"
+  local attempts="${API_READY_RETRIES:-30}"
+
+  local attempt=1
+  while (( attempt <= attempts )); do
+    if curl -sS --max-time 1 --output /dev/null "$api_url" >/dev/null 2>&1; then
+      log "API ready on ${api_url}"
+      return 0;
+    fi
+
+    log "Waiting for API to be available at ${api_url} (attempt ${attempt}/${attempts})"
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+
+  log "API failed to become available at ${api_url} after ${attempts} attempts"
+  return 1
+}
+
 prefix_stream() {
   local name="$1"
   sed -u "s/^/[$name] /"
@@ -200,6 +221,11 @@ start_task infra docker compose -f docker-compose.local.yml logs -f --tail=100
 start_task tsc pnpm exec tsc -b packages/services/api packages/services/dispatcher --watch --preserveWatchOutput
 start_task api bash scripts/local/run-api-runtime.sh
 start_task dispatcher bash scripts/local/run-dispatcher-runtime.sh
+
+if ! wait_for_api_ready; then
+  exit 1
+fi
+
 start_task web pnpm --filter @starter/web dev
 
 log "Local dev stack is live"
