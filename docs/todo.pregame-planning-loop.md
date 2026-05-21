@@ -28,8 +28,9 @@ These are the major product slices that still remain after the current pregame l
   - Slice 2: creator-session start/completion and active-duration recording with stable entry-source semantics
   - Slice 3: durable reply-target and prompt-response semantics for shared draft discussion
   - Slice 4: end-to-end trace propagation across browser, HTTP, queue, and dispatcher
+  - AWS rollout phase 1: Lambda active tracing, CORS support for semantic observability headers, and a CloudWatch pregame observability dashboard
 - Remaining:
-  - AWS observability rollout and reporting surfaces built on the completed metric and trace contracts
+  - AWS rollout phase 2: log-retention and dashboard refinement, alerting for product-health thresholds, and optional X-Ray/RUM visualization integrations
 - Track:
   - creator active minutes per invited player
   - creator return sessions before first play

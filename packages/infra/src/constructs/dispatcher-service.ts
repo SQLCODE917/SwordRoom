@@ -25,6 +25,7 @@ export class DispatcherService extends Construct {
       handler: "handler",
       runtime: lambda.Runtime.NODEJS_20_X,
       architecture: lambda.Architecture.ARM_64,
+      tracing: lambda.Tracing.ACTIVE,
       memorySize: 1024,
       timeout: Duration.seconds(30),
       logRetention: logs.RetentionDays.ONE_MONTH,

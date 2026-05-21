@@ -3,6 +3,7 @@ import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import { Construct } from "constructs";
 import { ApiService } from "../constructs/api-service.js";
 import { DispatcherService } from "../constructs/dispatcher-service.js";
+import { PregameObservabilityDashboard } from "../constructs/pregame-observability-dashboard.js";
 import { WebSite } from "../constructs/web-site.js";
 import { InfraConfig } from "../config.js";
 import { SharedResources } from "./shared-stack.js";
@@ -70,7 +71,17 @@ export class AppStack extends Stack {
       threshold: 1,
     });
 
+    const pregameObservability = new PregameObservabilityDashboard(this, "PregameObservability", {
+      stackPrefix: props.config.stackPrefix,
+      apiFunctionName: apiService.function.functionName,
+      dispatcherFunctionName: dispatcherService.function.functionName,
+      commandsDlqMetric: props.sharedResources.commandsDlq.metricApproximateNumberOfMessagesVisible(),
+      apiErrorsMetric: apiService.function.metricErrors(),
+      dispatcherErrorsMetric: dispatcherService.function.metricErrors(),
+    });
+
     new CfnOutput(this, "ApiBaseUrl", { value: apiService.apiUrl });
+    new CfnOutput(this, "PregameObservabilityDashboardUrl", { value: pregameObservability.dashboardUrl });
     new CfnOutput(this, "WebBucketName", { value: website.bucket.bucketName });
     new CfnOutput(this, "WebDistributionId", { value: website.distribution.ref });
     new CfnOutput(this, "WebDistributionDomainName", { value: website.distribution.attrDomainName });

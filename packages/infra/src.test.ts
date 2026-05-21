@@ -77,4 +77,37 @@ describe('infra scaffold', () => {
       ])
     );
   });
+
+  it('enables Lambda tracing and synthesizes a pregame observability dashboard output', () => {
+    const template = JSON.parse(readFileSync(SYNTH_TEMPLATE_PATH, 'utf8')) as {
+      Resources?: Record<string, { Type?: string; Properties?: Record<string, unknown> }>;
+      Outputs?: Record<string, { Value?: unknown }>;
+    };
+
+    const lambdaProperties = Object.values(template.Resources ?? {})
+      .filter((resource) => resource.Type === 'AWS::Lambda::Function')
+      .map((resource) => resource.Properties ?? {});
+
+    expect(
+      lambdaProperties.some(
+        (properties) =>
+          typeof properties === 'object' &&
+          properties !== null &&
+          (properties as Record<string, unknown>).TracingConfig !== undefined
+      )
+    ).toBe(true);
+
+    const dashboardResources = Object.values(template.Resources ?? {}).filter(
+      (resource) => resource.Type === 'AWS::CloudWatch::Dashboard'
+    );
+    expect(dashboardResources.length).toBeGreaterThanOrEqual(1);
+
+    expect(template.Outputs).toEqual(
+      expect.objectContaining({
+        PregameObservabilityDashboardUrl: expect.objectContaining({
+          Value: expect.anything(),
+        }),
+      })
+    );
+  });
 });

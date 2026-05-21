@@ -26,7 +26,8 @@ Today, the repo has useful flow logs in the web, API, and dispatcher, but those 
   - the metric stream now covers durable command-side events, creator-session start/completion, and trace propagation across browser requests, API intake, queue handoff, and dispatcher processing
   - creator time-in-flow and return sessions still require the browser-semantic session seam because backend writes alone cannot see abandoned or read-only creator visits
   - creator answers to GM prompts can be joined durably through prompt identity on the shared draft artifact, but not every creator answer yet carries a direct chat-message reply target
-  - downstream AWS-native trace visualization such as full X-Ray service maps is still infrastructure work, not an application-contract gap
+  - the first AWS-native rollout now exists as Lambda active tracing plus a CloudWatch dashboard over pregame logs and metrics
+  - downstream AWS-native trace visualization such as full X-Ray service maps and optional RUM rollout is still follow-on infrastructure work, not an application-contract gap
 
 ## 3. Target State
 
