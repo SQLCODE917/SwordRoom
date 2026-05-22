@@ -15,8 +15,8 @@ import { GameChatPage } from './routes/GameChatPage';
 import { HomePage } from './routes/HomePage';
 import { AccountPage } from './routes/AccountPage';
 import { LoginPage } from './routes/LoginPage';
+import { InboxPage } from './routes/InboxPage';
 import { PlayerGameplayPage } from './routes/PlayerGameplayPage';
-import { PlayerInboxPage } from './routes/PlayerInboxPage';
 import { PregameCharactersPage } from './routes/PregameCharactersPage';
 import { PregameLobbyPage } from './routes/PregameLobbyPage';
 import { useGameActorContext } from './hooks/useGameActorContext';
@@ -72,10 +72,17 @@ export default function App() {
               path="/player/:playerId/characters/:characterId/edit"
               element={<RequireAuthRoute><RequireOwnPlayerRoute><CharacterWizardPage /></RequireOwnPlayerRoute></RequireAuthRoute>}
             />
-            <Route path="/me/inbox" element={<RequireAuthRoute><PlayerInboxPage /></RequireAuthRoute>} />
+            <Route
+              path="/me/inbox"
+              element={
+                <RequireAuthRoute>
+                  <Navigate to="/inbox?mode=player" replace />
+                </RequireAuthRoute>
+              }
+            />
             <Route
               path="/gm/games"
-              element={<RequireAuthRoute><GMGamesPage /></RequireAuthRoute>}
+              element={<RequireAuthRoute><RequireRoleRoute allowedRoles={['GM']}><GMGamesPage /></RequireRoleRoute></RequireAuthRoute>}
             />
             <Route
               path="/admin"
@@ -89,6 +96,10 @@ export default function App() {
             <Route
               path="/player/:playerId/characters/:characterId"
               element={<RequireAuthRoute><RequireOwnPlayerRoute><CharacterSheetPage /></RequireOwnPlayerRoute></RequireAuthRoute>}
+            />
+            <Route
+              path="/inbox"
+              element={<RequireAuthRoute><InboxPage /></RequireAuthRoute>}
             />
             <Route
               path="/gm/:gameId/inbox"

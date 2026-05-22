@@ -14,25 +14,21 @@ import {
   readDebugTelemetryState,
   subscribeDebugTelemetry,
 } from '../debug/debugTelemetry';
-import { useGmGames } from '../hooks/useGmGames';
 import { useMyProfile } from '../hooks/useMyProfile';
 import styles from './AppShell.module.css';
 
 export function AppShell({ children }: PropsWithChildren) {
   const auth = useAuthProvider();
   const { profile, loading: profileLoading } = useMyProfile();
-  const { games: gmGames, loading: gmGamesLoading } = useGmGames();
   const [debugOpen, setDebugOpen] = useState(false);
   const [debugButtonBottom, setDebugButtonBottom] = useState(0);
   const [debugHasErrors, setDebugHasErrors] = useState(false);
   const debugButtonRef = useRef<HTMLButtonElement | null>(null);
   const roles = new Set(profile?.roles ?? []);
-  const canOpenGmGames = auth.isAuthenticated;
+  const canOpenGmGames =
+    auth.isAuthenticated && !profileLoading && roles.has('GM');
   const canOpenAdmin =
     auth.isAuthenticated && !profileLoading && roles.has('ADMIN');
-  const firstGmGameId = gmGames[0]?.gameId ?? null;
-  const gmInboxDisabled =
-    !auth.isAuthenticated || gmGamesLoading || !firstGmGameId;
   const debugButtonState = useMemo(() => {
     if (debugOpen) {
       return 'active';
@@ -94,20 +90,11 @@ export function AppShell({ children }: PropsWithChildren) {
         </div>
         <nav className="l-row" aria-label="Primary">
           <AppShellNavButton label="Home" to="/" end />
-          <AppShellNavButton label="Player Inbox" to="/me/inbox" />
+          <AppShellNavButton label="Inbox" to="/inbox?mode=player" />
           <AppShellNavButton
             label="GM Games"
             to="/gm/games"
             disabled={!canOpenGmGames}
-          />
-          <AppShellNavButton
-            label="GM Inbox"
-            to={
-              firstGmGameId
-                ? `/gm/${encodeURIComponent(firstGmGameId)}/inbox`
-                : undefined
-            }
-            disabled={gmInboxDisabled}
           />
           <AppShellNavButton
             label="Admin"

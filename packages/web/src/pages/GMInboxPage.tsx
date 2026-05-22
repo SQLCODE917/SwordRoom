@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { createApiClient, type CommandEnvelopeInput, type GMInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
+import { InboxModeTabs } from '../components/InboxModeTabs';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { Panel } from '../components/Panel';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
@@ -26,6 +27,8 @@ export function GMInboxPage() {
   const api = useMemo(() => createApiClient({ auth }), [auth]);
   const params = useParams<{ gameId: string }>();
   const gameId = params.gameId ?? 'game-1';
+  const playerInboxTo = '/inbox?mode=player';
+  const gmInboxTo = `/inbox?mode=gm&gameId=${encodeURIComponent(gameId)}`;
 
   const [pendingRows, setPendingRows] = useState<PendingCharacterRow[]>([]);
   const [activityRows, setActivityRows] = useState<ActivityRow[]>([]);
@@ -43,7 +46,8 @@ export function GMInboxPage() {
 
   return (
     <div className="l-page">
-      <Panel title="GM Inbox" subtitle={`Pending characters and invite responses for game ${gameId}.`}>
+      <InboxModeTabs playerInboxTo={playerInboxTo} gmInboxTo={gmInboxTo} />
+      <Panel title="Inbox" subtitle={`Pending characters and invite responses for game ${gameId}.`}>
         <div className="c-table" role="table" aria-label="GM Pending Characters">
           <div className="c-table__head c-table__row" role="row">
             <div className="c-table__cell t-small">Character</div>

@@ -33,7 +33,7 @@ describe('App shell routes', () => {
     expect(screen.getByRole('heading', { name: 'Profile' })).toBeTruthy();
   });
 
-  it('lets a player open GM Games before they have any GM games', async () => {
+  it('redirects a non-GM player away from /gm/games', async () => {
     writeDevSession({ username: 'player-aaa', actorId: 'player-aaa' });
     window.history.pushState({}, '', '/gm/games');
 
@@ -58,7 +58,48 @@ describe('App shell routes', () => {
         });
       }
 
-      throw new Error(`Unhandled fetch in App.test.tsx: ${url}`);
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'GM Games' })).toBeNull();
+  });
+
+  it('allows a GM to open /gm/games', async () => {
+    writeDevSession({ username: 'gm-aaa', actorId: 'gm-aaa' });
+    window.history.pushState({}, '', '/gm/games');
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.endsWith('/api/me')) {
+        return new Response(
+          JSON.stringify({
+            playerId: 'gm-aaa',
+            displayName: 'Local GM',
+            email: 'gm@example.com',
+            roles: ['PLAYER', 'GM'],
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      }
+
+      if (url.endsWith('/api/gm/games')) {
+        return new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
     });
     vi.stubGlobal('fetch', fetchMock);
 

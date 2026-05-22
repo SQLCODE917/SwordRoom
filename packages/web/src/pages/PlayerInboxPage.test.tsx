@@ -19,6 +19,14 @@ vi.mock('../hooks/useCommandStatus', () => ({
   useCommandWorkflow: vi.fn(),
 }));
 
+vi.mock('../hooks/useGmGames', () => ({
+  useGmGames: () => ({
+    games: [],
+    loading: false,
+    error: null,
+  }),
+}));
+
 vi.mock('../logging/flowLog', () => ({
   logWebFlow: vi.fn(),
   summarizeError: (error: unknown) => ({

@@ -1,0 +1,11 @@
+.container {
+  align-items: center;
+  padding-inline: var(--panel-pad);
+}
+
+.label {
+  align-items: center;
+  color: var(--muted);
+  display: inline-flex;
+  min-height: var(--touch-h);
+}

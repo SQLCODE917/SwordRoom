@@ -4,12 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { AuthProviderContext, type AuthProvider } from '../auth/AuthProvider';
 import { AppShell } from './AppShell';
 
-const useGmGamesMock = vi.fn();
 const useMyProfileMock = vi.fn();
-
-vi.mock('../hooks/useGmGames', () => ({
-  useGmGames: () => useGmGamesMock(),
-}));
 
 vi.mock('../hooks/useMyProfile', () => ({
   useMyProfile: () => useMyProfileMock(),
@@ -17,50 +12,32 @@ vi.mock('../hooks/useMyProfile', () => ({
 
 describe('AppShell', () => {
   beforeEach(() => {
-    useGmGamesMock.mockReset();
     useMyProfileMock.mockReset();
   });
 
-  it('keeps GM Games available for players and disables GM Inbox when they have no GM games', () => {
+  it('disables GM Games for non-GM players and keeps Inbox stable', () => {
     useMyProfileMock.mockReturnValue({
       profile: { playerId: 'player-aaa', roles: ['PLAYER'] },
       loading: false,
       error: null,
     });
-    useGmGamesMock.mockReturnValue({
-      games: [],
-      loading: false,
-      error: null,
-    });
 
     renderWithAuth({
       actorId: 'player-aaa',
       isAuthenticated: true,
     });
 
-    expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
-    expect(screen.getByText('GM Inbox').getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/inbox?mode=player');
+    expect(screen.queryByRole('link', { name: 'GM Games' })).toBeNull();
+    expect(screen.getByText('GM Games').getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
     expect(screen.getByText('Admin').getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByRole('button', { name: 'Toggle debug widget' })).toBeTruthy();
   });
 
-  it('enables GM nav and points GM inbox to the first GM game', () => {
+  it('enables GM nav and keeps Inbox targeting player inbox', () => {
     useMyProfileMock.mockReturnValue({
       profile: { playerId: 'player-aaa', roles: ['GM', 'ADMIN'] },
-      loading: false,
-      error: null,
-    });
-    useGmGamesMock.mockReturnValue({
-      games: [
-        {
-          gameId: 'game-2',
-          name: 'GM Game',
-          visibility: 'PUBLIC',
-          gmPlayerId: 'player-aaa',
-          version: 1,
-        },
-      ],
       loading: false,
       error: null,
     });
@@ -70,8 +47,8 @@ describe('AppShell', () => {
       isAuthenticated: true,
     });
 
+    expect(screen.getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/inbox?mode=player');
     expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
-    expect(screen.getByRole('link', { name: 'GM Inbox' }).getAttribute('href')).toBe('/gm/game-2/inbox');
     expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
     expect(screen.getByRole('link', { name: 'Admin' }).getAttribute('href')).toBe('/admin');
   });
@@ -82,30 +59,20 @@ describe('AppShell', () => {
       loading: false,
       error: null,
     });
-    useGmGamesMock.mockReturnValue({
-      games: [],
-      loading: false,
-      error: null,
-    });
 
     renderWithAuth({
       actorId: 'player-aaa',
       isAuthenticated: true,
     });
 
+    expect(screen.getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/inbox?mode=player');
     expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
     expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
-    expect(screen.getByText('GM Inbox').getAttribute('aria-disabled')).toBe('true');
   });
 
   it('toggles the debug widget open and closed from the bug icon button', async () => {
     useMyProfileMock.mockReturnValue({
       profile: { playerId: 'player-aaa', roles: ['PLAYER'] },
-      loading: false,
-      error: null,
-    });
-    useGmGamesMock.mockReturnValue({
-      games: [],
       loading: false,
       error: null,
     });
@@ -131,11 +98,6 @@ describe('AppShell', () => {
   it('shows the debug button in error state when a console error is captured', async () => {
     useMyProfileMock.mockReturnValue({
       profile: { playerId: 'player-aaa', roles: ['PLAYER'] },
-      loading: false,
-      error: null,
-    });
-    useGmGamesMock.mockReturnValue({
-      games: [],
       loading: false,
       error: null,
     });

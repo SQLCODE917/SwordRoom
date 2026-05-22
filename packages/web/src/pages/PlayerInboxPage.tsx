@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { createApiClient, type CommandEnvelopeInput, type PlayerInboxItem, type PregameDigestEntry } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
+import { InboxModeTabs } from '../components/InboxModeTabs';
 import { Panel } from '../components/Panel';
+import { useGmGames } from '../hooks/useGmGames';
 import { appendCharacterWizardEntryContext } from '../features/character-wizard';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
@@ -36,6 +38,11 @@ interface InboxItemLike extends Record<string, unknown> {
 export function PlayerInboxPage() {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
+  const { games: gmGames, loading: gmGamesLoading } = useGmGames();
+  const firstGmGameId = gmGames[0]?.gameId ?? null;
+  const gmInboxTo = !gmGamesLoading && firstGmGameId
+    ? `/inbox?mode=gm&gameId=${encodeURIComponent(firstGmGameId)}`
+    : null;
 
   const [rows, setRows] = useState<InboxRow[]>([]);
   const [pregameDigest, setPregameDigest] = useState<PregameDigestEntry[]>([]);
@@ -103,7 +110,8 @@ export function PlayerInboxPage() {
 
   return (
     <div className="l-page">
-      <Panel title="Player Inbox" subtitle="Character updates and game invitations.">
+      <InboxModeTabs playerInboxTo="/inbox?mode=player" gmInboxTo={gmInboxTo ?? undefined} />
+      <Panel title="Inbox" subtitle="Character updates and game invitations.">
         <Panel title="Resume Planning" subtitle="Fastest path back into active pregame work.">
           <div className="c-note c-note--info">
             <div className="t-small">{quickResume.headline}</div>
