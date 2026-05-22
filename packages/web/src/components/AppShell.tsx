@@ -76,10 +76,10 @@ export function AppShell({ children }: PropsWithChildren) {
     <div className="c-shell l-shell">
       <header className="c-shell__header l-header">
         <div className={`${styles.headerBrand} l-tight`}>
-          <div className={styles.headerTitleColumn}>
+          <NavLink className={`${styles.headerTitleColumn} ${styles.headerHomeLink}`} to="/">
             <h1 className="t-h2">Sword Room Online</h1>
             <p className="t-small">The Pregame Release</p>
-          </div>
+          </NavLink>
           <div className={styles.headerDebugColumn}>
             <DebugToggleButton
               ref={debugButtonRef}
@@ -89,7 +89,6 @@ export function AppShell({ children }: PropsWithChildren) {
           </div>
         </div>
         <nav className="l-row" aria-label="Primary">
-          <AppShellNavButton label="Home" to="/" end />
           <AppShellNavButton label="Inbox" to="/inbox?mode=player" />
           <AppShellNavButton
             label="GM Games"

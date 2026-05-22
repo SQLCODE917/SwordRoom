@@ -17,6 +17,16 @@
   min-width: 0;
 }
 
+.headerHomeLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.headerHomeLink:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .headerTitleColumn > h1 {
   flex: 1 1 auto;
   min-width: 0;

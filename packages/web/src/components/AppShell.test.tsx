@@ -27,7 +27,9 @@ describe('AppShell', () => {
       isAuthenticated: true,
     });
 
+    expect(screen.getByRole('link', { name: /Sword Room Online/i }).getAttribute('href')).toBe('/');
     expect(screen.getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/inbox?mode=player');
+    expect(screen.queryByRole('link', { name: 'Home' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'GM Games' })).toBeNull();
     expect(screen.getByText('GM Games').getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
