@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createApiClient, type CommandEnvelopeInput, type GameItem } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
+import styles from './GMGamesPage.module.css';
 
 export function GMGamesPage() {
   const auth = useAuthProvider();
+  const navigate = useNavigate();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
   const [games, setGames] = useState<GameItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,23 +29,27 @@ export function GMGamesPage() {
   return (
     <div className="l-page">
       <Panel title="GM Games" subtitle="Create games, change visibility, invite players, and delete games.">
-        <div className="l-col">
-          <FieldText label="New game name" value={createName} onChange={setCreateName} hint="The backend assigns the game ID." />
-          <button
-            className={`c-btn ${busyKey ? 'is-disabled' : ''}`.trim()}
-            type="button"
-            disabled={busyKey !== null || createName.trim() === ''}
-            onClick={() => void createGame()}
-          >
-            Create Game
-          </button>
-        </div>
+        <section className={styles.createSection} aria-label="Start a game">
+          <div className={styles.createRow}>
+            <div className={styles.createField}>
+              <FieldText label="New game name" value={createName} onChange={setCreateName} hint="The backend assigns the game ID." />
+            </div>
+            <button
+              className={`c-btn ${styles.actionButton} ${busyKey ? 'is-disabled' : ''}`.trim()}
+              type="button"
+              disabled={busyKey !== null || createName.trim() === ''}
+              onClick={() => void createGame()}
+            >
+              Create Game and Open Lobby
+            </button>
+          </div>
+        </section>
 
         <div className="c-table" role="table" aria-label="GM games">
           <div className="c-table__head c-table__row" role="row">
             <div className="c-table__cell t-small">Game</div>
-            <div className="c-table__cell t-small">Visibility</div>
-            <div className="c-table__cell t-small">Routes</div>
+            <div className="c-table__cell t-small">Operate</div>
+            <div className="c-table__cell t-small">Control</div>
             <div className="c-table__cell t-small">Invite</div>
           </div>
           {games.length === 0 ? (
@@ -56,40 +63,63 @@ export function GMGamesPage() {
               const busy = busyKey === game.gameId;
               return (
                 <div className="c-table__row" role="row" key={game.gameId}>
-                  <div className="c-table__cell t-small">
-                    <div>{game.name}</div>
+                  <div className={`c-table__cell t-small ${styles.gameCell}`}>
+                    <div className={styles.gameName}>{game.name}</div>
+                    <div className={styles.gameId}>ID: {game.gameId}</div>
                   </div>
-                  <div className="c-table__cell t-small">
-                    <div>{game.visibility}</div>
-                    <button
-                      className={`c-btn ${busy ? 'is-disabled' : ''}`.trim()}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void setVisibility(game, game.visibility === 'PUBLIC' ? 'PRIVATE' : 'PUBLIC')}
-                    >
-                      Make {game.visibility === 'PUBLIC' ? 'Private' : 'Public'}
-                    </button>
-                    <button
-                      className={`c-btn c-btn--destructive ${busy ? 'is-disabled' : ''}`.trim()}
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void archiveGame(game)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                    <div className="c-table__cell t-small">
-                      <div className="l-col">
-                        <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>New Character</ButtonLink>
-                        <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/play`}>Play</ButtonLink>
-                        <ButtonLink to={`/games/${encodeURIComponent(game.gameId)}/chat`}>Chat</ButtonLink>
-                        <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/play`}>GM Play</ButtonLink>
-                        <ButtonLink to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>GM Inbox</ButtonLink>
+                  <div className={`c-table__cell t-small ${styles.operateCell}`}>
+                    <div className={styles.operateZone}>
+                      <div className={`l-row ${styles.primaryActionRow}`}>
+                        <ButtonLink className={styles.actionButton} to={`/games/${encodeURIComponent(game.gameId)}/play`}>
+                          Play
+                        </ButtonLink>
+                        <ButtonLink className={styles.actionButton} to={`/gm/${encodeURIComponent(game.gameId)}/play`}>
+                          GM Play
+                        </ButtonLink>
+                      </div>
+                      <div className={`l-row ${styles.secondaryActionRow}`}>
+                        <ButtonLink className={styles.actionButton} to={`/games/${encodeURIComponent(game.gameId)}/chat`}>
+                          Chat
+                        </ButtonLink>
+                        <ButtonLink className={styles.actionButton} to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>
+                          GM Inbox
+                        </ButtonLink>
+                        <ButtonLink className={styles.actionButton} to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>
+                          New Character
+                        </ButtonLink>
                       </div>
                     </div>
-                  <div className="c-table__cell">
-                    <div className="l-col">
+                  </div>
+                  <div className={`c-table__cell t-small ${styles.controlCell}`}>
+                    <div className={styles.controlZone}>
+                      <div className={styles.visibilityReadout}>Visibility: {game.visibility}</div>
+                      <button
+                        className={`c-btn ${styles.actionButton} ${busy ? 'is-disabled' : ''}`.trim()}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void setVisibility(game, game.visibility === 'PUBLIC' ? 'PRIVATE' : 'PUBLIC')}
+                      >
+                        Make {game.visibility === 'PUBLIC' ? 'Private' : 'Public'}
+                      </button>
+                      <div className={styles.deleteZone}>
+                        <button
+                          className={`c-btn c-btn--destructive ${styles.actionButton} ${busy ? 'is-disabled' : ''}`.trim()}
+                          type="button"
+                          disabled={busy}
+                          onClick={() => void archiveGame(game)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`c-table__cell ${styles.inviteCell}`}>
+                    <div className={`l-col ${styles.inviteZone}`}>
+                      <label className="c-field__label" htmlFor={`invite-email-${game.gameId}`}>
+                        Invite email
+                      </label>
                       <input
+                        id={`invite-email-${game.gameId}`}
                         className="c-field__control"
                         aria-label={`Invite email for ${game.gameId}`}
                         value={inviteEmailByGameId[game.gameId] ?? ''}
@@ -99,7 +129,7 @@ export function GMGamesPage() {
                         }
                       />
                       <button
-                        className={`c-btn ${busy ? 'is-disabled' : ''}`.trim()}
+                        className={`c-btn ${styles.actionButton} ${busy ? 'is-disabled' : ''}`.trim()}
                         type="button"
                         disabled={busy || (inviteEmailByGameId[game.gameId] ?? '').trim() === ''}
                         onClick={() => void invitePlayer(game)}
@@ -117,7 +147,7 @@ export function GMGamesPage() {
     </div>
   );
 
-  async function refreshGames() {
+  async function refreshGames(): Promise<GameItem[]> {
     setLoading(true);
     try {
       const nextGames = await api.getGmGames();
@@ -128,6 +158,7 @@ export function GMGamesPage() {
         authMode: auth.mode,
         count: nextGames.length,
       });
+      return nextGames;
     } catch (refreshError) {
       const message = refreshError instanceof Error ? refreshError.message : String(refreshError);
       setError(message);
@@ -136,6 +167,7 @@ export function GMGamesPage() {
         authMode: auth.mode,
         ...summarizeError(refreshError),
       });
+      return [];
     } finally {
       setLoading(false);
     }
@@ -143,6 +175,7 @@ export function GMGamesPage() {
 
   async function createGame() {
     const name = createName.trim();
+    const existingGameIds = new Set(games.map((game) => game.gameId));
     setBusyKey('create');
     try {
       await submitEnvelopeAndAwait('Create game', {
@@ -157,7 +190,13 @@ export function GMGamesPage() {
       setCreateName('');
       // Creating a first game changes the actor's effective GM capabilities.
       notifyAuthStateChanged();
-      await refreshGames();
+      const nextGames = await refreshGames();
+      const createdGame =
+        nextGames.find((game) => !existingGameIds.has(game.gameId)) ??
+        nextGames.find((game) => game.name === name);
+      if (createdGame) {
+        navigate(`/games/${encodeURIComponent(createdGame.gameId)}`);
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));
     } finally {

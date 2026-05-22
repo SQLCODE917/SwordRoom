@@ -106,6 +106,6 @@ describe('App shell routes', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: 'GM Games' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Create Game' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Create Game and Open Lobby' })).toBeTruthy();
   });
 });

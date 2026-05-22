@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider, type AuthProvider } from '../auth/AuthProvider';
@@ -43,6 +43,11 @@ function createAuth(): AuthProvider {
   };
 }
 
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
+}
+
 describe('GMGamesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,7 +58,7 @@ describe('GMGamesPage', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows GM Inbox after creating a first game', async () => {
+  it('creates a first game, notifies auth state, and opens the lobby', async () => {
     const getGmGames = vi
       .fn()
       .mockResolvedValueOnce([])
@@ -92,8 +97,9 @@ describe('GMGamesPage', () => {
     });
 
     render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/gm/games']}>
         <GMGamesPage />
+        <LocationProbe />
       </MemoryRouter>
     );
 
@@ -102,7 +108,7 @@ describe('GMGamesPage', () => {
     fireEvent.change(screen.getByRole('textbox'), {
       target: { value: 'Fresh Game' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Create Game' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Game and Open Lobby' }));
 
     await waitFor(() =>
       expect(submitEnvelopeAndAwait).toHaveBeenCalledWith(
@@ -114,9 +120,7 @@ describe('GMGamesPage', () => {
       )
     );
 
-    const gmInboxLink = await screen.findByRole('link', { name: 'GM Inbox' });
-    expect(screen.queryByText('game-new')).toBeNull();
-    expect(gmInboxLink.className).toContain('c-btn');
+    expect((await screen.findByTestId('location')).textContent).toBe('/games/game-new');
     expect(vi.mocked(notifyAuthStateChanged)).toHaveBeenCalledTimes(1);
   });
 

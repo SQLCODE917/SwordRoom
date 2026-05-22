@@ -1,0 +1,68 @@
+.createSection {
+  border: 1px solid var(--line);
+  padding: var(--panel-pad);
+}
+
+.createRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  align-items: flex-end;
+}
+
+.createField {
+  flex: 1 1 320px;
+}
+
+.gameCell,
+.operateCell,
+.controlCell,
+.inviteCell {
+  align-items: flex-start;
+}
+
+.gameName {
+  font-weight: 600;
+}
+
+.gameId {
+  color: var(--muted);
+  font-size: var(--fs-1);
+}
+
+.operateZone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  width: 100%;
+}
+
+.primaryActionRow,
+.secondaryActionRow {
+  align-items: stretch;
+}
+
+.controlZone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  width: 100%;
+}
+
+.visibilityReadout {
+  color: var(--muted);
+  font-size: var(--fs-1);
+}
+
+.deleteZone {
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-2);
+}
+
+.inviteZone {
+  width: 100%;
+}
+
+.actionButton {
+  min-width: 168px;
+}

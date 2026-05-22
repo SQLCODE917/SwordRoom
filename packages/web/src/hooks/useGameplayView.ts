@@ -3,6 +3,8 @@ import { createApiClient, type GameplayView } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
+const livePollingIntervalMs = 3000;
+
 export function useGameplayView(
   gameId: string,
   view: 'PLAYER' | 'GM'
@@ -73,24 +75,37 @@ export function useGameplayView(
 
   useEffect(() => {
     let cancelled = false;
-
-    const guardedLoad = async (options?: { background?: boolean }) => {
-      if (cancelled) {
-        return;
+    void (async () => {
+      if (!cancelled) {
+        await load();
       }
-      await load(options);
-    };
+    })();
 
-    void guardedLoad();
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
+
+  useEffect(() => {
+    // Avoid repeated 404 polling noise when no gameplay session exists yet.
+    if (!gameplay) {
+      return;
+    }
+
+    let cancelled = false;
     const intervalId = window.setInterval(() => {
-      void guardedLoad({ background: true });
-    }, 3000);
+      void (async () => {
+        if (!cancelled) {
+          await load({ background: true });
+        }
+      })();
+    }, livePollingIntervalMs);
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [load]);
+  }, [gameplay, load]);
 
   return {
     gameplay,
