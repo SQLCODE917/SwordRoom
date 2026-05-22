@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { createApiClient, type CommandEnvelopeInput, type GameItem } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
-import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
@@ -16,7 +15,7 @@ export function GMGamesPage() {
   const [createName, setCreateName] = useState('');
   const [inviteEmailByGameId, setInviteEmailByGameId] = useState<Record<string, string>>({});
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const { status: commandStatus, submitEnvelopeAndAwait } = useCommandWorkflow();
+  const { submitEnvelopeAndAwait } = useCommandWorkflow();
 
   useEffect(() => {
     void refreshGames();
@@ -27,11 +26,6 @@ export function GMGamesPage() {
   return (
     <div className="l-page">
       <Panel title="GM Games" subtitle="Create games, change visibility, invite players, and delete games.">
-        <CommandStatusPanel status={commandStatus} />
-        <div className={`c-note ${error ? 'c-note--error' : 'c-note--info'}`}>
-          <span className="t-small">{error ?? 'GM games refresh after each successful command.'}</span>
-        </div>
-
         <div className="l-col">
           <FieldText label="New game name" value={createName} onChange={setCreateName} hint="The backend assigns the game ID." />
           <button
@@ -53,7 +47,9 @@ export function GMGamesPage() {
           </div>
           {games.length === 0 ? (
             <div className="c-table__row" role="row">
-              <div className="c-table__cell t-small">{loading ? 'Loading games...' : 'No GM games yet.'}</div>
+              <div className="c-table__cell t-small">
+                {error ? `Unable to load GM games: ${error}` : loading ? 'Loading games...' : 'No GM games yet.'}
+              </div>
             </div>
           ) : (
             games.map((game) => {

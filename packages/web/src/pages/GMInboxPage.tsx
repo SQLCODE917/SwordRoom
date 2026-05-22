@@ -3,7 +3,6 @@ import { useParams } from 'react-router-dom';
 import { createApiClient, type CommandEnvelopeInput, type GMInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
-import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { Panel } from '../components/Panel';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
@@ -35,7 +34,7 @@ export function GMInboxPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [activeCharacterId, setActiveCharacterId] = useState<string | null>(null);
-  const { status: commandStatus, submitEnvelopeAndAwait } = useCommandWorkflow();
+  const { submitEnvelopeAndAwait } = useCommandWorkflow();
 
   useEffect(() => {
     void refreshInbox();
@@ -45,11 +44,6 @@ export function GMInboxPage() {
   return (
     <div className="l-page">
       <Panel title="GM Inbox" subtitle={`Pending characters and invite responses for game ${gameId}.`}>
-        <CommandStatusPanel status={commandStatus} />
-        <div className={`c-note ${error ? 'c-note--error' : 'c-note--info'}`}>
-          <span className="t-small">{error ?? 'GM inbox refreshes after each successful review.'}</span>
-        </div>
-
         <div className="c-table" role="table" aria-label="GM Pending Characters">
           <div className="c-table__head c-table__row" role="row">
             <div className="c-table__cell t-small">Character</div>
@@ -60,7 +54,13 @@ export function GMInboxPage() {
 
           {pendingRows.length === 0 ? (
             <div className="c-table__row" role="row">
-              <div className="c-table__cell t-small">No pending characters.</div>
+              <div className="c-table__cell t-small">
+                {error
+                  ? `Unable to load GM inbox: ${error}`
+                  : loading
+                    ? 'Loading pending characters...'
+                    : 'No pending characters.'}
+              </div>
             </div>
           ) : (
             pendingRows.map((row) => {
@@ -129,7 +129,9 @@ export function GMInboxPage() {
             </div>
             {activityRows.length === 0 ? (
               <div className="c-table__row" role="row">
-                <div className="c-table__cell t-small">No invite activity yet.</div>
+                <div className="c-table__cell t-small">
+                  {error ? 'Invite activity unavailable while inbox is in error state.' : 'No invite activity yet.'}
+                </div>
               </div>
             ) : (
               activityRows.map((row) => (

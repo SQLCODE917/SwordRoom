@@ -4,7 +4,6 @@ import { toPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
-import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { PregamePlanningPanel } from '../components/PregamePlanningPanel';
 import { PregameWorkflowNav } from '../components/PregameWorkflowNav';
@@ -554,12 +553,6 @@ function CharacterWizardPageContent({
                   />
                 </Panel>
               ) : null}
-
-              <div ref={commandStatusRef}>
-                <Panel title="Command Status" subtitle="Fixed region for no-jump UX.">
-                  <CommandStatusPanel status={commandStatus} />
-                </Panel>
-              </div>
 
               <Panel
                 title="Current Character Snapshot"

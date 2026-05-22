@@ -21,7 +21,7 @@ export function PlayerGameplayPage() {
   const gameId = params.gameId ?? 'game-1';
   const gameplayState = useGameplayView(gameId, 'PLAYER');
   const chat = useGameChat(gameId);
-  const { status: commandStatus, isRunning, submitEnvelopeAndAwait } = useCommandWorkflow();
+  const { isRunning, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   const [intentBody, setIntentBody] = useState('');
   const [combatActorCombatantId, setCombatActorCombatantId] = useState('');
@@ -140,7 +140,6 @@ export function PlayerGameplayPage() {
                     displayName: combatant.displayName,
                   }))}
                   isRunning={isRunning}
-                  commandStatus={commandStatus}
                   onSubmitIntent={() => void submitIntent()}
                   onSubmitCombatAction={() => void submitCombatAction()}
                 />
@@ -165,7 +164,6 @@ export function PlayerGameplayPage() {
               <GameChatPanel
                 chat={chat.chat}
                 initialLoading={chat.initialLoading}
-                error={chat.error}
                 draftBody={chat.draftBody}
                 setDraftBody={chat.setDraftBody}
                 activeReplyTarget={chat.activeReplyTarget}
@@ -174,7 +172,6 @@ export function PlayerGameplayPage() {
                 setMembersOpen={chat.setMembersOpen}
                 transcriptRef={chat.transcriptRef}
                 isSending={chat.isSending}
-                commandStatus={chat.commandStatus}
                 onSendMessage={chat.sendMessage}
                 onReactToArtifact={chat.sendCharacterDraftReaction}
                 onReplyToArtifact={chat.beginReplyToCharacterDraft}
@@ -287,7 +284,6 @@ function PlayerActionPanel(input: {
   currentRoundNumber: number | null;
   availableTargets: Array<{ combatantId: string; displayName: string }>;
   isRunning: boolean;
-  commandStatus: ReturnType<typeof useCommandWorkflow>['status'];
   onSubmitIntent: () => void;
   onSubmitCombatAction: () => void;
 }) {
@@ -295,9 +291,6 @@ function PlayerActionPanel(input: {
     <section className="c-gameplay-ops" aria-label="Player actions">
       <div className="l-row">
         <h3 className="t-h4">Your Actions</h3>
-      </div>
-      <div className={`c-note ${input.commandStatus.state === 'Failed' ? 'c-note--error' : 'c-note--info'}`}>
-        <span className="t-small">{input.commandStatus.message}</span>
       </div>
 
       <div className="c-gameplay-ops__grid">

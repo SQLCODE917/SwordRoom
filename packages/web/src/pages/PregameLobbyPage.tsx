@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
-import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { PregameWorkflowNav } from '../components/PregameWorkflowNav';
 import { createPregameLobbyViewModel, usePregameLobby } from '../features/pregame-lobby';
@@ -13,7 +12,7 @@ export function PregameLobbyPage() {
   const gameId = params.gameId ?? 'game-1';
   const lobby = usePregameLobby(gameId);
   const view = useMemo(() => createPregameLobbyViewModel(lobby.state), [lobby.state]);
-  const { status: commandStatus, isRunning, submitEnvelopeAndAwait } = useCommandWorkflow();
+  const { isRunning, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   async function postSuggestedPrompt() {
     if (lobby.state.status !== 'ready' || !lobby.state.actorContext.isGameMaster) {
@@ -38,10 +37,6 @@ export function PregameLobbyPage() {
   return (
     <div className="l-page">
       <Panel title={view.title} subtitle={view.subtitle} footer={<LobbyActions actions={view.actions} />}>
-        <CommandStatusPanel status={commandStatus} />
-        <div className={`c-note ${view.noticeTone === 'error' ? 'c-note--error' : 'c-note--info'}`}>
-          <span className="t-small">{view.notice}</span>
-        </div>
         {view.status === 'ready' ? (
           <PregameWorkflowNav
             gameId={gameId}

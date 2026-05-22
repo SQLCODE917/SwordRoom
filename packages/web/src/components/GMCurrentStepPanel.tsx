@@ -2,7 +2,6 @@ import { useRef } from 'react';
 import type { GameplayCombatActionType, GameplayMovementMode, GameplayProcedure } from '@starter/shared';
 import type { GameplayView } from '../api/ApiClient';
 import type { GmControlModel, GmPlayMode, GmUtilityId } from '../data/gmControlModel';
-import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
 import { GameplayRulesInfo } from './GameplayRulesInfo';
 import type { useGmGameplayFormState } from '../hooks/useGmGameplayFormState';
 
@@ -17,7 +16,6 @@ interface GMCurrentStepPanelProps {
   gameplay: GameplayView | null;
   model: GmControlModel;
   forms: GmFormState;
-  commandStatus: CommandStatusViewModel;
   isRunning: boolean;
   onLoadSample: () => Promise<void>;
   onSelectProcedure: () => Promise<void>;
@@ -34,7 +32,6 @@ export function GMCurrentStepPanel({
   gameplay,
   model,
   forms,
-  commandStatus,
   isRunning,
   onLoadSample,
   onSelectProcedure,
@@ -105,10 +102,6 @@ export function GMCurrentStepPanel({
           <span className="t-small">{model.currentStep.description}</span>
         </div>
         <span className="c-gameplay-card__fact">{model.currentStep.title}</span>
-      </div>
-
-      <div className={`c-note ${commandStatus.state === 'Failed' ? 'c-note--error' : 'c-note--info'}`}>
-        <span className="t-small">{commandStatus.message}</span>
       </div>
 
       <StepActionGrid

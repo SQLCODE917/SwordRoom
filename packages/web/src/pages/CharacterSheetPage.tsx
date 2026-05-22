@@ -4,7 +4,6 @@ import { computeAbilityBonuses, computeAbilityScores } from '@starter/shared/rul
 import { toPlayerCharacterLibraryGameId } from '@starter/shared/contracts/db';
 import { createApiClient, type CharacterItem, type CommandEnvelopeInput } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
-import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { ImageBox } from '../components/ImageBox';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { Panel } from '../components/Panel';
@@ -161,7 +160,7 @@ export function CharacterSheetPage() {
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState(' ');
-  const { status: commandStatus, isRunning: isExecutingCommand, submitEnvelopeAndAwait } = useCommandWorkflow();
+  const { isRunning: isExecutingCommand, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   const refreshCharacter = useCallback(async () => {
     logWebFlow('WEB_CHARACTER_SHEET_REFRESH_START', { gameId, characterId });
@@ -219,7 +218,6 @@ export function CharacterSheetPage() {
   }, [api, characterId, gameId, playerId]);
 
   const view = useMemo(() => normalizeCharacter(character), [character]);
-  const noticeClassName = useMemo(() => `c-note ${error ? 'c-note--error' : 'c-note--info'}`, [error]);
   const canDeleteCharacter = Boolean(
     !playerId &&
       character &&
@@ -355,14 +353,12 @@ export function CharacterSheetPage() {
       <Panel
         title="Character Sheet"
         subtitle={`Game ${gameId} / Character ${characterId}`}
-        footer={<span className="t-small">Status: {view.status}</span>}
-      >
-        <CommandStatusPanel status={commandStatus} />
-        <div className={noticeClassName} role="note" aria-live="polite">
+        footer={
           <span className="t-small">
-            {error ?? (loading ? 'Loading character...' : 'Read-only sheet bound to GET /games/{gameId}/characters/{characterId}.')}
+            {error ?? (loading ? 'Loading character...' : `Status: ${view.status}`)}
           </span>
-        </div>
+        }
+      >
         {canDeleteCharacter ? (
           <div className="l-row">
             <button

@@ -7,8 +7,6 @@ import type {
   SharedPartyRoleClaimArtifact,
 } from '@starter/shared';
 import type { GameChatState } from '../hooks/useGameChat';
-import { CommandStatusPanel } from './CommandStatusPanel';
-import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
 import { ButtonLink } from './ButtonLink';
 import { formatPregameRoleList } from '../features/pregame-planning/labels';
 import {
@@ -19,7 +17,6 @@ import {
 interface GameChatPanelProps {
   chat: GameChatState;
   initialLoading: boolean;
-  error: string | null;
   draftBody: string;
   setDraftBody: (value: string) => void;
   activeReplyTarget: GameChatReplyTarget | null;
@@ -28,7 +25,6 @@ interface GameChatPanelProps {
   setMembersOpen: (value: boolean) => void;
   transcriptRef: RefObject<HTMLDivElement>;
   isSending: boolean;
-  commandStatus: CommandStatusViewModel;
   onSendMessage: () => Promise<void>;
   onReactToArtifact: (input: {
     targetMessageId: string;
@@ -49,7 +45,6 @@ interface GameChatPanelProps {
 export function GameChatPanel({
   chat,
   initialLoading,
-  error,
   draftBody,
   setDraftBody,
   activeReplyTarget,
@@ -58,7 +53,6 @@ export function GameChatPanel({
   setMembersOpen,
   transcriptRef,
   isSending,
-  commandStatus,
   onSendMessage,
   onReactToArtifact,
   onReplyToArtifact,
@@ -74,13 +68,6 @@ export function GameChatPanel({
 
   return (
     <>
-      <CommandStatusPanel status={commandStatus} />
-      <div className={`c-note ${error ? 'c-note--error' : 'c-note--info'}`}>
-        <span className="t-small">
-          {error ?? (initialLoading ? 'Loading chat...' : 'IRC-style table chat for current game members.')}
-        </span>
-      </div>
-
       {activeArtifactEntry && activeArtifactEntry.artifact?.kind === 'CHARACTER_DRAFT' ? (
         <section className="c-note c-note--info c-chat__focus" aria-label="Active draft discussion">
           <div className="l-col">

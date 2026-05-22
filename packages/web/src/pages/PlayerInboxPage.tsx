@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { createApiClient, type CommandEnvelopeInput, type PlayerInboxItem, type PregameDigestEntry } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
-import { CommandStatusPanel } from '../components/CommandStatusPanel';
 import { Panel } from '../components/Panel';
 import { appendCharacterWizardEntryContext } from '../features/character-wizard';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
@@ -43,7 +42,7 @@ export function PlayerInboxPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeInviteId, setActiveInviteId] = useState<string | null>(null);
-  const { status: commandStatus, submitEnvelopeAndAwait } = useCommandWorkflow();
+  const { submitEnvelopeAndAwait } = useCommandWorkflow();
 
   useEffect(() => {
     let cancelled = false;
@@ -99,18 +98,12 @@ export function PlayerInboxPage() {
     };
   }, [api, auth.actorId, auth.mode]);
 
-  const noticeClassName = useMemo(() => `c-note ${error ? 'c-note--error' : 'c-note--info'}`, [error]);
-  const placeholderText = loading ? 'Loading inbox...' : 'No inbox items yet.';
+  const placeholderText = error ? `Error loading inbox: ${error}` : loading ? 'Loading inbox...' : 'No inbox items yet.';
   const quickResume = useMemo(() => createPregameResumeViewModel(pregameDigest), [pregameDigest]);
 
   return (
     <div className="l-page">
       <Panel title="Player Inbox" subtitle="Character updates and game invitations.">
-        <CommandStatusPanel status={commandStatus} />
-        <div className={noticeClassName} role="note" aria-live="polite">
-          <span className="t-small">{error ?? 'Inbox refreshes automatically.'}</span>
-        </div>
-
         <Panel title="Resume Planning" subtitle="Fastest path back into active pregame work.">
           <div className="c-note c-note--info">
             <div className="t-small">{quickResume.headline}</div>

@@ -139,7 +139,6 @@ export function GMGameplayPage() {
                     gameplay={gameplay}
                     model={controlModel}
                     forms={forms}
-                    commandStatus={commandStatus}
                     isRunning={isRunning}
                     onLoadSample={loadSample}
                     onSelectProcedure={selectProcedureCommand}
@@ -186,7 +185,6 @@ export function GMGameplayPage() {
                 <GameChatPanel
                   chat={chat.chat}
                   initialLoading={chat.initialLoading}
-                  error={chat.error}
                   draftBody={chat.draftBody}
                   setDraftBody={chat.setDraftBody}
                   activeReplyTarget={chat.activeReplyTarget}
@@ -195,7 +193,6 @@ export function GMGameplayPage() {
                   setMembersOpen={chat.setMembersOpen}
                   transcriptRef={chat.transcriptRef}
                   isSending={chat.isSending}
-                  commandStatus={chat.commandStatus}
                   onSendMessage={chat.sendMessage}
                   onReactToArtifact={chat.sendCharacterDraftReaction}
                   onReplyToArtifact={chat.beginReplyToCharacterDraft}

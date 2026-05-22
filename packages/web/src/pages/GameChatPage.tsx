@@ -43,7 +43,6 @@ export function GameChatPage() {
               <GameChatPanel
                 chat={chat.chat}
                 initialLoading={chat.initialLoading}
-                error={chat.error}
                 draftBody={chat.draftBody}
                 setDraftBody={chat.setDraftBody}
                 activeReplyTarget={chat.activeReplyTarget}
@@ -52,7 +51,6 @@ export function GameChatPage() {
                 setMembersOpen={chat.setMembersOpen}
                 transcriptRef={chat.transcriptRef}
                 isSending={chat.isSending}
-                commandStatus={chat.commandStatus}
                 onSendMessage={chat.sendMessage}
                 onReactToArtifact={chat.sendCharacterDraftReaction}
                 onReplyToArtifact={chat.beginReplyToCharacterDraft}
