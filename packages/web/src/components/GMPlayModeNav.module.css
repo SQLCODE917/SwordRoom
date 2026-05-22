@@ -1,0 +1,26 @@
+.nav {
+  position: sticky;
+  bottom: var(--page-pad);
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 92%, white 8%);
+}
+
+.button {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  padding: var(--s-2) var(--s-3);
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (min-width: 1024px) {
+  .nav {
+    position: static;
+  }
+}

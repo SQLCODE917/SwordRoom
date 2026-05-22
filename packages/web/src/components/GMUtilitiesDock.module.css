@@ -1,0 +1,19 @@
+.dock {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--panel-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .dock {
+    flex: 0 0 min(380px, 34vw);
+    position: sticky;
+    top: var(--page-pad);
+    max-height: calc(100vh - (var(--page-pad) * 2));
+    overflow: auto;
+  }
+}

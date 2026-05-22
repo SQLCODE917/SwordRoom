@@ -1,0 +1,30 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  border: 0;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  max-height: 80vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--panel-pad);
+}
+
+@media (min-width: 1024px) {
+  .sheet,
+  .backdrop {
+    display: none;
+  }
+}

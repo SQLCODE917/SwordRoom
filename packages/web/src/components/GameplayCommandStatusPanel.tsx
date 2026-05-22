@@ -1,6 +1,7 @@
 import { CommandStatusPanel } from './CommandStatusPanel';
 import type { RecentCommandStatusEntry } from '../data/gmControlModel';
 import type { CommandStatusViewModel } from '../hooks/useCommandStatus';
+import styles from './GameplayCommandStatusPanel.module.css';
 
 interface GameplayCommandStatusPanelProps {
   status: CommandStatusViewModel;
@@ -9,14 +10,14 @@ interface GameplayCommandStatusPanelProps {
 
 export function GameplayCommandStatusPanel({ status, history }: GameplayCommandStatusPanelProps) {
   return (
-    <section className="c-gm-utility c-gm-command-status" aria-label="Command status panel">
+    <section className={styles.utility} aria-label="Command status panel">
       <div className="l-row">
         <h3 className="t-h4">Command Status</h3>
       </div>
       <CommandStatusPanel status={status} />
       <div className="l-col l-tight">
         <h4 className="t-h4">Recent Commands</h4>
-        <ol className="c-gm-command-status__history">
+        <ol className={styles.history}>
           {history.length === 0 ? (
             <li className="c-gameplay-feed__empty t-small">No recent terminal commands in this page session.</li>
           ) : (

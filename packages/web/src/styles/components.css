@@ -27,11 +27,6 @@
   background: var(--bg);
 }
 
-.c-panel--plain {
-  border: 1px solid transparent;
-  background: var(--panel);
-}
-
 .c-panel__hd,
 .c-panel__bd,
 .c-panel__ft {
@@ -49,8 +44,7 @@
   align-items: center;
 }
 
-.c-btn,
-.c-navlink {
+.c-btn {
   /* ISA-101-inspired controls keep the resting state neutral, reserve accent for active/current, and mute disabled. */
   --c-btn-rest-bg: var(--btn-bg);
   --c-btn-rest-fg: var(--btn-fg);
@@ -99,7 +93,6 @@
 }
 
 .c-btn--destructive,
-.c-navlink--destructive,
 .c-btn.is-error {
   --c-btn-rest-bg: var(--btn-danger-bg);
   --c-btn-rest-fg: var(--btn-danger-fg);
@@ -116,12 +109,7 @@
 
 .c-btn:hover:not(:disabled):not(.is-disabled):not(.is-active):not(
     [aria-current="page"]
-  ):not([aria-current="step"]):not([aria-selected="true"]),
-.c-navlink:hover:not([aria-disabled="true"]):not(.is-disabled):not(
-    .is-active
-  ):not([aria-current="page"]):not([aria-current="step"]):not(
-    [aria-selected="true"]
-  ) {
+  ):not([aria-current="step"]):not([aria-selected="true"]) {
   --c-btn-bg: var(--c-btn-hover-bg);
   --c-btn-border: var(--c-btn-hover-border);
   --c-btn-shadow: var(--c-btn-hover-shadow);
@@ -130,11 +118,7 @@
 .c-btn.is-active,
 .c-btn[aria-current="page"],
 .c-btn[aria-current="step"],
-.c-btn[aria-selected="true"],
-.c-navlink.is-active,
-.c-navlink[aria-current="page"],
-.c-navlink[aria-current="step"],
-.c-navlink[aria-selected="true"] {
+.c-btn[aria-selected="true"] {
   --c-btn-bg: var(--c-btn-active-bg);
   --c-btn-fg: var(--c-btn-active-fg);
   --c-btn-border: var(--c-btn-active-border);
@@ -144,9 +128,7 @@
 
 .c-btn.is-disabled,
 .c-btn:disabled,
-.c-btn[aria-disabled="true"],
-.c-navlink.is-disabled,
-.c-navlink[aria-disabled="true"] {
+.c-btn[aria-disabled="true"] {
   --c-btn-bg: var(--c-btn-disabled-bg);
   --c-btn-fg: var(--c-btn-disabled-fg);
   --c-btn-border: var(--c-btn-disabled-border);
@@ -155,8 +137,7 @@
   opacity: 1;
 }
 
-.c-btn:focus-visible,
-.c-navlink:focus-visible {
+.c-btn:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
@@ -236,130 +217,6 @@
 
 .c-wizard-workspace__rail {
   min-width: 0;
-}
-
-.c-chat__layout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-}
-
-.c-chat__panel,
-.c-chat__members-panel,
-.c-chat__mobile-sheet {
-  border: 1px solid var(--line);
-  background: var(--panel);
-  padding: var(--s-3);
-}
-
-.c-chat__members-panel {
-  display: none;
-}
-
-.c-chat__transcript {
-  min-height: 320px;
-  max-height: 60vh;
-  overflow-y: auto;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  padding: var(--s-3);
-  font-family:
-    ui-monospace,
-    SFMono-Regular,
-    SFMono-Regular,
-    Menlo,
-    Monaco,
-    Consolas,
-    Liberation Mono,
-    monospace;
-}
-
-.c-chat__line,
-.c-chat__empty,
-.c-chat__member {
-  font-size: var(--fs-1);
-  line-height: 1.5;
-}
-
-.c-chat__line--active {
-  border-left: 4px solid var(--focus);
-  padding-left: var(--s-2);
-}
-
-.c-chat__speaker {
-  font-weight: 600;
-}
-
-.c-chat__composer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-}
-
-.c-chat__artifact-card {
-  margin-top: var(--s-2);
-}
-
-.c-chat__focus {
-  align-items: flex-start;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-
-.c-chat__artifact-actions {
-  flex-wrap: wrap;
-}
-
-.c-chat__members {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-}
-
-.c-chat__member-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-
-.c-chat__member {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--gap);
-  border-bottom: 1px solid var(--line);
-  padding-bottom: var(--s-2);
-}
-
-.c-chat__mobile-controls {
-  display: flex;
-}
-
-.c-chat__mobile-backdrop {
-  position: fixed;
-  inset: 0;
-  border: 0;
-  background: rgba(17, 17, 17, 0.36);
-}
-
-.c-chat__mobile-sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
-  border-bottom: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-.c-chat__preview-sheet {
-  z-index: 11;
 }
 
 .c-cmd {
@@ -897,8 +754,7 @@
   font: inherit;
 }
 
-.c-gameplay-status__grid,
-.c-gameplay-feed-grid {
+.c-gameplay-status__grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--gap);
@@ -994,29 +850,6 @@
   gap: var(--gap);
 }
 
-.c-gm-play-nav {
-  position: sticky;
-  bottom: var(--page-pad);
-  z-index: 2;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s-2);
-  padding: var(--s-2);
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--panel) 92%, white 8%);
-}
-
-.c-gm-play-nav__button,
-.c-gm-control-tabs__button,
-.c-gm-transcript__button {
-  border: 1px solid var(--line);
-  background: var(--bg);
-  color: var(--fg);
-  padding: var(--s-2) var(--s-3);
-  font: inherit;
-  cursor: pointer;
-}
-
 .c-gm-workspace {
   display: flex;
   flex-direction: column;
@@ -1029,23 +862,10 @@
   gap: var(--gap);
 }
 
-.c-gm-control-tabs {
-  position: sticky;
-  top: var(--page-pad);
-  z-index: 1;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--s-2);
-  padding: var(--s-2);
-  border: 1px solid var(--line);
-  background: color-mix(in srgb, var(--panel) 96%, white 4%);
-}
-
 .c-gm-panel,
 .c-gm-step-section,
 .c-gm-rules,
 .c-gm-node-inspector,
-.c-gm-utility-dock,
 .c-gm-chat-mode {
   border: 1px solid var(--line);
   background: var(--panel);
@@ -1119,52 +939,6 @@
   gap: var(--s-2);
 }
 
-.c-gm-utility {
-  border: 0;
-  padding: 0;
-  background: transparent;
-}
-
-.c-gm-timeseries__badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-2);
-}
-
-.c-gm-badge {
-  border: 1px solid var(--line);
-  padding: 4px 8px;
-  font-size: var(--fs-1);
-}
-
-.c-gm-badge--public {
-  border-color: var(--focus);
-  background: #eef5ff;
-}
-
-.c-gm-badge--gm_only {
-  border-color: var(--warn);
-  background: #fff4e8;
-}
-
-.c-gm-badge--neutral {
-  background: var(--panel);
-}
-
-.c-gm-transcript__toggle {
-  display: inline-flex;
-  border: 1px solid var(--line);
-}
-
-.c-gm-command-status__history {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-2);
-}
-
 .c-gm-step-sections__anchor {
   display: contents;
 }
@@ -1175,39 +949,7 @@
   gap: var(--gap);
 }
 
-.c-gm-utility-sheet__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 9;
-  border: 0;
-  background: rgba(0, 0, 0, 0.38);
-}
-
-.c-gm-utility-sheet {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 10;
-  max-height: 80vh;
-  overflow: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-  border-top: 1px solid var(--line);
-  background: var(--panel);
-  padding: var(--panel-pad);
-}
-
-.c-gm-utility-dock {
-  display: flex;
-  flex-direction: column;
-  gap: var(--gap);
-  min-width: 0;
-}
-
 @media (min-width: 640px) {
-  .c-gameplay-feed-grid,
   .c-gameplay-status__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1230,11 +972,6 @@
     flex: 1;
   }
 
-  .c-chat__composer {
-    flex-direction: row;
-    align-items: flex-end;
-  }
-
   .c-pregame-workspace__aside {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1244,10 +981,6 @@
 }
 
 @media (min-width: 1024px) {
-  .c-gm-play-nav {
-    position: static;
-  }
-
   .c-gm-workspace {
     flex-direction: row;
     align-items: flex-start;
@@ -1259,14 +992,6 @@
 
   .c-gm-workspace.has-utility-dock .c-gm-workspace__main {
     min-width: 0;
-  }
-
-  .c-gm-utility-dock {
-    flex: 0 0 min(380px, 34vw);
-    position: sticky;
-    top: var(--page-pad);
-    max-height: calc(100vh - (var(--page-pad) * 2));
-    overflow: auto;
   }
 
   .c-gameplay__layout {
@@ -1314,26 +1039,6 @@
     flex: 1;
   }
 
-  .c-chat__layout {
-    flex-direction: row;
-    align-items: stretch;
-  }
-
-  .c-chat__panel {
-    flex: 1.6;
-  }
-
-  .c-chat__members-panel {
-    display: flex;
-    width: min(320px, 32%);
-  }
-
-  .c-chat__mobile-controls,
-  .c-chat__mobile-backdrop,
-  .c-chat__mobile-sheet {
-    display: none;
-  }
-
   .c-pregame-workspace {
     flex-direction: row;
     align-items: flex-start;
@@ -1357,10 +1062,6 @@
     top: var(--page-pad);
   }
 
-  .c-gm-utility-sheet,
-  .c-gm-utility-sheet__backdrop {
-    display: none;
-  }
 }
 
 .is-disabled {

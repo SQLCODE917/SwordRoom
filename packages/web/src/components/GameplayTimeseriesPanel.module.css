@@ -1,0 +1,31 @@
+.utility {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.badge {
+  border: 1px solid var(--line);
+  padding: 4px 8px;
+  font-size: var(--fs-1);
+}
+
+.badgePublic {
+  border-color: var(--focus);
+  background: #eef5ff;
+}
+
+.badgeGmOnly {
+  border-color: var(--warn);
+  background: #fff4e8;
+}
+
+.badgeNeutral {
+  background: var(--panel);
+}

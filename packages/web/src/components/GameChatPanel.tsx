@@ -8,6 +8,7 @@ import type {
 } from '@starter/shared';
 import type { GameChatState } from '../hooks/useGameChat';
 import { ButtonLink } from './ButtonLink';
+import styles from './GameChatPanel.module.css';
 import { formatPregameRoleList } from '../features/pregame-planning/labels';
 import {
   buildCharacterDraftReactionSummaryLabel,
@@ -69,7 +70,7 @@ export function GameChatPanel({
   return (
     <>
       {activeArtifactEntry && activeArtifactEntry.artifact?.kind === 'CHARACTER_DRAFT' ? (
-        <section className="c-note c-note--info c-chat__focus" aria-label="Active draft discussion">
+        <section className={`c-note c-note--info ${styles.focus}`} aria-label="Active draft discussion">
           <div className="l-col">
             <div className="t-small">Active discussion</div>
             <div className="t-small">{`${activeArtifactEntry.artifact.characterName} v${activeArtifactEntry.artifact.snapshotVersion} is the current draft under discussion.`}</div>
@@ -77,7 +78,7 @@ export function GameChatPanel({
             {activeArtifactEntry.artifact.contextNote ? <div className="t-small">{activeArtifactEntry.artifact.contextNote}</div> : null}
             <div className="t-small">Reply here to discuss it, or open Characters to review it in the workbench.</div>
           </div>
-          <div className="l-row c-chat__artifact-actions">
+          <div className={`l-row ${styles.artifactActions}`}>
             <button
               className="c-btn"
               type="button"
@@ -98,17 +99,17 @@ export function GameChatPanel({
         </section>
       ) : null}
 
-      <div className="l-row c-chat__mobile-controls">
+      <div className={`l-row ${styles.mobileControls}`}>
         <button className="c-btn" type="button" onClick={() => setMembersOpen(true)}>
           Members ({chat.participants.length})
         </button>
       </div>
 
-      <div className="c-chat__layout">
-        <section className="c-chat__panel" aria-label="Game chat transcript">
-          <div className="c-chat__transcript" role="log" aria-live="polite" ref={transcriptRef}>
+      <div className={styles.layout}>
+        <section className={styles.panel} aria-label="Game chat transcript">
+          <div className={styles.transcript} role="log" aria-live="polite" ref={transcriptRef}>
             {visibleMessages.length === 0 ? (
-              <div className="c-chat__empty t-small">{initialLoading ? 'Loading messages...' : 'No chat messages yet.'}</div>
+              <div className={`${styles.empty} t-small`}>{initialLoading ? 'Loading messages...' : 'No chat messages yet.'}</div>
             ) : (
               visibleMessages.map((message) => {
                 const characterArtifact = message.artifact?.kind === 'CHARACTER_DRAFT' ? message.artifact : null;
@@ -120,17 +121,17 @@ export function GameChatPanel({
 
                 return (
                   <div
-                    className={`c-chat__line ${message.messageId === activeArtifactMessageId ? 'c-chat__line--active' : ''}`.trim()}
+                    className={`${styles.line} ${message.messageId === activeArtifactMessageId ? styles.lineActive : ''}`.trim()}
                     key={message.messageId}
                   >
-                    <span className="c-chat__time">[{formatChatTimestamp(message.createdAt)}]</span>{' '}
-                    <span className="c-chat__speaker">{`<${message.senderDisplayName}>`}</span>{' '}
-                    <span className="c-chat__body">{message.body}</span>
+                    <span className={styles.time}>[{formatChatTimestamp(message.createdAt)}]</span>{' '}
+                    <span className={styles.speaker}>{`<${message.senderDisplayName}>`}</span>{' '}
+                    <span className={styles.body}>{message.body}</span>
                     {message.replyTarget ? (
                       <div className="t-small">{readReplyTargetLabel(chat.messages, message.replyTarget)}</div>
                     ) : null}
                     {characterArtifact ? (
-                      <div className="c-note c-note--info c-chat__artifact-card">
+                      <div className={`c-note c-note--info ${styles.artifactCard}`}>
                         <div className="t-small">{`${characterArtifact.characterName} (${characterArtifact.race}) v${characterArtifact.snapshotVersion}`}</div>
                         <div className="t-small">{`Status: ${characterArtifact.status}`}</div>
                         <div className="t-small">{`Share: ${formatCharacterDraftIntent(characterArtifact)}`}</div>
@@ -140,7 +141,7 @@ export function GameChatPanel({
                           {characterArtifact.skillSummary.length > 0 ? `Skills: ${characterArtifact.skillSummary.join(', ')}` : 'Skills: none yet'}
                         </div>
                         {reactionSummaryLabel ? <div className="t-small">{`Reactions: ${reactionSummaryLabel}`}</div> : null}
-                        <div className="l-row c-chat__artifact-actions">
+                        <div className={`l-row ${styles.artifactActions}`}>
                           <button
                             className="c-btn"
                             type="button"
@@ -171,7 +172,7 @@ export function GameChatPanel({
                             Open Sheet
                           </ButtonLink>
                         </div>
-                        <div className="l-row c-chat__artifact-actions">
+                        <div className={`l-row ${styles.artifactActions}`}>
                           {CHARACTER_DRAFT_REACTION_OPTIONS.map((reactionOption) => (
                             <button
                               key={reactionOption.value}
@@ -211,7 +212,7 @@ export function GameChatPanel({
           </div>
 
           <form
-            className="c-chat__composer"
+            className={styles.composer}
             onSubmit={(event) => {
               event.preventDefault();
               void onSendMessage();
@@ -233,21 +234,21 @@ export function GameChatPanel({
                 className="c-field__control"
                 value={draftBody}
                 onChange={(event) => setDraftBody(event.target.value)}
-                disabled={isSending || Boolean(error)}
+                disabled={isSending}
                 placeholder="Type a message"
               />
             </label>
             <button
-              className={`c-btn ${isSending || draftBody.trim() === '' || Boolean(error) ? 'is-disabled' : ''}`.trim()}
+              className={`c-btn ${isSending || draftBody.trim() === '' ? 'is-disabled' : ''}`.trim()}
               type="submit"
-              disabled={isSending || draftBody.trim() === '' || Boolean(error)}
+              disabled={isSending || draftBody.trim() === ''}
             >
               Send
             </button>
           </form>
         </section>
 
-        <aside className="c-chat__members-panel" aria-label="Game chat members">
+        <aside className={styles.membersPanel} aria-label="Game chat members">
           <ChatMemberList participants={chat.participants} />
         </aside>
       </div>
@@ -255,12 +256,12 @@ export function GameChatPanel({
       {membersOpen ? (
         <>
           <button
-            className="c-chat__mobile-backdrop"
+            className={styles.mobileBackdrop}
             type="button"
             aria-label="Close members list"
             onClick={() => setMembersOpen(false)}
           />
-          <div className="c-chat__mobile-sheet" role="dialog" aria-modal="true" aria-label="Game chat members">
+          <div className={styles.mobileSheet} role="dialog" aria-modal="true" aria-label="Game chat members">
             <div className="l-row">
               <h3 className="t-h4">Members</h3>
               <button className="c-btn" type="button" onClick={() => setMembersOpen(false)}>
@@ -275,12 +276,12 @@ export function GameChatPanel({
       {previewArtifact ? (
         <>
           <button
-            className="c-chat__mobile-backdrop"
+            className={styles.mobileBackdrop}
             type="button"
             aria-label="Close character preview"
             onClick={closePreview}
           />
-          <section className="c-chat__mobile-sheet c-chat__preview-sheet" role="dialog" aria-modal="true" aria-label="Character draft preview">
+          <section className={`${styles.mobileSheet} ${styles.previewSheet}`} role="dialog" aria-modal="true" aria-label="Character draft preview">
             <div className="l-row">
               <h3 className="t-h4">{`${previewArtifact.artifact.characterName} v${previewArtifact.artifact.snapshotVersion}`}</h3>
               <button className="c-btn" type="button" onClick={closePreview}>
@@ -308,7 +309,7 @@ export function GameChatPanel({
               </div>
             </div>
 
-            <div className="l-row c-chat__artifact-actions">
+            <div className={`l-row ${styles.artifactActions}`}>
               <button
                 className="c-btn"
                 type="button"
@@ -361,13 +362,13 @@ function PromptArtifactCard({
   onReply: () => void;
 }) {
   return (
-    <div className="c-note c-note--info c-chat__artifact-card">
+    <div className={`c-note c-note--info ${styles.artifactCard}`}>
       <div className="t-small">{artifact.title}</div>
       <div className="t-small">{artifact.prompt}</div>
       {artifact.suggestedRoles.length > 0 ? (
         <div className="t-small">{`Suggested roles: ${formatPregameRoleList(artifact.suggestedRoles)}`}</div>
       ) : null}
-      <div className="l-row c-chat__artifact-actions">
+      <div className={`l-row ${styles.artifactActions}`}>
         <button className="c-btn" type="button" onClick={onReply}>
           Reply
         </button>
@@ -378,7 +379,7 @@ function PromptArtifactCard({
 
 function RoleClaimArtifactCard({ artifact }: { artifact: SharedPartyRoleClaimArtifact }) {
   return (
-    <div className="c-note c-note--info c-chat__artifact-card">
+    <div className={`c-note c-note--info ${styles.artifactCard}`}>
       <div className="t-small">{`${artifact.characterName} claims ${formatPregameRoleList(artifact.roles)}`}</div>
       <div className="t-small">{`Snapshot v${artifact.snapshotVersion}`}</div>
       {artifact.note ? <div className="t-small">{artifact.note}</div> : null}
@@ -399,16 +400,16 @@ interface ActiveArtifactEntry {
 
 function ChatMemberList({ participants }: { participants: GameChatState['participants'] }) {
   return (
-    <div className="c-chat__members">
+    <div className={styles.members}>
       <h3 className="t-h4">Members</h3>
-      <ul className="c-chat__member-list" role="list">
+      <ul className={styles.memberList} role="list">
         {participants.length === 0 ? (
-          <li className="c-chat__member t-small">No members found.</li>
+          <li className={`${styles.member} t-small`}>No members found.</li>
         ) : (
           participants.map((participant) => (
-            <li className="c-chat__member" key={participant.playerId} role="listitem">
-              <span className="c-chat__member-name">{participant.displayName}</span>
-              <span className="c-chat__member-role t-small">{participant.role}</span>
+            <li className={styles.member} key={participant.playerId} role="listitem">
+              <span className={styles.memberName}>{participant.displayName}</span>
+              <span className={`${styles.memberRole} t-small`}>{participant.role}</span>
             </li>
           ))
         )}

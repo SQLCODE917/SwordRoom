@@ -14,6 +14,8 @@
 - Centralize screen-level data loading.
 - Reuse shared UI primitives before creating new components.
 - Use CSS Modules.
+- Keep global CSS limited to theme tokens, base layout utilities, and shared typography primitives.
+- Do not add new feature/component selectors to `src/styles/components.css`; place feature styles in colocated `*.module.css` files.
 - Prefer semantic HTML and minimal DOM.
 - Add component tests for rendering behavior and interaction behavior.
 - Add browser tests for full feature flows.

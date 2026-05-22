@@ -174,13 +174,9 @@ describe('GameChatPage', () => {
     expect(within(workflow).getByRole('link', { name: 'Lobby' }).getAttribute('href')).toBe('/games/game-1');
     expect(within(workflow).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
     expect(await screen.findByText('Open roles: Frontline, Healer')).toBeTruthy();
-    expect(
-      await within(transcript).findByText(
-        (_, element) =>
-          element?.classList.contains('c-chat__line') === true &&
-          element.textContent === '[09:15] <@Zed GM> Session starts soon.'
-      )
-    ).toBeTruthy();
+    expect(await within(transcript).findByText('[09:15]')).toBeTruthy();
+    expect(await within(transcript).findByText('<@Zed GM>')).toBeTruthy();
+    expect(await within(transcript).findByText('Session starts soon.')).toBeTruthy();
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
       target: { value: '  Ready for the delve.  ' },
@@ -202,13 +198,8 @@ describe('GameChatPage', () => {
     );
     expect(getGameChat).toHaveBeenCalledTimes(1);
 
-    expect(
-      await within(transcript).findByText(
-        (_, element) =>
-          element?.classList.contains('c-chat__line') === true &&
-          element.textContent?.includes('<Borin> Ready for the delve.') === true
-      )
-    ).toBeTruthy();
+    expect(await within(transcript).findByText('<Borin>')).toBeTruthy();
+    expect(await within(transcript).findByText('Ready for the delve.')).toBeTruthy();
     expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).value).toBe('');
   });
 
@@ -261,7 +252,7 @@ describe('GameChatPage', () => {
     const dialog = screen.getByRole('dialog', { name: 'Game chat members' });
     const memberNames = within(dialog)
       .getAllByRole('listitem')
-      .map((item) => item.querySelector('.c-chat__member-name')?.textContent);
+      .map((item) => item.querySelector('span')?.textContent);
 
     expect(memberNames).toEqual(['@Zed GM', 'Alice', 'Borin']);
   });
@@ -1254,7 +1245,7 @@ describe('GameChatPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('IRC-style table chat for current game members.')).toBeTruthy();
+    expect(await screen.findByText('Session starts soon.')).toBeTruthy();
     expect(screen.getByText('Dungeon Delvers')).toBeTruthy();
     expect(screen.queryByText('Dungeon Delvers (game-1)')).toBeNull();
     expect(screen.queryByText('Loading chat...')).toBeNull();
@@ -1270,10 +1261,10 @@ describe('GameChatPage', () => {
 
     await waitFor(() => expect(getGameChat).toHaveBeenCalledTimes(2));
     expect(screen.queryByText('Loading chat...')).toBeNull();
-    expect(screen.getByText('IRC-style table chat for current game members.')).toBeTruthy();
+    expect(screen.getByText('Session starts soon.')).toBeTruthy();
 
     resolveRefresh(initialChat);
-    await waitFor(() => expect(screen.getByText('IRC-style table chat for current game members.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Session starts soon.')).toBeTruthy());
 
     setIntervalSpy.mockRestore();
     clearIntervalSpy.mockRestore();

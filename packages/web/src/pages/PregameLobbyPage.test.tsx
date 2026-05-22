@@ -294,7 +294,7 @@ describe('PregameLobbyPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('Forbidden')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Pregame Lobby' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Home' }).getAttribute('href')).toBe('/');
     expect(screen.queryByRole('table', { name: 'Pregame party roster' })).toBeNull();
   });

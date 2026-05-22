@@ -1,0 +1,168 @@
+.layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.panel,
+.membersPanel,
+.mobileSheet {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--s-3);
+}
+
+.membersPanel {
+  display: none;
+}
+
+.transcript {
+  min-height: 320px;
+  max-height: 60vh;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--s-3);
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    Liberation Mono,
+    monospace;
+}
+
+.line,
+.empty,
+.member {
+  font-size: var(--fs-1);
+  line-height: 1.5;
+}
+
+.lineActive {
+  border-left: 4px solid var(--focus);
+  padding-left: var(--s-2);
+}
+
+.speaker {
+  font-weight: 600;
+}
+
+.time {
+  color: var(--muted);
+}
+
+.body {
+  color: var(--fg);
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.artifactCard {
+  margin-top: var(--s-2);
+}
+
+.focus {
+  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.artifactActions {
+  flex-wrap: wrap;
+}
+
+.members {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.memberList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+
+.member {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--gap);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--s-2);
+}
+
+.memberName {
+  font-weight: 500;
+}
+
+.memberRole {
+  text-transform: uppercase;
+}
+
+.mobileControls {
+  display: flex;
+}
+
+.mobileBackdrop {
+  position: fixed;
+  inset: 0;
+  border: 0;
+  background: rgba(17, 17, 17, 0.36);
+}
+
+.mobileSheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  border-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.previewSheet {
+  z-index: 11;
+}
+
+@media (min-width: 768px) {
+  .composer {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
+
+@media (min-width: 1024px) {
+  .layout {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
+  .panel {
+    flex: 1.6;
+  }
+
+  .membersPanel {
+    display: flex;
+    width: min(320px, 32%);
+  }
+
+  .mobileControls,
+  .mobileBackdrop,
+  .mobileSheet {
+    display: none;
+  }
+}

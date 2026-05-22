@@ -1,5 +1,6 @@
 import type { GameplayEventView } from '../api/ApiClient';
 import type { GmTranscriptMode } from '../data/gmControlModel';
+import styles from './GameplayTranscriptPanel.module.css';
 
 interface GameplayTranscriptPanelProps {
   transcriptMode: GmTranscriptMode;
@@ -17,15 +18,15 @@ export function GameplayTranscriptPanel({
   const events = transcriptMode === 'public' ? publicEvents : gmEvents;
 
   return (
-    <section className="c-gameplay-feed c-gm-utility" aria-label="Transcript view">
+    <section className={`c-gameplay-feed ${styles.utility}`} aria-label="Transcript view">
       <div className="l-row">
         <h3 className="t-h4">Transcript</h3>
-        <div className="c-gm-transcript__toggle" role="tablist" aria-label="Transcript audience">
+        <div className={styles.toggle} role="tablist" aria-label="Transcript audience">
           <button
             type="button"
             role="tab"
             aria-selected={transcriptMode === 'public'}
-            className={`c-gm-transcript__button ${transcriptMode === 'public' ? 'is-active' : ''}`.trim()}
+            className={`${styles.button} ${transcriptMode === 'public' ? 'is-active' : ''}`.trim()}
             onClick={() => onTranscriptModeChange('public')}
           >
             Public
@@ -34,7 +35,7 @@ export function GameplayTranscriptPanel({
             type="button"
             role="tab"
             aria-selected={transcriptMode === 'gm'}
-            className={`c-gm-transcript__button ${transcriptMode === 'gm' ? 'is-active' : ''}`.trim()}
+            className={`${styles.button} ${transcriptMode === 'gm' ? 'is-active' : ''}`.trim()}
             onClick={() => onTranscriptModeChange('gm')}
           >
             GM

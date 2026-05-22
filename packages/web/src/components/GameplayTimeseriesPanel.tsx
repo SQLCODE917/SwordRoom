@@ -1,4 +1,5 @@
 import type { GmTimeseriesEntry } from '../data/gmControlModel';
+import styles from './GameplayTimeseriesPanel.module.css';
 
 interface GameplayTimeseriesPanelProps {
   events: GmTimeseriesEntry[];
@@ -6,7 +7,7 @@ interface GameplayTimeseriesPanelProps {
 
 export function GameplayTimeseriesPanel({ events }: GameplayTimeseriesPanelProps) {
   return (
-    <section className="c-gameplay-feed c-gm-utility" aria-label="Timeseries view">
+    <section className={`c-gameplay-feed ${styles.utility}`} aria-label="Timeseries view">
       <div className="l-row">
         <h3 className="t-h4">Timeseries</h3>
       </div>
@@ -20,9 +21,11 @@ export function GameplayTimeseriesPanel({ events }: GameplayTimeseriesPanelProps
                 <span>{formatTimestamp(event.createdAt)}</span>
                 <span>{event.eventKind}</span>
               </div>
-              <div className="c-gm-timeseries__badges">
-                <span className={`c-gm-badge c-gm-badge--${event.audience.toLowerCase()}`}>{event.audience}</span>
-                <span className="c-gm-badge c-gm-badge--neutral">{event.nodeId}</span>
+              <div className={styles.badges}>
+                <span className={`${styles.badge} ${event.audience === 'PUBLIC' ? styles.badgePublic : styles.badgeGmOnly}`}>
+                  {event.audience}
+                </span>
+                <span className={`${styles.badge} ${styles.badgeNeutral}`}>{event.nodeId}</span>
               </div>
               <div className="c-gameplay-feed__title">{event.title}</div>
               <div className="c-gameplay-feed__body t-small">{event.body}</div>

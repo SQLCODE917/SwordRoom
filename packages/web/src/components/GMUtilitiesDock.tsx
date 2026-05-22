@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { GmUtilityId } from '../data/gmControlModel';
+import styles from './GMUtilitiesDock.module.css';
 
 interface GMUtilitiesDockProps {
   utility: GmUtilityId | null;
@@ -13,7 +14,7 @@ export function GMUtilitiesDock({ utility, onClose, children }: GMUtilitiesDockP
   }
 
   return (
-    <aside className="c-gm-utility-dock" aria-label="GM utility dock">
+    <aside className={styles.dock} aria-label="GM utility dock">
       <div className="l-row">
         <h2 className="t-h4">{readUtilityTitle(utility)}</h2>
         <button type="button" className="c-btn" onClick={onClose}>

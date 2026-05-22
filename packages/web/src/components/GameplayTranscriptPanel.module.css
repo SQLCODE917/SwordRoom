@@ -1,0 +1,19 @@
+.utility {
+  border: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.toggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+}
+
+.button {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  padding: var(--s-2) var(--s-3);
+  font: inherit;
+  cursor: pointer;
+}
