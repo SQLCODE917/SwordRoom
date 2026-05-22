@@ -40,11 +40,6 @@
   gap: var(--s-2);
 }
 
-.c-panel__ft {
-  min-height: 44px;
-  justify-content: center;
-}
-
 .c-placeholder {
   min-height: 120px;
   border: 1px solid var(--line);

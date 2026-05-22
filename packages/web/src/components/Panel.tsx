@@ -14,7 +14,7 @@ export function Panel({ title, subtitle, footer, children }: PanelProps) {
         <p className="t-small">{subtitle ?? ' '}</p>
       </div>
       <div className="c-panel__bd">{children}</div>
-      <div className="c-panel__ft">{footer ?? <span className="t-small">Reserved action area</span>}</div>
+      {footer ? <div className="c-panel__ft">{footer}</div> : null}
     </section>
   );
 }
