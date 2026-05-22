@@ -131,12 +131,12 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Loading dashboard...')).toBeTruthy();
+    expect(screen.getByText('Pregame Quick Start')).toBeTruthy();
     expect(screen.getAllByText('Loading characters...').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Loading games...').length).toBeGreaterThan(0);
   });
 
-  it('renders profile or API failures in the dedicated error region', async () => {
+  it('keeps debug-only profile errors out of the main Home surface', async () => {
     vi.mocked(useAuthProvider).mockReturnValue(createAuth());
     vi.mocked(useMyProfile).mockReturnValue({
       profile: null,
@@ -151,7 +151,8 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Profile load failed.')).toBeTruthy();
+    expect(await screen.findByText('Pregame Quick Start')).toBeTruthy();
+    expect(screen.queryByText('Profile load failed.')).toBeNull();
   });
 
   it('renders character action links with the shared button style', async () => {

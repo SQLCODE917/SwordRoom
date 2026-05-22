@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CommandEnvelopeInput, CommandStatusResponse, CommandType, PostCommandResponse } from '../api/ApiClient';
 import { createApiClient, type BackendCommandStatus } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { reportDebugCommandStatus } from '../debug/debugTelemetry';
 
 export type UiCommandState = 'Idle' | 'Queued' | 'Processing' | 'Processed' | 'Failed';
 
@@ -107,6 +108,10 @@ export function useCommandWorkflow(): {
   const resetStatus = useCallback(() => {
     setStatus(idleCommandStatus);
   }, []);
+
+  useEffect(() => {
+    reportDebugCommandStatus(status);
+  }, [status]);
 
   const submitAndAwait = useCallback(
     async ({ label, submit }: SubmitAndAwaitOptions): Promise<CommandStatusResponse> => {

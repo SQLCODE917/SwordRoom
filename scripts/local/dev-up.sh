@@ -218,7 +218,12 @@ pnpm exec tsc -b packages/services/api packages/services/dispatcher
 
 log "Starting log aggregation and watch processes"
 start_task infra docker compose -f docker-compose.local.yml logs -f --tail=100
-start_task tsc pnpm exec tsc -b packages/services/api packages/services/dispatcher --watch --preserveWatchOutput
+start_task tsc pnpm exec tsc -b packages/services/api packages/services/dispatcher \
+  --watch \
+  --preserveWatchOutput \
+  --watchFile dynamicprioritypolling \
+  --watchDirectory dynamicprioritypolling \
+  --fallbackPolling dynamicpriority
 start_task api bash scripts/local/run-api-runtime.sh
 start_task dispatcher bash scripts/local/run-dispatcher-runtime.sh
 
@@ -226,7 +231,7 @@ if ! wait_for_api_ready; then
   exit 1
 fi
 
-start_task web pnpm --filter @starter/web dev
+start_task web env CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=120 pnpm --filter @starter/web dev
 
 log "Local dev stack is live"
 log "Press q, Ctrl-C, or run scripts/local/dev-down.sh to stop"

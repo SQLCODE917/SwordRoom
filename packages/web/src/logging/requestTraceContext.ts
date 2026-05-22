@@ -2,13 +2,39 @@ import { buildTraceRequestHeaders } from '@starter/shared';
 
 const CLIENT_SESSION_STORAGE_KEY = 'swordworld.trace.clientSessionId';
 let inMemoryClientSessionId: string | null = null;
+let latestTraceSnapshot: {
+  xrayTraceHeader: string | null;
+  clientRequestId: string | null;
+} = {
+  xrayTraceHeader: null,
+  clientRequestId: null,
+};
 
 export function readTraceRequestHeaders(): Record<string, string> {
+  const xrayTraceHeader = createXrayTraceHeader();
+  const clientRequestId = createRequestId();
+  latestTraceSnapshot = {
+    xrayTraceHeader,
+    clientRequestId,
+  };
+
   return buildTraceRequestHeaders({
-    xrayTraceHeader: createXrayTraceHeader(),
+    xrayTraceHeader,
     clientSessionId: readOrCreateClientSessionId(),
-    clientRequestId: createRequestId(),
+    clientRequestId,
   });
+}
+
+export function readTraceSnapshot(): {
+  clientSessionId: string | null;
+  latestClientRequestId: string | null;
+  latestXrayTraceHeader: string | null;
+} {
+  return {
+    clientSessionId: readOrCreateClientSessionId(),
+    latestClientRequestId: latestTraceSnapshot.clientRequestId,
+    latestXrayTraceHeader: latestTraceSnapshot.xrayTraceHeader,
+  };
 }
 
 function readOrCreateClientSessionId(): string {

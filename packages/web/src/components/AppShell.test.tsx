@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AuthProviderContext, type AuthProvider } from '../auth/AuthProvider';
 import { AppShell } from './AppShell';
@@ -42,6 +42,7 @@ describe('AppShell', () => {
     expect(screen.getByText('GM Inbox').getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
     expect(screen.getByText('Admin').getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Toggle debug widget' })).toBeTruthy();
   });
 
   it('enables GM nav and points GM inbox to the first GM game', () => {
@@ -95,6 +96,63 @@ describe('AppShell', () => {
     expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
     expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
     expect(screen.getByText('GM Inbox').getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('toggles the debug widget open and closed from the bug icon button', async () => {
+    useMyProfileMock.mockReturnValue({
+      profile: { playerId: 'player-aaa', roles: ['PLAYER'] },
+      loading: false,
+      error: null,
+    });
+    useGmGamesMock.mockReturnValue({
+      games: [],
+      loading: false,
+      error: null,
+    });
+
+    renderWithAuth({
+      actorId: 'player-aaa',
+      isAuthenticated: true,
+    });
+
+    const debugToggle = screen.getByRole('button', { name: 'Toggle debug widget' });
+    expect(debugToggle.getAttribute('aria-pressed')).toBe('false');
+
+    fireEvent.click(debugToggle);
+    expect(debugToggle.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByLabelText('Debug widget')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close debug widget' }));
+    await waitFor(() => {
+      expect(debugToggle.getAttribute('aria-pressed')).toBe('false');
+    });
+  });
+
+  it('shows the debug button in error state when a console error is captured', async () => {
+    useMyProfileMock.mockReturnValue({
+      profile: { playerId: 'player-aaa', roles: ['PLAYER'] },
+      loading: false,
+      error: null,
+    });
+    useGmGamesMock.mockReturnValue({
+      games: [],
+      loading: false,
+      error: null,
+    });
+
+    renderWithAuth({
+      actorId: 'player-aaa',
+      isAuthenticated: true,
+    });
+
+    const debugToggle = screen.getByRole('button', { name: 'Toggle debug widget' });
+    expect(debugToggle.className).not.toContain('is-error');
+
+    console.error('debug-error-test');
+
+    await waitFor(() => {
+      expect(debugToggle.className).toContain('is-error');
+    });
   });
 });
 

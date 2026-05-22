@@ -8,12 +8,11 @@ import {
 } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
-import { CommandStatusPanel } from '../components/CommandStatusPanel';
+import { reportDebugStatusRegion } from '../debug/debugTelemetry';
 import { Panel } from '../components/Panel';
 import { appendCharacterWizardEntryContext } from '../features/character-wizard';
 import {
   createCommandId,
-  type CommandStatusViewModel,
   useCommandWorkflow,
 } from '../hooks/useCommandStatus';
 import { useMyProfile } from '../hooks/useMyProfile';
@@ -31,13 +30,9 @@ interface DashboardState {
 interface HomePageViewModel {
   actorId: string;
   loading: boolean;
-  pageStatusText: string;
-  identityStatusText: string;
-  errorText: string | null;
   quickStartHeadline: string;
   quickStartDetail: string;
   quickStartActions: ActionDeckViewModel;
-  commandStatus: CommandStatusViewModel;
   characterRows: CharacterRowViewModel[];
   myGameRows: GameRowViewModel[];
   publicGameRows: GameRowViewModel[];
@@ -129,31 +124,6 @@ export function HomePage() {
   return (
     <div className="l-page">
       <Panel title="Home" subtitle="Your characters and visible games.">
-        <section className={styles.statusRegion} aria-label="Home status region">
-          <div className="c-note c-note--info">
-            <span className="t-small">{view.pageStatusText}</span>
-          </div>
-          <div className="c-note c-note--info">
-            <span className="t-small">{view.identityStatusText}</span>
-          </div>
-          <div
-            className={`c-note ${
-              view.errorText ? 'c-note--error' : 'c-note--info'
-            }`}
-          >
-            <span className="t-small">
-              {view.errorText ?? 'No active errors.'}
-            </span>
-          </div>
-          <section
-            className={styles.commandRegion}
-            aria-label="Home command status"
-          >
-            <h3 className="t-h4">Command Status</h3>
-            <CommandStatusPanel status={view.commandStatus} />
-          </section>
-        </section>
-
         <Panel
           title="Pregame Quick Start"
           subtitle="Fastest path into active planning on a phone."
@@ -442,16 +412,20 @@ function useHomePageViewModel(): HomePageViewModel {
     [dashboard.publicGames, gameCharacterByGameId, gmGameIds, joinedGameIds],
   );
 
+  useEffect(() => {
+    reportDebugStatusRegion({
+      pageStatusText: loading ? 'Loading dashboard...' : 'Dashboard ready.',
+      identityStatusText: `Signed in as ${auth.actorId}.`,
+      errorText,
+    });
+  }, [auth.actorId, errorText, loading]);
+
   return {
     actorId: auth.actorId,
     loading,
-    pageStatusText: loading ? 'Loading dashboard...' : 'Dashboard ready.',
-    identityStatusText: `Signed in as ${auth.actorId}.`,
-    errorText,
     quickStartHeadline: quickStart.headline,
     quickStartDetail: quickStart.detail,
     quickStartActions,
-    commandStatus,
     characterRows,
     myGameRows,
     publicGameRows,

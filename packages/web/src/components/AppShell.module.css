@@ -1,0 +1,57 @@
+.headerBrand {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--s-2);
+  min-width: 0;
+}
+
+.headerTitleColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.headerTitleColumn > h1 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+
+.headerTitleColumn > p {
+  margin: 0;
+}
+
+.headerDebugColumn {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+}
+
+.debugButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch-h);
+  min-width: var(--touch-h);
+  min-height: var(--touch-h);
+  padding: 0;
+  margin-left: auto;
+  line-height: 1;
+}
+
+.debugButtonIcon {
+  display: block;
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
