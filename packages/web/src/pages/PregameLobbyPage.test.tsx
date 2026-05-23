@@ -76,6 +76,11 @@ describe('PregameLobbyPage', () => {
         gmPlayerId: 'gm-1',
         isGameMaster: false,
       })),
+      getGameplayLifecycle: vi.fn(async () => ({
+        gameId: 'game-1',
+        phase: 'PREGAME',
+        hasGameplaySession: false,
+      })),
       getGameChat: vi.fn(async () => ({
         gameId: 'game-1',
         gameName: 'Dungeon Delvers',
@@ -157,7 +162,11 @@ describe('PregameLobbyPage', () => {
       '/games/game-1/characters/char-1/edit?entry=lobby&focus=revise'
     );
     expect(screen.getByRole('link', { name: 'Character Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
-    expect(screen.getByRole('link', { name: 'Player Inbox' }).getAttribute('href')).toBe('/me/inbox');
+    expect(
+      screen
+        .getAllByRole('link', { name: 'Inbox' })
+        .some((link) => link.getAttribute('href') === '/inbox?mode=player')
+    ).toBe(true);
     expect(screen.getByText('Your current character is Borin Stonehand (DRAFT).')).toBeTruthy();
     expect(screen.getByText('One player still needs a character before the party is fully represented.')).toBeTruthy();
     expect(screen.getByText('We still need Frontline. Please share a draft if you can cover it.')).toBeTruthy();
@@ -213,6 +222,11 @@ describe('PregameLobbyPage', () => {
         gmPlayerId: 'gm-1',
         isGameMaster: true,
       })),
+      getGameplayLifecycle: vi.fn(async () => ({
+        gameId: 'game-1',
+        phase: 'PREGAME',
+        hasGameplaySession: false,
+      })),
       getGameChat: vi.fn(async () => ({
         gameId: 'game-1',
         gameName: 'Dungeon Delvers',
@@ -266,6 +280,11 @@ describe('PregameLobbyPage', () => {
         gmPlayerId: 'gm-1',
         isGameMaster: false,
       })),
+      getGameplayLifecycle: vi.fn(async () => ({
+        gameId: 'game-1',
+        phase: 'PREGAME',
+        hasGameplaySession: false,
+      })),
       getGameChat: vi.fn(async () => ({
         gameId: 'game-1',
         gameName: 'Dungeon Delvers',
@@ -296,6 +315,49 @@ describe('PregameLobbyPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Pregame Lobby' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Home' }).getAttribute('href')).toBe('/');
+    expect(screen.queryByRole('table', { name: 'Pregame party roster' })).toBeNull();
+  });
+
+  it('shows a live handoff when gameplay has already started', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue({
+      ...createAuth(),
+      actorId: 'gm-1',
+    });
+    vi.mocked(createApiClient).mockReturnValue({
+      getGame: vi.fn(async () => ({
+        gameId: 'game-1',
+        name: 'Dungeon Delvers',
+        visibility: 'PUBLIC',
+        gmPlayerId: 'gm-1',
+        version: 1,
+      })),
+      getGameActorContext: vi.fn(async () => ({
+        actorId: 'gm-1',
+        displayName: '@Zed GM',
+        roles: ['GM'],
+        gmPlayerId: 'gm-1',
+        isGameMaster: true,
+      })),
+      getGameplayLifecycle: vi.fn(async () => ({
+        gameId: 'game-1',
+        phase: 'LIVE',
+        hasGameplaySession: true,
+      })),
+    } as unknown as ReturnType<typeof createApiClient>);
+
+    render(
+      <MemoryRouter initialEntries={['/games/game-1']}>
+        <Routes>
+          <Route path="/games/:gameId" element={<PregameLobbyPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole('heading', { name: 'Pregame Lobby' })).toBeTruthy();
+    expect(screen.getByText(/Gameplay is live\./)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Play' }).getAttribute('href')).toBe('/games/game-1/play');
+    expect(screen.getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
+    expect(screen.getByRole('link', { name: 'GM Play' }).getAttribute('href')).toBe('/gm/game-1/play');
     expect(screen.queryByRole('table', { name: 'Pregame party roster' })).toBeNull();
   });
 });

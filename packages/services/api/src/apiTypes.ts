@@ -9,6 +9,7 @@ import type {
   SharedChatArtifact,
   GameChatSenderRole,
   GameplayViewResponse as SharedGameplayViewResponse,
+  GameplayLifecycleResponse as SharedGameplayLifecycleResponse,
   GameMetadataItem,
   GMInboxItem,
   PlayerInboxItem,
@@ -119,6 +120,7 @@ export interface PregameDigestEntryResponse {
 }
 
 export type GameplayViewResponse = SharedGameplayViewResponse;
+export type GameplayLifecycleResponse = SharedGameplayLifecycleResponse;
 
 export interface PostCommandRequest {
   envelope: Omit<AnyCommandEnvelope, 'actorId'> & { actorId?: string };
@@ -165,6 +167,7 @@ export interface ReadApis {
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getGameChat(gameId: string): Promise<GameChatResponse>;
   getPregamePlanning(gameId: string, actorId: string): Promise<PregamePlanningResponse>;
+  getGameplayLifecycle(gameId: string): Promise<GameplayLifecycleResponse>;
   getPlayerGameplayView(gameId: string): Promise<GameplayViewResponse | null>;
   getGmGameplayView(gameId: string): Promise<GameplayViewResponse | null>;
 }

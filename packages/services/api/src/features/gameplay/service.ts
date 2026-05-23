@@ -4,7 +4,7 @@ import { assertActiveGame, buildGameplayView, formatChatDisplayName, readCharact
 
 export function createGameplayReadApis(
   deps: ApiServiceDependencies
-): ReadApisSubset<'getGameChat' | 'getPlayerGameplayView' | 'getGmGameplayView'> {
+): ReadApisSubset<'getGameChat' | 'getGameplayLifecycle' | 'getPlayerGameplayView' | 'getGmGameplayView'> {
   return {
     async getGameChat(gameId: string) {
       const [game, memberships, messages] = await Promise.all([
@@ -67,6 +67,21 @@ export function createGameplayReadApis(
 
     async getGmGameplayView(gameId: string) {
       return buildGameplayView(deps.db, gameId, 'GM');
+    },
+
+    async getGameplayLifecycle(gameId: string) {
+      const [game, session] = await Promise.all([
+        deps.db.gameRepository.getGameMetadata(gameId),
+        deps.db.gameplayRepository.getSession(gameId),
+      ]);
+      assertActiveGame(gameId, game);
+
+      const hasGameplaySession = session !== null;
+      return {
+        gameId: game.gameId,
+        phase: hasGameplaySession ? 'LIVE' : 'PREGAME',
+        hasGameplaySession,
+      } as const;
     },
   };
 }

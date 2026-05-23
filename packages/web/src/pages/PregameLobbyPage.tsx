@@ -37,6 +37,17 @@ export function PregameLobbyPage() {
   return (
     <div className="l-page">
       <Panel title={view.title} subtitle={view.subtitle} footer={<LobbyActions actions={view.actions} />}>
+        <div className={`c-note ${view.noticeTone === 'error' ? 'c-note--error' : 'c-note--info'}`}>
+          <span className="t-small">{view.notice}</span>
+        </div>
+
+        {view.status === 'live' ? (
+          <div className="c-note c-note--info">
+            <div className="t-small">Lobby pregame planning is complete for now.</div>
+            <div className="t-small">Continue in Play for player-facing scene flow, or GM Play for operator controls.</div>
+          </div>
+        ) : null}
+
         {view.status === 'ready' ? (
           <PregameWorkflowNav
             gameId={gameId}

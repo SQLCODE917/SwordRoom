@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createApiClient, type GameplayView } from '../api/ApiClient';
+import { createApiClient, type GameplayLifecycle, type GameplayView } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { useGameLifecycle } from './useGameLifecycle';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 const livePollingIntervalMs = 3000;
@@ -10,23 +11,28 @@ export function useGameplayView(
   view: 'PLAYER' | 'GM'
 ): {
   gameplay: GameplayView | null;
+  lifecycle: GameplayLifecycle | null;
   initialLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
 } {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
+  const lifecycleState = useGameLifecycle(gameId, {
+    poll: 'live-only',
+    pollingIntervalMs: livePollingIntervalMs,
+  });
   const [gameplay, setGameplay] = useState<GameplayView | null>(null);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const hasLoadedRef = useRef(false);
+  const [gameplayInitialLoading, setGameplayInitialLoading] = useState(true);
+  const [gameplayError, setGameplayError] = useState<string | null>(null);
+  const hasLoadedGameplayRef = useRef(false);
 
-  const load = useCallback(
+  const loadGameplay = useCallback(
     async (options?: { background?: boolean }) => {
       const background = options?.background ?? false;
-      const shouldShowInitialLoading = !background && !hasLoadedRef.current;
+      const shouldShowInitialLoading = !background && !hasLoadedGameplayRef.current;
       if (shouldShowInitialLoading) {
-        setInitialLoading(true);
+        setGameplayInitialLoading(true);
       }
 
       logWebFlow('WEB_GAMEPLAY_VIEW_LOAD_START', {
@@ -38,24 +44,33 @@ export function useGameplayView(
       });
 
       try {
+        if (lifecycleState.lifecycle?.phase !== 'LIVE') {
+          setGameplay(null);
+          setGameplayError(null);
+          hasLoadedGameplayRef.current = true;
+          return;
+        }
+
         const next = view === 'GM' ? await api.getGmGameplayView(gameId) : await api.getPlayerGameplayView(gameId);
         setGameplay(next);
-        setError(null);
-        hasLoadedRef.current = true;
+        setGameplayError(null);
+        hasLoadedGameplayRef.current = true;
         logWebFlow('WEB_GAMEPLAY_VIEW_LOAD_OK', {
           actorId: auth.actorId,
           authMode: auth.mode,
           gameId,
           view,
           background,
+          phase: lifecycleState.lifecycle.phase,
+          hasGameplaySession: lifecycleState.lifecycle.hasGameplaySession,
           found: next !== null,
           currentNodeId: next?.session.currentNodeId ?? null,
         });
       } catch (loadError) {
-        if (!hasLoadedRef.current) {
+        if (!hasLoadedGameplayRef.current) {
           setGameplay(null);
         }
-        setError(loadError instanceof Error ? loadError.message : String(loadError));
+        setGameplayError(loadError instanceof Error ? loadError.message : String(loadError));
         logWebFlow('WEB_GAMEPLAY_VIEW_LOAD_FAILED', {
           actorId: auth.actorId,
           authMode: auth.mode,
@@ -66,29 +81,40 @@ export function useGameplayView(
         });
       } finally {
         if (shouldShowInitialLoading) {
-          setInitialLoading(false);
+          setGameplayInitialLoading(false);
         }
       }
     },
-    [api, auth.actorId, auth.mode, gameId, view]
+    [api, auth.actorId, auth.mode, gameId, lifecycleState.lifecycle, view]
   );
 
   useEffect(() => {
+    if (lifecycleState.initialLoading) {
+      return;
+    }
+
+    if (lifecycleState.lifecycle?.phase !== 'LIVE') {
+      setGameplay(null);
+      setGameplayError(null);
+      hasLoadedGameplayRef.current = true;
+      setGameplayInitialLoading(false);
+      return;
+    }
+
     let cancelled = false;
     void (async () => {
       if (!cancelled) {
-        await load();
+        await loadGameplay();
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [load]);
+  }, [lifecycleState.initialLoading, lifecycleState.lifecycle?.phase, loadGameplay]);
 
   useEffect(() => {
-    // Avoid repeated 404 polling noise when no gameplay session exists yet.
-    if (!gameplay) {
+    if (lifecycleState.lifecycle?.phase !== 'LIVE') {
       return;
     }
 
@@ -96,7 +122,7 @@ export function useGameplayView(
     const intervalId = window.setInterval(() => {
       void (async () => {
         if (!cancelled) {
-          await load({ background: true });
+          await loadGameplay({ background: true });
         }
       })();
     }, livePollingIntervalMs);
@@ -105,14 +131,23 @@ export function useGameplayView(
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [gameplay, load]);
+  }, [lifecycleState.lifecycle?.phase, loadGameplay]);
+
+  const initialLoading = lifecycleState.initialLoading || gameplayInitialLoading;
+  const error = lifecycleState.error ?? gameplayError;
 
   return {
     gameplay,
+    lifecycle: lifecycleState.lifecycle,
     initialLoading,
     error,
     refresh: useCallback(async () => {
-      await load();
-    }, [load]),
+      await lifecycleState.refresh();
+      if (lifecycleState.lifecycle?.phase === 'LIVE') {
+        await loadGameplay();
+      } else {
+        setGameplay(null);
+      }
+    }, [lifecycleState, loadGameplay]),
   };
 }

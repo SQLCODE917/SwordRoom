@@ -21,6 +21,14 @@ export type PregameLobbyViewModel =
       actions: LobbyAction[];
     }
   | {
+      status: 'live';
+      title: string;
+      subtitle: string;
+      noticeTone: 'info';
+      notice: string;
+      actions: LobbyAction[];
+    }
+  | {
       status: 'ready';
       title: string;
       subtitle: string;
@@ -100,6 +108,25 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
       notice: state.message,
       actions: [
         { label: 'Home', to: '/' },
+      ],
+    };
+  }
+
+  if (state.status === 'live') {
+    return {
+      status: 'live',
+      title: 'Pregame Lobby',
+      subtitle: `${state.game.name} (${state.game.gameId})`,
+      noticeTone: 'info',
+      notice: state.actorContext.isGameMaster
+        ? 'Gameplay is live. Use GM Play to run the scene, or open Play to view the player-facing scene and chat.'
+        : 'Gameplay is live. Open Play to enter the current scene, or use Chat to coordinate between turns.',
+      actions: [
+        { label: 'Play', to: `/games/${encodeURIComponent(state.game.gameId)}/play` },
+        { label: 'Chat', to: `/games/${encodeURIComponent(state.game.gameId)}/chat` },
+        ...(state.actorContext.isGameMaster
+          ? [{ label: 'GM Play', to: `/gm/${encodeURIComponent(state.game.gameId)}/play` }]
+          : []),
       ],
     };
   }
@@ -197,11 +224,12 @@ function buildActions(input: {
   }
 
   actions.push({ label: 'Chat', to: `/games/${encodeURIComponent(input.gameId)}/chat` });
-  actions.push({ label: 'Player Inbox', to: '/me/inbox' });
-
-  if (input.isGameMaster) {
-    actions.push({ label: 'GM Inbox', to: `/gm/${encodeURIComponent(input.gameId)}/inbox` });
-  }
+  actions.push({
+    label: 'Inbox',
+    to: input.isGameMaster
+      ? `/inbox?mode=gm&gameId=${encodeURIComponent(input.gameId)}`
+      : '/inbox?mode=player',
+  });
 
   return actions;
 }

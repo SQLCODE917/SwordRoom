@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   createApiClient,
   type CharacterItem,
+  type GameplayLifecycle,
   type GameActorContextResponse,
   type GameChatResponse,
   type GameItem,
@@ -13,6 +14,13 @@ import { logWebFlow, summarizeError } from '../../logging/flowLog';
 export type PregameLobbyState =
   | { status: 'loading'; gameId: string }
   | { status: 'error'; gameId: string; message: string }
+  | {
+      status: 'live';
+      gameId: string;
+      game: GameItem;
+      actorContext: GameActorContextResponse;
+      lifecycle: GameplayLifecycle;
+    }
   | {
       status: 'ready';
       gameId: string;
@@ -44,17 +52,43 @@ export function usePregameLobby(gameId: string): {
         gameId,
       });
       try {
-        const [game, actorContext, chat, planning, myCharacters] = await Promise.all([
+        const [game, actorContext, lifecycle] = await Promise.all([
           api.getGame(gameId),
           api.getGameActorContext(gameId),
-          api.getGameChat(gameId),
-          api.getPregamePlanning(gameId),
-          api.getMyCharacters(),
+          api.getGameplayLifecycle(gameId),
         ]);
 
         if (!game) {
           throw new Error(`Game ${gameId} was not found.`);
         }
+
+        if (lifecycle.phase === 'LIVE') {
+          if (!isMountedRef.current) {
+            return;
+          }
+          setState({
+            status: 'live',
+            gameId,
+            game,
+            actorContext,
+            lifecycle,
+          });
+          logWebFlow('WEB_PREGAME_LOBBY_LOAD_LIVE', {
+            actorId: auth.actorId,
+            authMode: auth.mode,
+            gameId,
+            phase: lifecycle.phase,
+            hasGameplaySession: lifecycle.hasGameplaySession,
+            isGameMaster: actorContext.isGameMaster,
+          });
+          return;
+        }
+
+        const [chat, planning, myCharacters] = await Promise.all([
+          api.getGameChat(gameId),
+          api.getPregamePlanning(gameId),
+          api.getMyCharacters(),
+        ]);
 
         if (!isMountedRef.current) {
           return;

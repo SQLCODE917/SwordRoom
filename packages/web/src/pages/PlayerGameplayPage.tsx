@@ -32,6 +32,7 @@ export function PlayerGameplayPage() {
   const [combatSummary, setCombatSummary] = useState('');
 
   const gameplay = gameplayState.gameplay;
+  const lifecycle = gameplayState.lifecycle;
   const currentRound = gameplay?.session.combat?.rounds[gameplay.session.combat.rounds.length - 1] ?? null;
   const ownParticipant = gameplay?.participants.find((participant) => participant.playerId === auth.actorId) ?? null;
   const ownParticipantCharacterId = ownParticipant?.characterId ?? null;
@@ -83,6 +84,8 @@ export function PlayerGameplayPage() {
             {gameplayState.error ??
               (gameplayState.initialLoading
                 ? 'Loading gameplay view...'
+                : lifecycle?.phase === 'PREGAME'
+                  ? 'Gameplay has not started yet. Chat is available while the table is in lobby planning.'
                 : gameplay
                   ? 'Current scene, current phase, and public transcript are shown here.'
                   : 'The GM has not loaded the gameplay scene yet. Chat stays available while you wait.')}

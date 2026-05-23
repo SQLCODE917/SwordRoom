@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createApiClient, type CommandEnvelopeInput, type GameItem } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
@@ -18,6 +18,7 @@ export function GMGamesPage() {
   const [createName, setCreateName] = useState('');
   const [inviteEmailByGameId, setInviteEmailByGameId] = useState<Record<string, string>>({});
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const hasAutoNavigatedSingleGameRef = useRef(false);
   const { submitEnvelopeAndAwait } = useCommandWorkflow();
 
   useEffect(() => {
@@ -70,6 +71,9 @@ export function GMGamesPage() {
                   <div className={`c-table__cell t-small ${styles.operateCell}`}>
                     <div className={styles.operateZone}>
                       <div className={`l-row ${styles.primaryActionRow}`}>
+                        <ButtonLink className={styles.actionButton} to={`/gm/games/${encodeURIComponent(game.gameId)}`}>
+                          Open GM Game
+                        </ButtonLink>
                         <ButtonLink className={styles.actionButton} to={`/games/${encodeURIComponent(game.gameId)}/play`}>
                           Play
                         </ButtonLink>
@@ -153,6 +157,10 @@ export function GMGamesPage() {
       const nextGames = await api.getGmGames();
       setGames(nextGames);
       setError(null);
+      if (nextGames.length === 1 && !hasAutoNavigatedSingleGameRef.current) {
+        hasAutoNavigatedSingleGameRef.current = true;
+        navigate(`/gm/games/${encodeURIComponent(nextGames[0]!.gameId)}`, { replace: true });
+      }
       logWebFlow('WEB_GM_GAMES_REFRESH_OK', {
         actorId: auth.actorId,
         authMode: auth.mode,
@@ -195,7 +203,7 @@ export function GMGamesPage() {
         nextGames.find((game) => !existingGameIds.has(game.gameId)) ??
         nextGames.find((game) => game.name === name);
       if (createdGame) {
-        navigate(`/games/${encodeURIComponent(createdGame.gameId)}`);
+        navigate(`/gm/games/${encodeURIComponent(createdGame.gameId)}`);
       }
     } catch (error) {
       setError(error instanceof Error ? error.message : String(error));

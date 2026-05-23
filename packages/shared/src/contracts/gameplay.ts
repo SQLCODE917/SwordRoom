@@ -226,6 +226,8 @@ export const gameplayGraphSchema = z.object({
 });
 
 export const gameplayViewModeSchema = z.enum(['PLAYER', 'GM']);
+export const GAMEPLAY_LIFECYCLE_PHASES = ['PREGAME', 'LIVE'] as const;
+export const gameplayLifecyclePhaseSchema = z.enum(GAMEPLAY_LIFECYCLE_PHASES);
 
 export const gameplayViewResponseSchema = z.object({
   gameId: z.string(),
@@ -236,6 +238,12 @@ export const gameplayViewResponseSchema = z.object({
   session: gameplaySessionStateSchema,
   publicEvents: z.array(gameplayEventRecordSchema),
   gmOnlyEvents: z.array(gameplayEventRecordSchema).optional(),
+});
+
+export const gameplayLifecycleResponseSchema = z.object({
+  gameId: z.string(),
+  phase: gameplayLifecyclePhaseSchema,
+  hasGameplaySession: z.boolean(),
 });
 
 export const gmFrameGameplayScenePayloadSchema = z.object({
@@ -321,3 +329,5 @@ export type GameplaySessionItem = z.infer<typeof gameplaySessionItemSchema>;
 export type GameplayEventRecord = z.infer<typeof gameplayEventRecordSchema>;
 export type GameplayEventItem = z.infer<typeof gameplayEventItemSchema>;
 export type GameplayViewResponse = z.infer<typeof gameplayViewResponseSchema>;
+export type GameplayLifecyclePhase = z.infer<typeof gameplayLifecyclePhaseSchema>;
+export type GameplayLifecycleResponse = z.infer<typeof gameplayLifecycleResponseSchema>;

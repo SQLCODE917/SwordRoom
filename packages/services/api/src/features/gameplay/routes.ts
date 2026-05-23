@@ -5,6 +5,28 @@ import type { ApiRouteDefinition } from '../../httpRouteTypes.js';
 export const gameplayRouteDefinitions: ApiRouteDefinition[] = [
   {
     method: 'GET',
+    path: '/games/{gameId}/state',
+    auth: 'required',
+    handler: async (context) => {
+      const gameId = context.params.gameId!;
+      await requireGameAccess({
+        db: context.runtime.db,
+        identity: context.identity,
+        gameId,
+      });
+      const lifecycle = await context.runtime.service.readApis.getGameplayLifecycle(gameId);
+      context.logFlow('API_GET_GAMEPLAY_STATE', {
+        requestId: context.requestId,
+        actorId: context.identity.actorId,
+        gameId,
+        phase: lifecycle.phase,
+        hasGameplaySession: lifecycle.hasGameplaySession,
+      });
+      context.sendJson(200, lifecycle);
+    },
+  },
+  {
+    method: 'GET',
     path: '/games/{gameId}/play',
     auth: 'required',
     handler: async (context) => {

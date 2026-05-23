@@ -41,6 +41,7 @@ export function GMGameplayPage() {
   const lastRecordedCommandIdRef = useRef<string | null>(null);
 
   const gameplay = gameplayState.gameplay;
+  const lifecycle = gameplayState.lifecycle;
   const forms = useGmGameplayFormState(gameplay);
   const controlModel = useMemo(
     () =>
@@ -104,6 +105,8 @@ export function GMGameplayPage() {
             {gameplayState.error ??
               (gameplayState.initialLoading
                 ? 'Loading GM gameplay view...'
+                : lifecycle?.phase === 'PREGAME'
+                  ? 'Gameplay has not started yet. Load the RPG sample to move this game from Lobby into live GM Play.'
                 : gameplay
                   ? 'Current Step is the primary operator surface; graph, utilities, and chat stay available without crowding the main action.'
                   : 'Load the RPG sample to start the gameplay loop for this game.')}

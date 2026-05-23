@@ -12,6 +12,7 @@ source_of_truth:
 api:
   endpoints:
     - { method: POST, path: /commands, auth: required }
+    - { method: GET, path: /games/{gameId}/state, auth: required }
     - { method: GET, path: /games/{gameId}/play, auth: required }
     - { method: GET, path: /gm/{gameId}/play, auth: gm_required }
 

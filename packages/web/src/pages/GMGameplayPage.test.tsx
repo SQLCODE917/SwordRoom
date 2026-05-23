@@ -174,6 +174,7 @@ describe('GMGameplayPage', () => {
   it('defaults to control mode and step panel, and normalizes invalid params', async () => {
     vi.mocked(useGameplayView).mockReturnValue({
       gameplay: createGameplayView(),
+      lifecycle: { gameId: 'game-1', phase: 'LIVE', hasGameplaySession: true },
       initialLoading: false,
       error: null,
       refresh: vi.fn(async () => undefined),
@@ -191,6 +192,7 @@ describe('GMGameplayPage', () => {
   it('preserves control panel state when switching to chat and back', async () => {
     vi.mocked(useGameplayView).mockReturnValue({
       gameplay: createGameplayView(),
+      lifecycle: { gameId: 'game-1', phase: 'LIVE', hasGameplaySession: true },
       initialLoading: false,
       error: null,
       refresh: vi.fn(async () => undefined),
@@ -230,6 +232,7 @@ describe('GMGameplayPage', () => {
           gmNarration: null,
         },
       }),
+      lifecycle: { gameId: 'game-1', phase: 'LIVE', hasGameplaySession: true },
       initialLoading: false,
       error: null,
       refresh: vi.fn(async () => undefined),
@@ -263,6 +266,7 @@ describe('GMGameplayPage', () => {
           gmNarration: null,
         },
       }),
+      lifecycle: { gameId: 'game-1', phase: 'LIVE', hasGameplaySession: true },
       initialLoading: false,
       error: null,
       refresh: vi.fn(async () => undefined),
@@ -280,6 +284,7 @@ describe('GMGameplayPage', () => {
         currentNodeId: 'STANDARD_CHECK',
         selectedProcedure: 'STANDARD_CHECK',
       }),
+      lifecycle: { gameId: 'game-1', phase: 'LIVE', hasGameplaySession: true },
       initialLoading: false,
       error: null,
       refresh: vi.fn(async () => undefined),
@@ -294,6 +299,7 @@ describe('GMGameplayPage', () => {
   it('opens transcript utility and switches transcript audience', async () => {
     vi.mocked(useGameplayView).mockReturnValue({
       gameplay: createGameplayView(),
+      lifecycle: { gameId: 'game-1', phase: 'LIVE', hasGameplaySession: true },
       initialLoading: false,
       error: null,
       refresh: vi.fn(async () => undefined),
@@ -313,6 +319,7 @@ describe('GMGameplayPage', () => {
   it('shows utilities as a sheet on mobile and a dock on desktop', async () => {
     vi.mocked(useGameplayView).mockReturnValue({
       gameplay: createGameplayView(),
+      lifecycle: { gameId: 'game-1', phase: 'LIVE', hasGameplaySession: true },
       initialLoading: false,
       error: null,
       refresh: vi.fn(async () => undefined),
@@ -327,5 +334,20 @@ describe('GMGameplayPage', () => {
     renderPage('/gm/game-1/play');
     fireEvent.click(await screen.findByRole('button', { name: 'Open Status' }));
     expect(await screen.findByLabelText('GM utility dock')).toBeTruthy();
+  });
+
+  it('shows pregame guidance when lifecycle is pregame and gameplay is not started', async () => {
+    vi.mocked(useGameplayView).mockReturnValue({
+      gameplay: null,
+      lifecycle: { gameId: 'game-1', phase: 'PREGAME', hasGameplaySession: false },
+      initialLoading: false,
+      error: null,
+      refresh: vi.fn(async () => undefined),
+    });
+
+    renderPage('/gm/game-1/play');
+
+    expect(await screen.findByText('Gameplay has not started yet. Load the RPG sample to move this game from Lobby into live GM Play.')).toBeTruthy();
+    expect(screen.getByText('Current node: not started')).toBeTruthy();
   });
 });

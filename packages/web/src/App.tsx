@@ -9,6 +9,7 @@ import { AdminDashboardPage } from './routes/AdminDashboardPage';
 import { CharacterSheetPage } from './routes/CharacterSheetPage';
 import { CharacterWizardPage } from './routes/CharacterWizardPage';
 import { GMInboxPage } from './routes/GMInboxPage';
+import { GMGamePage } from './routes/GMGamePage';
 import { GMGamesPage } from './routes/GMGamesPage';
 import { GMGameplayPage } from './routes/GMGameplayPage';
 import { GameChatPage } from './routes/GameChatPage';
@@ -83,6 +84,16 @@ export default function App() {
             <Route
               path="/gm/games"
               element={<RequireAuthRoute><RequireRoleRoute allowedRoles={['GM']}><GMGamesPage /></RequireRoleRoute></RequireAuthRoute>}
+            />
+            <Route
+              path="/gm/games/:gameId"
+              element={
+                <RequireAuthRoute>
+                  <RequireGmRoute>
+                    <GMGamePage />
+                  </RequireGmRoute>
+                </RequireAuthRoute>
+              }
             />
             <Route
               path="/admin"

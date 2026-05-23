@@ -1,6 +1,7 @@
 import type { AuthProvider } from '../auth/AuthProvider';
 import type {
   GameChatReplyTarget,
+  GameplayLifecycleResponse,
   PregameObservationSessionSummary,
   PregameRole,
   SharedChatArtifact,
@@ -328,6 +329,7 @@ export type GameplayGraphNodeView = GameplayGraphNode;
 export type GameplayGraphEdgeView = GameplayGraphEdge;
 export type GameplayEventView = GameplayEventRecord;
 export type GameplayView = GameplayViewResponse;
+export type GameplayLifecycle = GameplayLifecycleResponse;
 
 export interface AppearanceUploadUrlRequest {
   contentType: string;
@@ -362,6 +364,7 @@ export interface ApiClient {
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
   getGameChat(gameId: string): Promise<GameChatResponse>;
   getPregamePlanning(gameId: string): Promise<PregamePlanningResponse>;
+  getGameplayLifecycle(gameId: string): Promise<GameplayLifecycle>;
   getPlayerGameplayView(gameId: string): Promise<GameplayView | null>;
   getGmGameplayView(gameId: string): Promise<GameplayView | null>;
   getCharacter(gameId: string, characterId: string): Promise<CharacterItem | null>;
@@ -710,6 +713,25 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         isGameMaster: response.viewer.isGameMaster,
         hasActivePrompt: response.activePrompt !== null,
         partyNeedCount: response.partyNeeds.length,
+      });
+      return response;
+    },
+
+    async getGameplayLifecycle(gameId: string): Promise<GameplayLifecycle> {
+      logWebFlow('WEB_API_GET_GAMEPLAY_LIFECYCLE_REQUEST', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+      });
+      const response = await requestJson<GameplayLifecycle>(`${baseUrl}/games/${encodeURIComponent(gameId)}/state`, {
+        headers: await withObservedAuthHeaders(auth),
+      });
+      logWebFlow('WEB_API_GET_GAMEPLAY_LIFECYCLE_OK', {
+        actorId: auth.actorId,
+        authMode: auth.mode,
+        gameId,
+        phase: response.phase,
+        hasGameplaySession: response.hasGameplaySession,
       });
       return response;
     },
