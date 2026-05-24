@@ -8,7 +8,7 @@ import { GameplayCard } from '../components/GameplayCard';
 import { GameplayEventFeed } from '../components/GameplayEventFeed';
 import { GameplayGraph } from '../components/GameplayGraph';
 import { Panel } from '../components/Panel';
-import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
+import { deriveGameLifecycleUiState } from '../features/gameplay-lifecycle/lifecycleUiState';
 import { useGameChat } from '../hooks/useGameChat';
 import { useGameplayView } from '../hooks/useGameplayView';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
@@ -34,7 +34,13 @@ export function PlayerGameplayPage() {
 
   const gameplay = gameplayState.gameplay;
   const lifecycle = gameplayState.lifecycle;
-  const phaseGate = deriveGameplayPhaseGate(lifecycle);
+  const lifecycleUiState =
+    gameplayState.lifecycleState ??
+    deriveGameLifecycleUiState({
+      initialLoading: gameplayState.initialLoading,
+      lifecycle,
+      error: gameplayState.error,
+    });
   const currentRound = gameplay?.session.combat?.rounds[gameplay.session.combat.rounds.length - 1] ?? null;
   const ownParticipant = gameplay?.participants.find((participant) => participant.playerId === auth.actorId) ?? null;
   const ownParticipantCharacterId = ownParticipant?.characterId ?? null;
@@ -83,14 +89,19 @@ export function PlayerGameplayPage() {
       >
         <div className={`c-note ${gameplayState.error ? 'c-note--error' : 'c-note--info'}`}>
           <span className="t-small">
-            {gameplayState.error ??
-              (gameplayState.initialLoading
+            {lifecycleUiState.kind === 'forbidden'
+              ? 'You do not have access to this game.'
+              : lifecycleUiState.kind === 'missing'
+                ? 'This game was not found.'
+                : lifecycleUiState.kind === 'error'
+                  ? lifecycleUiState.errorMessage
+                  : gameplayState.initialLoading
                 ? 'Loading gameplay view...'
-                : phaseGate.isPregame
+                : lifecycleUiState.kind === 'pregame'
                   ? 'Gameplay has not started yet. Chat is available while the table is in lobby planning.'
                 : gameplay
                   ? 'Current scene, current phase, and public transcript are shown here.'
-                  : 'The GM has not loaded the gameplay scene yet. Chat stays available while you wait.')}
+                  : 'The GM has not loaded the gameplay scene yet. Chat stays available while you wait.'}
           </span>
         </div>
 

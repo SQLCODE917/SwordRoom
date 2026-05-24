@@ -99,13 +99,18 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
     };
   }
 
-  if (state.status === 'error') {
+  if (state.status === 'error' || state.status === 'forbidden' || state.status === 'missing') {
     return {
       status: 'error',
       title: 'Pregame Lobby',
       subtitle: `Game ${state.gameId}`,
       noticeTone: 'error',
-      notice: state.message,
+      notice:
+        state.status === 'forbidden'
+          ? 'You do not have access to this game.'
+          : state.status === 'missing'
+            ? 'This game was not found.'
+            : state.message,
       actions: [
         { label: 'Home', to: '/' },
       ],

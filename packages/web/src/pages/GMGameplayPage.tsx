@@ -14,7 +14,7 @@ import { GMPlayModeNav } from '../components/GMPlayModeNav';
 import { GMUtilitiesDock } from '../components/GMUtilitiesDock';
 import { GMUtilitiesSheet } from '../components/GMUtilitiesSheet';
 import { Panel } from '../components/Panel';
-import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
+import { deriveGameLifecycleUiState } from '../features/gameplay-lifecycle/lifecycleUiState';
 import {
   createGmPlaySearchParams,
   deriveGmControlModel,
@@ -43,7 +43,13 @@ export function GMGameplayPage() {
 
   const gameplay = gameplayState.gameplay;
   const lifecycle = gameplayState.lifecycle;
-  const phaseGate = deriveGameplayPhaseGate(lifecycle);
+  const lifecycleUiState =
+    gameplayState.lifecycleState ??
+    deriveGameLifecycleUiState({
+      initialLoading: gameplayState.initialLoading,
+      lifecycle,
+      error: gameplayState.error,
+    });
   const forms = useGmGameplayFormState(gameplay);
   const controlModel = useMemo(
     () =>
@@ -104,14 +110,19 @@ export function GMGameplayPage() {
       >
         <div className={`c-note ${gameplayState.error ? 'c-note--error' : 'c-note--info'}`}>
           <span className="t-small">
-            {gameplayState.error ??
-              (gameplayState.initialLoading
+            {lifecycleUiState.kind === 'forbidden'
+              ? 'You do not have access to this game.'
+              : lifecycleUiState.kind === 'missing'
+                ? 'This game was not found.'
+                : lifecycleUiState.kind === 'error'
+                  ? lifecycleUiState.errorMessage
+                  : gameplayState.initialLoading
                 ? 'Loading GM gameplay view...'
-                : phaseGate.isPregame
+                : lifecycleUiState.kind === 'pregame'
                   ? 'Gameplay has not started yet. Load the RPG sample to move this game from Lobby into live GM Play.'
                 : gameplay
                   ? 'Current Step is the primary operator surface; graph, utilities, and chat stay available without crowding the main action.'
-                  : 'Load the RPG sample to start the gameplay loop for this game.')}
+                  : 'Load the RPG sample to start the gameplay loop for this game.'}
           </span>
         </div>
 

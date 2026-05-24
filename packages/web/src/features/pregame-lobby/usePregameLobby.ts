@@ -15,6 +15,8 @@ import { logWebFlow, summarizeError } from '../../logging/flowLog';
 export type PregameLobbyState =
   | { status: 'loading'; gameId: string }
   | { status: 'error'; gameId: string; message: string }
+  | { status: 'forbidden'; gameId: string; message: string }
+  | { status: 'missing'; gameId: string; message: string }
   | {
       status: 'live';
       gameId: string;
@@ -115,14 +117,32 @@ export function usePregameLobby(gameId: string): {
         });
       } catch (loadError) {
         const message = loadError instanceof Error ? loadError.message : String(loadError);
+        const statusCode =
+          loadError && typeof loadError === 'object' && typeof (loadError as { statusCode?: unknown }).statusCode === 'number'
+            ? ((loadError as { statusCode: number }).statusCode)
+            : null;
         if (!isMountedRef.current) {
           return;
         }
-        setState({
-          status: 'error',
-          gameId,
-          message,
-        });
+        if (statusCode === 403) {
+          setState({
+            status: 'forbidden',
+            gameId,
+            message,
+          });
+        } else if (statusCode === 404) {
+          setState({
+            status: 'missing',
+            gameId,
+            message,
+          });
+        } else {
+          setState({
+            status: 'error',
+            gameId,
+            message,
+          });
+        }
         logWebFlow('WEB_PREGAME_LOBBY_LOAD_FAILED', {
           actorId: auth.actorId,
           authMode: auth.mode,

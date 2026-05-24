@@ -382,6 +382,18 @@ export interface ApiClient {
   ): Promise<AppearanceUploadUrlResponse>;
 }
 
+export class ApiRequestError extends Error {
+  readonly statusCode: number;
+  readonly errorCode: string | null;
+
+  constructor(input: { statusCode: number; message: string; errorCode?: string | null }) {
+    super(input.message);
+    this.name = 'ApiRequestError';
+    this.statusCode = input.statusCode;
+    this.errorCode = input.errorCode ?? null;
+  }
+}
+
 interface ApiClientOptions {
   baseUrl?: string;
   auth: AuthProvider;
@@ -921,15 +933,23 @@ async function requestJson<T>(url: string, init: RequestInit): Promise<T> {
   }
 }
 
-async function toApiError(response: Response): Promise<Error> {
+async function toApiError(response: Response): Promise<ApiRequestError> {
   let message = `${response.status} ${response.statusText}`;
+  let errorCode: string | null = null;
   try {
-    const json = (await response.json()) as { error?: string };
+    const json = (await response.json()) as { error?: string; code?: string };
     if (json.error) {
       message = json.error;
+    }
+    if (typeof json.code === 'string' && json.code.trim() !== '') {
+      errorCode = json.code;
     }
   } catch {
     // no-op: keep fallback message
   }
-  return new Error(message);
+  return new ApiRequestError({
+    statusCode: response.status,
+    message,
+    errorCode,
+  });
 }

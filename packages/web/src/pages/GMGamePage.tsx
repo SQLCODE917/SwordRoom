@@ -3,7 +3,7 @@ import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { readGMGameMode } from '../features/gameplay-lifecycle/gmGameMode';
-import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
+import { deriveGameLifecycleUiState } from '../features/gameplay-lifecycle/lifecycleUiState';
 import { useGameLifecycle } from '../hooks/useGameLifecycle';
 import { PregameLobbyPage } from './PregameLobbyPage';
 
@@ -22,20 +22,32 @@ export function GMGamePage() {
   }
 
   const lifecycleState = useGameLifecycle(gameId, { poll: 'none' });
-  const phaseGate = deriveGameplayPhaseGate(lifecycleState.lifecycle);
-  const phaseLabel = phaseGate.phase;
+  const lifecycleUiState =
+    lifecycleState.state ??
+    deriveGameLifecycleUiState({
+      initialLoading: lifecycleState.initialLoading,
+      lifecycle: lifecycleState.lifecycle,
+      error: lifecycleState.error,
+    });
+  const phaseLabel = lifecycleUiState.phase ?? 'PREGAME';
   const phaseDescription = useMemo(() => {
-    if (lifecycleState.initialLoading) {
+    if (lifecycleUiState.kind === 'loading') {
       return 'Loading game lifecycle...';
     }
-    if (lifecycleState.error) {
-      return lifecycleState.error;
+    if (lifecycleUiState.kind === 'forbidden') {
+      return 'You do not have access to this game.';
     }
-    if (phaseGate.isLive) {
+    if (lifecycleUiState.kind === 'missing') {
+      return 'This game was not found.';
+    }
+    if (lifecycleUiState.kind === 'error') {
+      return lifecycleUiState.errorMessage;
+    }
+    if (lifecycleUiState.kind === 'live') {
       return 'Gameplay is live. Continue in Play or GM Play; Lobby remains available for planning context.';
     }
     return 'Gameplay has not started yet. Use Lobby for the pregame loop, then open GM Play to frame the first scene.';
-  }, [lifecycleState.error, lifecycleState.initialLoading, phaseGate.isLive]);
+  }, [lifecycleUiState]);
 
   return (
     <div className="l-page">

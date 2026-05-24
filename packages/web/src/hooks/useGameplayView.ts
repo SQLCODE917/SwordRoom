@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createApiClient, type GameplayLifecycle, type GameplayView } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
-import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
+import { deriveGameLifecycleUiState, type GameLifecycleUiState } from '../features/gameplay-lifecycle/lifecycleUiState';
 import { useGameLifecycle } from './useGameLifecycle';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
@@ -15,6 +15,7 @@ export function useGameplayView(
   lifecycle: GameplayLifecycle | null;
   initialLoading: boolean;
   error: string | null;
+  lifecycleState?: GameLifecycleUiState;
   refresh: () => Promise<void>;
 } {
   const auth = useAuthProvider();
@@ -23,7 +24,13 @@ export function useGameplayView(
     poll: 'live-only',
     pollingIntervalMs: livePollingIntervalMs,
   });
-  const phaseGate = deriveGameplayPhaseGate(lifecycleState.lifecycle);
+  const lifecycleUiState =
+    lifecycleState.state ??
+    deriveGameLifecycleUiState({
+      initialLoading: lifecycleState.initialLoading,
+      lifecycle: lifecycleState.lifecycle,
+      error: lifecycleState.error,
+    });
   const [gameplay, setGameplay] = useState<GameplayView | null>(null);
   const [gameplayInitialLoading, setGameplayInitialLoading] = useState(true);
   const [gameplayError, setGameplayError] = useState<string | null>(null);
@@ -46,7 +53,7 @@ export function useGameplayView(
       });
 
       try {
-        if (!phaseGate.shouldLoadGameplay) {
+        if (!lifecycleUiState.shouldLoadGameplay) {
           setGameplay(null);
           setGameplayError(null);
           hasLoadedGameplayRef.current = true;
@@ -63,7 +70,7 @@ export function useGameplayView(
           gameId,
           view,
           background,
-          phase: phaseGate.phase,
+          phase: lifecycleUiState.phase,
           hasGameplaySession: lifecycleState.lifecycle.hasGameplaySession,
           found: next !== null,
           currentNodeId: next?.session.currentNodeId ?? null,
@@ -87,7 +94,7 @@ export function useGameplayView(
         }
       }
     },
-    [api, auth.actorId, auth.mode, gameId, lifecycleState.lifecycle, phaseGate.phase, phaseGate.shouldLoadGameplay, view]
+    [api, auth.actorId, auth.mode, gameId, lifecycleState.lifecycle, lifecycleUiState.phase, lifecycleUiState.shouldLoadGameplay, view]
   );
 
   useEffect(() => {
@@ -95,7 +102,7 @@ export function useGameplayView(
       return;
     }
 
-    if (!phaseGate.shouldLoadGameplay) {
+    if (!lifecycleUiState.shouldLoadGameplay) {
       setGameplay(null);
       setGameplayError(null);
       hasLoadedGameplayRef.current = true;
@@ -113,10 +120,10 @@ export function useGameplayView(
     return () => {
       cancelled = true;
     };
-  }, [lifecycleState.initialLoading, phaseGate.shouldLoadGameplay, loadGameplay]);
+  }, [lifecycleState.initialLoading, lifecycleUiState.shouldLoadGameplay, loadGameplay]);
 
   useEffect(() => {
-    if (!phaseGate.isLive) {
+    if (!lifecycleUiState.shouldPollGameplay) {
       return;
     }
 
@@ -133,7 +140,7 @@ export function useGameplayView(
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [phaseGate.isLive, loadGameplay]);
+  }, [lifecycleUiState.shouldPollGameplay, loadGameplay]);
 
   const initialLoading = lifecycleState.initialLoading || gameplayInitialLoading;
   const error = lifecycleState.error ?? gameplayError;
@@ -143,13 +150,14 @@ export function useGameplayView(
     lifecycle: lifecycleState.lifecycle,
     initialLoading,
     error,
+    lifecycleState: lifecycleUiState,
     refresh: useCallback(async () => {
       await lifecycleState.refresh();
-      if (phaseGate.shouldLoadGameplay) {
+      if (lifecycleUiState.shouldLoadGameplay) {
         await loadGameplay();
       } else {
         setGameplay(null);
       }
-    }, [lifecycleState, phaseGate.shouldLoadGameplay, loadGameplay]),
+    }, [lifecycleState, lifecycleUiState.shouldLoadGameplay, loadGameplay]),
   };
 }
