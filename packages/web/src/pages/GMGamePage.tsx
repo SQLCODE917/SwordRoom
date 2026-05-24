@@ -2,11 +2,10 @@ import { useMemo } from 'react';
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
+import { readGMGameMode } from '../features/gameplay-lifecycle/gmGameMode';
 import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
 import { useGameLifecycle } from '../hooks/useGameLifecycle';
 import { PregameLobbyPage } from './PregameLobbyPage';
-
-type GMGameMode = 'lobby' | 'play' | 'gm-play';
 
 export function GMGamePage() {
   const params = useParams<{ gameId: string }>();
@@ -62,11 +61,4 @@ export function GMGamePage() {
       <PregameLobbyPage />
     </div>
   );
-}
-
-function readGMGameMode(modeValue: string | null): GMGameMode {
-  if (modeValue === 'play' || modeValue === 'gm-play') {
-    return modeValue;
-  }
-  return 'lobby';
 }
