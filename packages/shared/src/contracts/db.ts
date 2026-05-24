@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { gameChatReplyTargetSchema, sharedChatArtifactSchema } from './chat.js';
+import { gameChatChannelSchema, gameChatReplyTargetSchema, sharedChatArtifactSchema } from './chat.js';
 import {
   gameplayEventItemSchema,
   gameplaySessionItemSchema,
@@ -258,6 +258,7 @@ export const gameChatMessageItemSchema = pkSkSchema.extend({
   type: z.literal('GameChatMessage'),
   messageId: z.string(),
   gameId: z.string(),
+  channel: gameChatChannelSchema.optional().default('LOBBY'),
   senderPlayerId: z.string(),
   senderRole: gameChatSenderRoleSchema,
   senderCharacterId: z.string().nullable(),

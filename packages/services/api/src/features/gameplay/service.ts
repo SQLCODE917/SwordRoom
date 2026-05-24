@@ -1,4 +1,4 @@
-import type { GameChatParticipantResponse } from '../../apiTypes.js';
+import type { GameChatChannel, GameChatParticipantResponse } from '../../apiTypes.js';
 import type { ApiServiceDependencies } from '../../index.js';
 import { assertActiveGame, buildGameplayView, formatChatDisplayName, readCharacterIdentityName, type ReadApisSubset } from '../../serviceSupport.js';
 
@@ -6,11 +6,11 @@ export function createGameplayReadApis(
   deps: ApiServiceDependencies
 ): ReadApisSubset<'getGameChat' | 'getGameplayLifecycle' | 'getPlayerGameplayView' | 'getGmGameplayView'> {
   return {
-    async getGameChat(gameId: string) {
+    async getGameChat(gameId: string, channel: GameChatChannel = 'LOBBY') {
       const [game, memberships, messages] = await Promise.all([
         deps.db.gameRepository.getGameMetadata(gameId),
         deps.db.membershipRepository.listMembershipsForGame(gameId),
-        deps.db.chatRepository.queryMessages(gameId),
+        deps.db.chatRepository.queryMessages(gameId, { channel }),
       ]);
       assertActiveGame(gameId, game);
 

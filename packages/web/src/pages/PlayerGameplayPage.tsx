@@ -21,7 +21,7 @@ export function PlayerGameplayPage() {
   const auth = useAuthProvider();
   const gameId = params.gameId ?? 'game-1';
   const gameplayState = useGameplayView(gameId, 'PLAYER');
-  const chat = useGameChat(gameId);
+  const chat = useGameChat(gameId, { channel: 'PLAY' });
   const { isRunning, submitEnvelopeAndAwait } = useCommandWorkflow();
 
   const [intentBody, setIntentBody] = useState('');

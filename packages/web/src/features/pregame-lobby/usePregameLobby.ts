@@ -87,7 +87,7 @@ export function usePregameLobby(gameId: string): {
         }
 
         const [chat, planning, myCharacters] = await Promise.all([
-          api.getGameChat(gameId),
+          api.getGameChat(gameId, 'LOBBY'),
           api.getPregamePlanning(gameId),
           api.getMyCharacters(),
         ]);

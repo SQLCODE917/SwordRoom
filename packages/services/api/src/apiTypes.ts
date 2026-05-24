@@ -3,6 +3,7 @@ import type {
   CharacterItem,
   CommandTraceContext,
   CommandStatus,
+  GameChatChannel,
   GameChatReplyTarget,
   PregameObservationSessionSummary,
   PregameRole,
@@ -165,7 +166,7 @@ export interface ReadApis {
   }): Promise<PregameMetricLogData[]>;
   getGameActorContext(gameId: string, actorId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
-  getGameChat(gameId: string): Promise<GameChatResponse>;
+  getGameChat(gameId: string, channel?: GameChatChannel): Promise<GameChatResponse>;
   getPregamePlanning(gameId: string, actorId: string): Promise<PregamePlanningResponse>;
   getGameplayLifecycle(gameId: string): Promise<GameplayLifecycleResponse>;
   getPlayerGameplayView(gameId: string): Promise<GameplayViewResponse | null>;

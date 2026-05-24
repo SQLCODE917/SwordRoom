@@ -50,7 +50,7 @@ async function readPregamePlanning(
   const [game, membership, messages] = await Promise.all([
     deps.db.gameRepository.getGameMetadata(gameId),
     deps.db.membershipRepository.getMembership(gameId, actorId),
-    deps.db.chatRepository.queryMessages(gameId),
+    deps.db.chatRepository.queryMessages(gameId, { channel: 'LOBBY' }),
   ]);
   assertActiveGame(gameId, game);
 

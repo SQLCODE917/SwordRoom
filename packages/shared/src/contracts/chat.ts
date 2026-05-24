@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const gameChatChannelSchema = z.enum(['LOBBY', 'PLAY']);
+export type GameChatChannel = z.infer<typeof gameChatChannelSchema>;
+
 export const pregameRoleSchema = z.enum(['FRONTLINE', 'HEALER', 'SCOUT', 'ARCANE']);
 export type PregameRole = z.infer<typeof pregameRoleSchema>;
 export const sharedCharacterDraftIntentSchema = z.enum(['DRAFT_SNAPSHOT', 'ASK_QUESTION', 'COMPARE_DIRECTIONS', 'ANSWER_GM_PROMPT']);

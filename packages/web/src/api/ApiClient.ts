@@ -1,5 +1,6 @@
 import type { AuthProvider } from '../auth/AuthProvider';
 import type {
+  GameChatChannel,
   GameChatReplyTarget,
   GameplayLifecycleResponse,
   PregameObservationSessionSummary,
@@ -108,7 +109,12 @@ interface CommandPayloadByType {
   PurchaseStarterEquipment: { characterId: string; cart: Record<string, unknown> };
   ConfirmCharacterAppearanceUpload: { characterId: string; s3Key: string };
   DeleteCharacter: { characterId: string };
-  SendGameChatMessage: { body: string; artifact?: SharedChatArtifact; replyTarget?: GameChatReplyTarget };
+  SendGameChatMessage: {
+    body: string;
+    channel?: GameChatChannel;
+    artifact?: SharedChatArtifact;
+    replyTarget?: GameChatReplyTarget;
+  };
   SubmitCharacterForApproval: {
     characterId: string;
     expectedVersion: number;
@@ -362,7 +368,7 @@ export interface ApiClient {
   getMyInbox(): Promise<PlayerInboxItem[]>;
   getGameActorContext(gameId: string): Promise<GameActorContextResponse>;
   getGmInbox(gameId: string): Promise<GMInboxItem[]>;
-  getGameChat(gameId: string): Promise<GameChatResponse>;
+  getGameChat(gameId: string, channel?: GameChatChannel): Promise<GameChatResponse>;
   getPregamePlanning(gameId: string): Promise<PregamePlanningResponse>;
   getGameplayLifecycle(gameId: string): Promise<GameplayLifecycle>;
   getPlayerGameplayView(gameId: string): Promise<GameplayView | null>;
@@ -677,19 +683,22 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
       return response;
     },
 
-    async getGameChat(gameId: string): Promise<GameChatResponse> {
+    async getGameChat(gameId: string, channel: GameChatChannel = 'LOBBY'): Promise<GameChatResponse> {
       logWebFlow('WEB_API_GET_GAME_CHAT_REQUEST', {
         actorId: auth.actorId,
         authMode: auth.mode,
         gameId,
+        channel,
       });
-      const response = await requestJson<GameChatResponse>(`${baseUrl}/games/${encodeURIComponent(gameId)}/chat`, {
+      const querySuffix = channel === 'PLAY' ? '?channel=PLAY' : '';
+      const response = await requestJson<GameChatResponse>(`${baseUrl}/games/${encodeURIComponent(gameId)}/chat${querySuffix}`, {
         headers: await withObservedAuthHeaders(auth),
       });
       logWebFlow('WEB_API_GET_GAME_CHAT_OK', {
         actorId: auth.actorId,
         authMode: auth.mode,
         gameId,
+        channel,
         participantCount: response.participants.length,
         messageCount: response.messages.length,
       });

@@ -17,6 +17,7 @@ export function GameChatPage() {
   const activeArtifactMessageId = searchParams.get('artifact');
   const activePromptMessageId = searchParams.get('prompt');
   const chat = useGameChat(gameId, {
+    channel: 'LOBBY',
     initialDraftBody: searchParams.get('draft'),
     activeArtifactMessageId,
     activePromptMessageId,

@@ -1,4 +1,5 @@
 import { assertGameMasterActor } from '@starter/services-shared';
+import { gameChatChannelSchema } from '@starter/shared';
 import { requireGameAccess } from '../../routeAuth.js';
 import type { ApiRouteDefinition } from '../../httpRouteTypes.js';
 
@@ -63,16 +64,23 @@ export const gameplayRouteDefinitions: ApiRouteDefinition[] = [
     auth: 'required',
     handler: async (context) => {
       const gameId = context.params.gameId!;
+      const channelRaw = context.url.searchParams.get('channel');
+      if (channelRaw !== null && channelRaw !== '' && !gameChatChannelSchema.safeParse(channelRaw).success) {
+        context.sendJson(400, { error: 'invalid chat channel' });
+        return;
+      }
+      const channel = channelRaw === null || channelRaw === '' ? 'LOBBY' : gameChatChannelSchema.parse(channelRaw);
       await requireGameAccess({
         db: context.runtime.db,
         identity: context.identity,
         gameId,
       });
-      const chat = await context.runtime.service.readApis.getGameChat(gameId);
+      const chat = await context.runtime.service.readApis.getGameChat(gameId, channel);
       context.logFlow('API_GET_GAME_CHAT', {
         requestId: context.requestId,
         actorId: context.identity.actorId,
         gameId,
+        channel,
         participantCount: chat.participants.length,
         messageCount: chat.messages.length,
       });

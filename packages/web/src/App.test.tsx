@@ -139,7 +139,7 @@ describe('App shell routes', () => {
         );
       }
 
-      if (url.endsWith('/api/games/game-1/chat')) {
+      if (url.includes('/api/games/game-1/chat')) {
         return new Response(
           JSON.stringify({
             gameId: 'game-1',
@@ -193,7 +193,7 @@ describe('App shell routes', () => {
         );
       }
 
-      if (url.endsWith('/api/games/game-1/chat')) {
+      if (url.includes('/api/games/game-1/chat')) {
         return new Response(
           JSON.stringify({
             gameId: 'game-1',

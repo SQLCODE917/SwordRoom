@@ -10,11 +10,12 @@ export const sendGameChatMessageHandler: CommandHandler<'SendGameChatMessage'> =
     throw error;
   }
 
+  const channel = envelope.payload.channel ?? 'LOBBY';
   const replyTarget = envelope.payload.replyTarget ?? null;
   const reactionArtifact = envelope.payload.artifact?.kind === 'CHARACTER_DRAFT_REACTION' ? envelope.payload.artifact : null;
   const messages =
     replyTarget || reactionArtifact
-      ? await ctx.db.chatRepository.queryMessages(envelope.gameId)
+      ? await ctx.db.chatRepository.queryMessages(envelope.gameId, { channel })
       : [];
 
   if (replyTarget?.kind === 'CHARACTER_DRAFT') {
@@ -89,6 +90,7 @@ export const sendGameChatMessageHandler: CommandHandler<'SendGameChatMessage'> =
           senderCharacterId: senderCharacter?.characterId ?? null,
           senderNameSnapshot,
           body: envelope.payload.body,
+          ...(channel === 'PLAY' ? { channel: 'PLAY' as const } : {}),
           artifact: envelope.payload.artifact,
           replyTarget: envelope.payload.replyTarget,
           createdAt: envelope.createdAt,

@@ -9,7 +9,7 @@ import {
   submitCombatActionPayloadSchema,
   submitGameplayIntentPayloadSchema,
 } from './gameplay.js';
-import { gameChatReplyTargetSchema, sharedChatArtifactSchema } from './chat.js';
+import { gameChatChannelSchema, gameChatReplyTargetSchema, sharedChatArtifactSchema } from './chat.js';
 
 export const COMMAND_TYPES = [
   'CreateGame',
@@ -162,6 +162,7 @@ export const deleteCharacterPayloadSchema = z.object({
 
 export const sendGameChatMessagePayloadSchema = z.object({
   body: z.string().trim().min(1).max(1000),
+  channel: gameChatChannelSchema.optional().default('LOBBY'),
   artifact: sharedChatArtifactSchema.optional(),
   replyTarget: gameChatReplyTargetSchema.optional(),
 });

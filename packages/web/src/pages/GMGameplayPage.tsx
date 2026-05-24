@@ -33,7 +33,7 @@ export function GMGameplayPage() {
   const params = useParams<{ gameId: string }>();
   const gameId = params.gameId ?? 'game-1';
   const gameplayState = useGameplayView(gameId, 'GM');
-  const chat = useGameChat(gameId);
+  const chat = useGameChat(gameId, { channel: 'PLAY' });
   const { status: commandStatus, isRunning, submitEnvelopeAndAwait } = useCommandWorkflow();
   const [searchParams, setSearchParams] = useSearchParams();
   const parsedUiState = readGmPlayUiState(searchParams);

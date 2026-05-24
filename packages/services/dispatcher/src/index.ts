@@ -263,6 +263,7 @@ function toTransactWriteItem(
             senderCharacterId: effect.input.senderCharacterId,
             senderNameSnapshot: effect.input.senderNameSnapshot,
             body: effect.input.body,
+            ...(effect.input.channel ? { channel: effect.input.channel } : {}),
             artifact: effect.input.artifact,
             replyTarget: effect.input.replyTarget,
             createdAt: effect.input.createdAt,

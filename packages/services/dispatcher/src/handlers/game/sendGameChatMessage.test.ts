@@ -770,4 +770,113 @@ describe('sendGameChatMessageHandler', () => {
       code: 'CHAT_REACTION_TARGET_NOT_FOUND',
     });
   });
+
+  it('stores play-channel messages and resolves reply targets only from play-channel history', async () => {
+    const base = makeDb();
+    const queryMessages = vi.fn(async () => [
+      {
+        messageId: 'msg-play-1',
+        senderPlayerId: 'player-1',
+        senderRole: 'PLAYER',
+        senderCharacterId: 'char-1',
+        senderNameSnapshot: 'Borin',
+        body: 'Play chat message',
+        channel: 'PLAY',
+        artifact: {
+          kind: 'CHARACTER_DRAFT',
+          characterId: 'char-1',
+          snapshotVersion: 3,
+          characterName: 'Borin',
+          race: 'HUMAN',
+          status: 'DRAFT',
+          shareIntent: 'ASK_QUESTION',
+          contextNote: 'Does this still work mid-session?',
+          abilitySummary: ['STR 16'],
+          skillSummary: ['Fighter 1'],
+        },
+        createdAt: '2026-03-01T09:15:00.000Z',
+      },
+    ]);
+    const db = makeDb({
+      membershipRepository: {
+        ...base.membershipRepository,
+        getMembership: vi.fn(async () => ({
+          pk: 'GAME#game-1',
+          sk: 'MEMBER#player-2',
+          type: 'GameMember',
+          gameId: 'game-1',
+          playerId: 'player-2',
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      playerRepository: {
+        ...base.playerRepository,
+        getPlayerProfile: vi.fn(async () => ({
+          pk: 'PLAYER#player-2',
+          sk: 'PROFILE',
+          type: 'PlayerProfile',
+          playerId: 'player-2',
+          displayName: 'Alice',
+          email: 'alice@example.com',
+          emailNormalized: 'alice@example.com',
+          emailVerified: true,
+          roles: ['PLAYER'],
+          createdAt: '2026-03-01T00:00:00.000Z',
+          updatedAt: '2026-03-01T00:00:00.000Z',
+        })),
+      },
+      chatRepository: {
+        ...base.chatRepository,
+        queryMessages,
+      },
+    });
+
+    const result = await sendGameChatMessageHandler(
+      { db, nowIso: () => '2026-03-01T09:17:00.000Z' },
+      {
+        commandId: 'cmd-chat-play-reply-1',
+        gameId: 'game-1',
+        actorId: 'player-2',
+        type: 'SendGameChatMessage',
+        schemaVersion: 1,
+        createdAt: '2026-03-01T09:17:00.000Z',
+        payload: {
+          body: 'Replying in play chat.',
+          channel: 'PLAY',
+          replyTarget: {
+            kind: 'CHARACTER_DRAFT',
+            targetMessageId: 'msg-play-1',
+            characterId: 'char-1',
+            snapshotVersion: 3,
+          },
+        },
+      }
+    );
+
+    expect(queryMessages).toHaveBeenCalledWith('game-1', { channel: 'PLAY' });
+    expect(result.writes).toEqual([
+      {
+        kind: 'PUT_GAME_CHAT_MESSAGE',
+        input: {
+          gameId: 'game-1',
+          messageId: 'cmd-chat-play-reply-1',
+          senderPlayerId: 'player-2',
+          senderRole: 'PLAYER',
+          senderCharacterId: null,
+          senderNameSnapshot: 'Alice',
+          body: 'Replying in play chat.',
+          channel: 'PLAY',
+          replyTarget: {
+            kind: 'CHARACTER_DRAFT',
+            targetMessageId: 'msg-play-1',
+            characterId: 'char-1',
+            snapshotVersion: 3,
+          },
+          createdAt: '2026-03-01T09:17:00.000Z',
+        },
+      },
+    ]);
+  });
 });

@@ -33,6 +33,7 @@ import {
   type CharacterStatus,
   type CommandLogItem,
   type CommandStatus,
+  type GameChatChannel,
   type GameChatMessageItem,
   type GameInviteItem,
   type GameInviteStatus,
@@ -101,7 +102,7 @@ export interface DbAccess {
     deleteMembership(gameId: string, playerId: string): Promise<void>;
   };
   chatRepository: {
-    queryMessages(gameId: string): Promise<GameChatMessageItem[]>;
+    queryMessages(gameId: string, input?: { channel?: GameChatChannel }): Promise<GameChatMessageItem[]>;
   };
   gameplayRepository: {
     getSession(gameId: string): Promise<GameplaySessionItem | null>;
@@ -806,7 +807,8 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
       },
     },
     chatRepository: {
-      async queryMessages(gameId) {
+      async queryMessages(gameId, input) {
+        const channel = input?.channel ?? 'LOBBY';
         const result = await client.send(
           new QueryCommand({
             TableName: tables.gameStateTableName,
@@ -818,7 +820,9 @@ export function createDbAccess(client: DynamoDBDocumentClient, tables: DbTables)
           })
         );
 
-        return (result.Items ?? []).map((item) => gameChatMessageItemSchema.parse(item));
+        return (result.Items ?? [])
+          .map((item) => gameChatMessageItemSchema.parse(item))
+          .filter((item) => item.channel === channel);
       },
     },
     gameplayRepository: {

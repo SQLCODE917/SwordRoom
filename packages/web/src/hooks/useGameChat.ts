@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type {
+  GameChatChannel,
   GameChatReplyTarget,
   SharedCharacterDraftArtifact,
   SharedCharacterDraftReaction,
@@ -28,6 +29,7 @@ const emptyChatState: GameChatState = {
 export function useGameChat(
   gameId: string,
   options?: {
+    channel?: GameChatChannel;
     initialDraftBody?: string | null;
     activeArtifactMessageId?: string | null;
     activePromptMessageId?: string | null;
@@ -62,6 +64,7 @@ export function useGameChat(
 } {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
+  const channel = options?.channel ?? 'LOBBY';
   const [chat, setChat] = useState<GameChatState>(emptyChatState);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -98,10 +101,11 @@ export function useGameChat(
         actorId: auth.actorId,
         authMode: auth.mode,
         gameId,
+        channel,
         background,
       });
       try {
-        const next = await api.getGameChat(gameId);
+        const next = await api.getGameChat(gameId, channel);
         if (cancelled) {
           return;
         }
@@ -117,6 +121,7 @@ export function useGameChat(
           actorId: auth.actorId,
           authMode: auth.mode,
           gameId,
+          channel,
           background,
           participantCount: next.participants.length,
           messageCount: next.messages.length,
@@ -133,6 +138,7 @@ export function useGameChat(
           actorId: auth.actorId,
           authMode: auth.mode,
           gameId,
+          channel,
           background,
           ...summarizeError(loadError),
         });
@@ -152,7 +158,7 @@ export function useGameChat(
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [api, auth.actorId, auth.mode, gameId]);
+  }, [api, auth.actorId, auth.mode, channel, gameId]);
 
   useEffect(() => {
     const transcript = transcriptRef.current;
@@ -240,6 +246,7 @@ export function useGameChat(
         createdAt,
         payload: {
           body,
+          ...(channel === 'PLAY' ? { channel: 'PLAY' as const } : {}),
           replyTarget: activeReplyTarget ?? undefined,
         },
       } satisfies CommandEnvelopeInput<'SendGameChatMessage'>);
@@ -285,6 +292,7 @@ export function useGameChat(
       createdAt,
       payload: {
         body: `Reaction: ${reactionLabel}`,
+        ...(channel === 'PLAY' ? { channel: 'PLAY' as const } : {}),
         artifact: {
           kind: 'CHARACTER_DRAFT_REACTION',
           targetMessageId: input.targetMessageId,
