@@ -94,7 +94,9 @@ export function GMGameplayPage() {
         ...(gameplay.session.selectedProcedure ? [`Procedure: ${gameplay.session.selectedProcedure}`] : []),
         ...(gameplay.session.combat?.currentRoundNumber ? [`Round: ${gameplay.session.combat.currentRoundNumber}`] : []),
       ]
-    : ['Current node: not started', 'Status: waiting for sample'];
+    : lifecycleUiState.kind === 'pregame'
+      ? ['Phase: PREGAME', 'Lobby planning active']
+      : ['Phase: LIVE', 'Gameplay session loading'];
 
   const utilityContent = parsedUiState.state.utility ? renderUtilityContent(parsedUiState.state.utility) : null;
 

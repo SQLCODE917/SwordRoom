@@ -130,7 +130,7 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
         { label: 'Play', to: `/games/${encodeURIComponent(state.game.gameId)}/play` },
         { label: 'Chat', to: `/games/${encodeURIComponent(state.game.gameId)}/chat` },
         ...(state.actorContext.isGameMaster
-          ? [{ label: 'GM Play', to: `/gm/${encodeURIComponent(state.game.gameId)}/play` }]
+          ? [{ label: 'GM Play', to: `/gm/games/${encodeURIComponent(state.game.gameId)}?mode=gm-play` }]
           : []),
       ],
     };

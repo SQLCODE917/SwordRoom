@@ -357,7 +357,7 @@ describe('PregameLobbyPage', () => {
     expect(screen.getByText(/Gameplay is live\./)).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Play' }).getAttribute('href')).toBe('/games/game-1/play');
     expect(screen.getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
-    expect(screen.getByRole('link', { name: 'GM Play' }).getAttribute('href')).toBe('/gm/game-1/play');
+    expect(screen.getByRole('link', { name: 'GM Play' }).getAttribute('href')).toBe('/gm/games/game-1?mode=gm-play');
     expect(screen.queryByRole('table', { name: 'Pregame party roster' })).toBeNull();
   });
 });

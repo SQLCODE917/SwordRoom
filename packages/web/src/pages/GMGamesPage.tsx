@@ -80,7 +80,7 @@ export function GMGamesPage() {
                         <ButtonLink className={styles.actionButton} to={`/games/${encodeURIComponent(game.gameId)}/play`}>
                           Play
                         </ButtonLink>
-                        <ButtonLink className={styles.actionButton} to={`/gm/${encodeURIComponent(game.gameId)}/play`}>
+                        <ButtonLink className={styles.actionButton} to={`/gm/games/${encodeURIComponent(game.gameId)}?mode=gm-play`}>
                           GM Play
                         </ButtonLink>
                       </div>

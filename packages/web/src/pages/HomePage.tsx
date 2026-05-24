@@ -142,22 +142,6 @@ export function HomePage() {
         </Panel>
 
         <div className="l-split">
-          <section className="l-col l-grow" aria-label="My Characters section">
-            <div className={styles.sectionHeader}>
-              <SectionTitle title="My Characters" />
-              <ButtonLink
-                to={`/player/${encodeURIComponent(view.actorId)}/character/new`}
-              >
-                New Character
-              </ButtonLink>
-            </div>
-            <CharactersTable
-              rows={view.characterRows}
-              loading={view.loading}
-              emptyText="No characters yet."
-            />
-          </section>
-
           <section className="l-col l-grow" aria-label="Games section">
             <div className={styles.sectionHeader}>
               <SectionTitle title="Games" />
@@ -179,6 +163,22 @@ export function HomePage() {
                 />
               </>
             )}
+          </section>
+
+          <section className="l-col l-grow" aria-label="My Characters section">
+            <div className={styles.sectionHeader}>
+              <SectionTitle title="My Characters" />
+              <ButtonLink
+                to={`/player/${encodeURIComponent(view.actorId)}/character/new`}
+              >
+                New Character
+              </ButtonLink>
+            </div>
+            <CharactersTable
+              rows={view.characterRows}
+              loading={view.loading}
+              emptyText="No characters yet."
+            />
           </section>
         </div>
       </Panel>
@@ -849,7 +849,7 @@ function buildMyGameRows(input: {
         createLinkAction({
           key: `${game.gameId}:gm-play`,
           label: 'GM Play',
-          to: `/gm/${gameId}/play`,
+          to: `/gm/games/${gameId}?mode=gm-play`,
         }),
       );
       secondaryActions.push(
@@ -959,7 +959,7 @@ function buildPublicGameRows(input: {
         createLinkAction({
           key: `${game.gameId}:gm-play`,
           label: 'GM Play',
-          to: `/gm/${gameId}/play`,
+          to: `/gm/games/${gameId}?mode=gm-play`,
         }),
       );
       secondaryActions.push(

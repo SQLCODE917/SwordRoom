@@ -348,6 +348,6 @@ describe('GMGameplayPage', () => {
     renderPage('/gm/game-1/play');
 
     expect(await screen.findByText('Gameplay has not started yet. Load the RPG sample to move this game from Lobby into live GM Play.')).toBeTruthy();
-    expect(screen.getByText('Current node: not started')).toBeTruthy();
+    expect(screen.getByText('Phase: PREGAME')).toBeTruthy();
   });
 });
