@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
-import { Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { readGMGameMode } from '../features/gameplay-lifecycle/gmGameMode';
 import { deriveGameLifecycleUiState } from '../features/gameplay-lifecycle/lifecycleUiState';
 import { useGameLifecycle } from '../hooks/useGameLifecycle';
+import { GMGameplayPage } from './GMGameplayPage';
+import { PlayerGameplayPage } from './PlayerGameplayPage';
 import { PregameLobbyPage } from './PregameLobbyPage';
 
 export function GMGamePage() {
@@ -12,14 +14,6 @@ export function GMGamePage() {
   const [searchParams] = useSearchParams();
   const gameId = params.gameId ?? 'game-1';
   const mode = readGMGameMode(searchParams.get('mode'));
-
-  if (mode === 'play') {
-    return <Navigate to={`/games/${encodeURIComponent(gameId)}/play`} replace />;
-  }
-
-  if (mode === 'gm-play') {
-    return <Navigate to={`/gm/${encodeURIComponent(gameId)}/play`} replace />;
-  }
 
   const lifecycleState = useGameLifecycle(gameId, { poll: 'none' });
   const lifecycleUiState =
@@ -56,11 +50,9 @@ export function GMGamePage() {
         subtitle={`Game ${gameId}`}
         footer={
           <div className="l-row">
-            <span className="c-btn c-btn--nav t-small active" role="link" aria-current="page">
-              Lobby
-            </span>
-            <ButtonLink to={`/gm/games/${encodeURIComponent(gameId)}?mode=play`}>Play</ButtonLink>
-            <ButtonLink to={`/gm/games/${encodeURIComponent(gameId)}?mode=gm-play`}>GM Play</ButtonLink>
+            <ModeTab mode={mode} tab="lobby" gameId={gameId} />
+            <ModeTab mode={mode} tab="play" gameId={gameId} />
+            <ModeTab mode={mode} tab="gm-play" gameId={gameId} />
           </div>
         }
       >
@@ -70,7 +62,27 @@ export function GMGamePage() {
         </div>
       </Panel>
 
-      <PregameLobbyPage />
+      {mode === 'lobby' ? <PregameLobbyPage /> : null}
+      {mode === 'play' ? <PlayerGameplayPage /> : null}
+      {mode === 'gm-play' ? <GMGameplayPage /> : null}
     </div>
   );
+}
+
+function ModeTab(input: { mode: 'lobby' | 'play' | 'gm-play'; tab: 'lobby' | 'play' | 'gm-play'; gameId: string }) {
+  const label = input.tab === 'lobby' ? 'Lobby' : input.tab === 'play' ? 'Play' : 'GM Play';
+  const to =
+    input.tab === 'lobby'
+      ? `/gm/games/${encodeURIComponent(input.gameId)}`
+      : `/gm/games/${encodeURIComponent(input.gameId)}?mode=${input.tab}`;
+
+  if (input.mode === input.tab) {
+    return (
+      <span className="c-btn c-btn--nav t-small active" role="link" aria-current="page">
+        {label}
+      </span>
+    );
+  }
+
+  return <ButtonLink to={to}>{label}</ButtonLink>;
 }

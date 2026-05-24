@@ -12,13 +12,19 @@ vi.mock('./PregameLobbyPage', () => ({
   PregameLobbyPage: () => <div>Pregame Lobby Stub</div>,
 }));
 
+vi.mock('./PlayerGameplayPage', () => ({
+  PlayerGameplayPage: () => <div>Player Play Stub</div>,
+}));
+
+vi.mock('./GMGameplayPage', () => ({
+  GMGameplayPage: () => <div>GM Play Stub</div>,
+}));
+
 function renderPage(initialEntry: string) {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/gm/games/:gameId" element={<GMGamePage />} />
-        <Route path="/games/:gameId/play" element={<div>Player Play Destination</div>} />
-        <Route path="/gm/:gameId/play" element={<div>GM Play Destination</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -45,14 +51,16 @@ describe('GMGamePage', () => {
     expect(screen.getByRole('link', { name: 'GM Play' }).getAttribute('href')).toBe('/gm/games/game-1?mode=gm-play');
   });
 
-  it('redirects play mode to the player play route', async () => {
+  it('renders play mode in-place when mode=play', async () => {
     renderPage('/gm/games/game-1?mode=play');
-    expect(await screen.findByText('Player Play Destination')).toBeTruthy();
+    expect(await screen.findByText('Player Play Stub')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Lobby' }).getAttribute('href')).toBe('/gm/games/game-1');
   });
 
-  it('redirects gm-play mode to the gm play route', async () => {
+  it('renders gm-play mode in-place when mode=gm-play', async () => {
     renderPage('/gm/games/game-1?mode=gm-play');
-    expect(await screen.findByText('GM Play Destination')).toBeTruthy();
+    expect(await screen.findByText('GM Play Stub')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Play' }).getAttribute('href')).toBe('/gm/games/game-1?mode=play');
   });
 
   it('shows the live lifecycle guidance when gameplay is live', async () => {
