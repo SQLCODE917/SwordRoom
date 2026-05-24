@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createApiClient, type GameplayLifecycle } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
+import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 
 const defaultPollingIntervalMs = 3000;
@@ -27,6 +28,7 @@ export function useGameLifecycle(
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasLoadedRef = useRef(false);
+  const phaseGate = deriveGameplayPhaseGate(lifecycle);
 
   const load = useCallback(
     async (input?: { background?: boolean }) => {
@@ -95,7 +97,7 @@ export function useGameLifecycle(
       return;
     }
 
-    if (poll === 'live-only' && lifecycle?.phase !== 'LIVE') {
+    if (poll === 'live-only' && !phaseGate.isLive) {
       return;
     }
 
@@ -112,7 +114,7 @@ export function useGameLifecycle(
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [lifecycle?.phase, load, poll, pollingIntervalMs]);
+  }, [load, phaseGate.isLive, poll, pollingIntervalMs]);
 
   return {
     lifecycle,

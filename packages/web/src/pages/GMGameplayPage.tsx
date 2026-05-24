@@ -14,6 +14,7 @@ import { GMPlayModeNav } from '../components/GMPlayModeNav';
 import { GMUtilitiesDock } from '../components/GMUtilitiesDock';
 import { GMUtilitiesSheet } from '../components/GMUtilitiesSheet';
 import { Panel } from '../components/Panel';
+import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
 import {
   createGmPlaySearchParams,
   deriveGmControlModel,
@@ -42,6 +43,7 @@ export function GMGameplayPage() {
 
   const gameplay = gameplayState.gameplay;
   const lifecycle = gameplayState.lifecycle;
+  const phaseGate = deriveGameplayPhaseGate(lifecycle);
   const forms = useGmGameplayFormState(gameplay);
   const controlModel = useMemo(
     () =>
@@ -105,7 +107,7 @@ export function GMGameplayPage() {
             {gameplayState.error ??
               (gameplayState.initialLoading
                 ? 'Loading GM gameplay view...'
-                : lifecycle?.phase === 'PREGAME'
+                : phaseGate.isPregame
                   ? 'Gameplay has not started yet. Load the RPG sample to move this game from Lobby into live GM Play.'
                 : gameplay
                   ? 'Current Step is the primary operator surface; graph, utilities, and chat stay available without crowding the main action.'

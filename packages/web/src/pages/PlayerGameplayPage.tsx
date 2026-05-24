@@ -8,6 +8,7 @@ import { GameplayCard } from '../components/GameplayCard';
 import { GameplayEventFeed } from '../components/GameplayEventFeed';
 import { GameplayGraph } from '../components/GameplayGraph';
 import { Panel } from '../components/Panel';
+import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
 import { useGameChat } from '../hooks/useGameChat';
 import { useGameplayView } from '../hooks/useGameplayView';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
@@ -33,6 +34,7 @@ export function PlayerGameplayPage() {
 
   const gameplay = gameplayState.gameplay;
   const lifecycle = gameplayState.lifecycle;
+  const phaseGate = deriveGameplayPhaseGate(lifecycle);
   const currentRound = gameplay?.session.combat?.rounds[gameplay.session.combat.rounds.length - 1] ?? null;
   const ownParticipant = gameplay?.participants.find((participant) => participant.playerId === auth.actorId) ?? null;
   const ownParticipantCharacterId = ownParticipant?.characterId ?? null;
@@ -84,7 +86,7 @@ export function PlayerGameplayPage() {
             {gameplayState.error ??
               (gameplayState.initialLoading
                 ? 'Loading gameplay view...'
-                : lifecycle?.phase === 'PREGAME'
+                : phaseGate.isPregame
                   ? 'Gameplay has not started yet. Chat is available while the table is in lobby planning.'
                 : gameplay
                   ? 'Current scene, current phase, and public transcript are shown here.'

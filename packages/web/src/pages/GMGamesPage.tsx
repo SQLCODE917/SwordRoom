@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createApiClient, type CommandEnvelopeInput, type GameItem } from '../api/ApiClient';
+import { createApiClient, type CommandEnvelopeInput, type GameItem, type GameplayLifecycle } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
@@ -13,6 +13,7 @@ export function GMGamesPage() {
   const navigate = useNavigate();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
   const [games, setGames] = useState<GameItem[]>([]);
+  const [lifecycleByGameId, setLifecycleByGameId] = useState<Record<string, GameplayLifecycle['phase']>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createName, setCreateName] = useState('');
@@ -62,11 +63,13 @@ export function GMGamesPage() {
           ) : (
             games.map((game) => {
               const busy = busyKey === game.gameId;
+              const phase = lifecycleByGameId[game.gameId] ?? 'PREGAME';
               return (
                 <div className="c-table__row" role="row" key={game.gameId}>
                   <div className={`c-table__cell t-small ${styles.gameCell}`}>
                     <div className={styles.gameName}>{game.name}</div>
                     <div className={styles.gameId}>ID: {game.gameId}</div>
+                    <div className={styles.gamePhase}>Phase: {phase}</div>
                   </div>
                   <div className={`c-table__cell t-small ${styles.operateCell}`}>
                     <div className={styles.operateZone}>
@@ -156,6 +159,7 @@ export function GMGamesPage() {
     try {
       const nextGames = await api.getGmGames();
       setGames(nextGames);
+      await refreshLifecycleMap(nextGames);
       setError(null);
       if (nextGames.length === 1 && !hasAutoNavigatedSingleGameRef.current) {
         hasAutoNavigatedSingleGameRef.current = true;
@@ -179,6 +183,36 @@ export function GMGamesPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function refreshLifecycleMap(nextGames: readonly GameItem[]) {
+    if (nextGames.length === 0) {
+      setLifecycleByGameId({});
+      return;
+    }
+
+    const lifecycleByGameIdEntries = await Promise.all(
+      nextGames.map(async (game) => {
+        try {
+          const lifecycle = await api.getGameplayLifecycle(game.gameId);
+          return [game.gameId, lifecycle.phase] as const;
+        } catch (lifecycleError) {
+          logWebFlow('WEB_GM_GAMES_LIFECYCLE_FALLBACK', {
+            actorId: auth.actorId,
+            authMode: auth.mode,
+            gameId: game.gameId,
+            ...summarizeError(lifecycleError),
+          });
+          return [game.gameId, 'PREGAME' as const] as const;
+        }
+      })
+    );
+
+    const nextLifecycleByGameId: Record<string, GameplayLifecycle['phase']> = {};
+    for (const [gameId, phase] of lifecycleByGameIdEntries) {
+      nextLifecycleByGameId[gameId] = phase;
+    }
+    setLifecycleByGameId(nextLifecycleByGameId);
   }
 
   async function createGame() {

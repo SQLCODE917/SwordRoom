@@ -9,6 +9,7 @@ import {
   type PregamePlanningResponse,
 } from '../../api/ApiClient';
 import { useAuthProvider } from '../../auth/AuthProvider';
+import { deriveGameplayPhaseGate } from '../gameplay-lifecycle/phaseGate';
 import { logWebFlow, summarizeError } from '../../logging/flowLog';
 
 export type PregameLobbyState =
@@ -57,12 +58,13 @@ export function usePregameLobby(gameId: string): {
           api.getGameActorContext(gameId),
           api.getGameplayLifecycle(gameId),
         ]);
+        const phaseGate = deriveGameplayPhaseGate(lifecycle);
 
         if (!game) {
           throw new Error(`Game ${gameId} was not found.`);
         }
 
-        if (lifecycle.phase === 'LIVE') {
+        if (phaseGate.isLive) {
           if (!isMountedRef.current) {
             return;
           }
@@ -77,7 +79,7 @@ export function usePregameLobby(gameId: string): {
             actorId: auth.actorId,
             authMode: auth.mode,
             gameId,
-            phase: lifecycle.phase,
+            phase: phaseGate.phase,
             hasGameplaySession: lifecycle.hasGameplaySession,
             isGameMaster: actorContext.isGameMaster,
           });

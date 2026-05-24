@@ -61,6 +61,11 @@ function createApiClientMock(
     getGmGames: vi.fn(async () => []),
     getPublicGames: vi.fn(async () => []),
     getMyPregameDigest: vi.fn(async () => []),
+    getGameplayLifecycle: vi.fn(async () => ({
+      gameId: 'game-default',
+      phase: 'PREGAME',
+      hasGameplaySession: false,
+    })),
     ...overrides,
   } as unknown as ReturnType<typeof createApiClient>;
 }
@@ -299,7 +304,7 @@ describe('HomePage', () => {
 
     const row = (await screen.findByText('Game One')).closest('tr');
     expect(row).toBeTruthy();
-    expect(within(row as HTMLElement).getByRole('link', { name: 'Lobby' })).toBeTruthy();
+    expect(within(row as HTMLElement).getByRole('link', { name: 'Open Lobby' })).toBeTruthy();
     expect(within(row as HTMLElement).getByText('More Actions')).toBeTruthy();
 
     openRowMoreActions(row as HTMLElement);
@@ -411,6 +416,50 @@ describe('HomePage', () => {
       name: 'Delete',
     });
     expect(deleteButton.className).toContain('c-btn--destructive');
+  });
+
+  it('uses Continue Play as the dominant action when lifecycle is live', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(createAuth());
+    vi.mocked(useMyProfile).mockReturnValue({
+      profile: {
+        playerId: 'player-aaa',
+        displayName: 'Local Player',
+        email: 'player@example.com',
+        roles: ['PLAYER'],
+      },
+      loading: false,
+      error: null,
+    });
+    vi.mocked(createApiClient).mockReturnValue(
+      createApiClientMock({
+        getMyGames: vi.fn(async (): Promise<GameItem[]> => [
+          {
+            gameId: 'game-live',
+            name: 'Live Game',
+            visibility: 'PUBLIC',
+            gmPlayerId: 'gm-zzz',
+            version: 1,
+          },
+        ]),
+        getGameplayLifecycle: vi.fn(async () => ({
+          gameId: 'game-live',
+          phase: 'LIVE',
+          hasGameplaySession: true,
+        })),
+      }),
+    );
+
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    const row = (await screen.findByText('Live Game')).closest('tr');
+    expect(row).toBeTruthy();
+    expect(
+      within(row as HTMLElement).getByRole('link', { name: 'Continue Play' }).getAttribute('href'),
+    ).toBe('/games/game-live/play');
   });
 
   it('prioritizes resume planning when a pregame digest entry exists', async () => {

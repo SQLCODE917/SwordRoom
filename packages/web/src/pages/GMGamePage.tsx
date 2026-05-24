@@ -1,15 +1,30 @@
 import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
+import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
 import { useGameLifecycle } from '../hooks/useGameLifecycle';
 import { PregameLobbyPage } from './PregameLobbyPage';
 
+type GMGameMode = 'lobby' | 'play' | 'gm-play';
+
 export function GMGamePage() {
   const params = useParams<{ gameId: string }>();
+  const [searchParams] = useSearchParams();
   const gameId = params.gameId ?? 'game-1';
+  const mode = readGMGameMode(searchParams.get('mode'));
+
+  if (mode === 'play') {
+    return <Navigate to={`/games/${encodeURIComponent(gameId)}/play`} replace />;
+  }
+
+  if (mode === 'gm-play') {
+    return <Navigate to={`/gm/${encodeURIComponent(gameId)}/play`} replace />;
+  }
+
   const lifecycleState = useGameLifecycle(gameId, { poll: 'none' });
-  const phaseLabel = lifecycleState.lifecycle?.phase ?? 'PREGAME';
+  const phaseGate = deriveGameplayPhaseGate(lifecycleState.lifecycle);
+  const phaseLabel = phaseGate.phase;
   const phaseDescription = useMemo(() => {
     if (lifecycleState.initialLoading) {
       return 'Loading game lifecycle...';
@@ -17,11 +32,11 @@ export function GMGamePage() {
     if (lifecycleState.error) {
       return lifecycleState.error;
     }
-    if (phaseLabel === 'LIVE') {
-      return 'Gameplay is live. Use Play or GM Play to continue the current session.';
+    if (phaseGate.isLive) {
+      return 'Gameplay is live. Continue in Play or GM Play; Lobby remains available for planning context.';
     }
-    return 'Gameplay has not started yet. Use Lobby for the pregame loop, or open GM Play to frame the first scene.';
-  }, [lifecycleState.error, lifecycleState.initialLoading, phaseLabel]);
+    return 'Gameplay has not started yet. Use Lobby for the pregame loop, then open GM Play to frame the first scene.';
+  }, [lifecycleState.error, lifecycleState.initialLoading, phaseGate.isLive]);
 
   return (
     <div className="l-page">
@@ -33,8 +48,8 @@ export function GMGamePage() {
             <span className="c-btn c-btn--nav t-small active" role="link" aria-current="page">
               Lobby
             </span>
-            <ButtonLink to={`/games/${encodeURIComponent(gameId)}/play`}>Play</ButtonLink>
-            <ButtonLink to={`/gm/${encodeURIComponent(gameId)}/play`}>GM Play</ButtonLink>
+            <ButtonLink to={`/gm/games/${encodeURIComponent(gameId)}?mode=play`}>Play</ButtonLink>
+            <ButtonLink to={`/gm/games/${encodeURIComponent(gameId)}?mode=gm-play`}>GM Play</ButtonLink>
           </div>
         }
       >
@@ -47,4 +62,11 @@ export function GMGamePage() {
       <PregameLobbyPage />
     </div>
   );
+}
+
+function readGMGameMode(modeValue: string | null): GMGameMode {
+  if (modeValue === 'play' || modeValue === 'gm-play') {
+    return modeValue;
+  }
+  return 'lobby';
 }

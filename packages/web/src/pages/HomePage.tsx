@@ -4,6 +4,7 @@ import {
   createApiClient,
   type CharacterItem,
   type GameItem,
+  type GameplayLifecycle,
   type PregameDigestEntry,
 } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
@@ -11,6 +12,7 @@ import { ButtonLink } from '../components/ButtonLink';
 import { reportDebugStatusRegion } from '../debug/debugTelemetry';
 import { Panel } from '../components/Panel';
 import { appendCharacterWizardEntryContext } from '../features/character-wizard';
+import { deriveGameplayPhaseGate } from '../features/gameplay-lifecycle/phaseGate';
 import {
   createCommandId,
   useCommandWorkflow,
@@ -25,11 +27,13 @@ interface DashboardState {
   gmGames: GameItem[];
   publicGames: GameItem[];
   pregameDigest: PregameDigestEntry[];
+  lifecycleByGameId: Record<string, GameplayLifecycle['phase']>;
 }
 
 interface HomePageViewModel {
   actorId: string;
   loading: boolean;
+  hasJoinedGames: boolean;
   quickStartHeadline: string;
   quickStartDetail: string;
   quickStartActions: ActionDeckViewModel;
@@ -78,6 +82,7 @@ interface GameRowViewModel {
   key: string;
   gameName: string;
   visibility: string;
+  phaseLabel: GameplayLifecycle['phase'] | null;
   actions: ActionDeckViewModel;
 }
 
@@ -99,6 +104,7 @@ const emptyState: DashboardState = {
   gmGames: [],
   publicGames: [],
   pregameDigest: [],
+  lifecycleByGameId: {},
 };
 
 const existingCharacterDisabledReason =
@@ -152,22 +158,27 @@ export function HomePage() {
             />
           </section>
 
-          <section className="l-col l-grow" aria-label="My Games section">
+          <section className="l-col l-grow" aria-label="Games section">
             <div className={styles.sectionHeader}>
-              <SectionTitle title="My Games" />
+              <SectionTitle title="Games" />
               <ButtonLink to="/gm/games">Create Game</ButtonLink>
             </div>
-            <MyGamesTable
-              rows={view.myGameRows}
-              loading={view.loading}
-              emptyText="You are not in any games yet."
-            />
-            <SectionTitle title="Public Games" />
-            <PublicGamesTable
-              rows={view.publicGameRows}
-              loading={view.loading}
-              emptyText="No public games found."
-            />
+            {view.hasJoinedGames ? (
+              <MyGamesTable
+                rows={view.myGameRows}
+                loading={view.loading}
+                emptyText="You are not in any games yet."
+              />
+            ) : (
+              <>
+                <SectionTitle title="Public Games" />
+                <PublicGamesTable
+                  rows={view.publicGameRows}
+                  loading={view.loading}
+                  emptyText="No public games found."
+                />
+              </>
+            )}
           </section>
         </div>
       </Panel>
@@ -207,12 +218,35 @@ function useHomePageViewModel(): HomePageViewModel {
           api.getPublicGames(),
           api.getMyPregameDigest(),
         ]);
+      const lifecycleByGameIdEntries = await Promise.all(
+        myGames.map(async (game) => {
+          try {
+            const lifecycle = await api.getGameplayLifecycle(game.gameId);
+            return [game.gameId, lifecycle.phase] as const;
+          } catch (lifecycleError) {
+            logWebFlow('WEB_HOME_GAME_LIFECYCLE_FALLBACK', {
+              actorId: auth.actorId,
+              authMode: auth.mode,
+              gameId: game.gameId,
+              ...summarizeError(lifecycleError),
+            });
+            return [game.gameId, 'PREGAME' as const] as const;
+          }
+        }),
+      );
+
+      const lifecycleByGameId: Record<string, GameplayLifecycle['phase']> = {};
+      for (const [gameId, phase] of lifecycleByGameIdEntries) {
+        lifecycleByGameId[gameId] = phase;
+      }
+
       setDashboard({
         characters,
         myGames,
         gmGames,
         publicGames,
         pregameDigest,
+        lifecycleByGameId,
       });
       setDataError(null);
       logWebFlow('WEB_HOME_LOAD_OK', {
@@ -385,6 +419,7 @@ function useHomePageViewModel(): HomePageViewModel {
         games: dashboard.myGames,
         gmGameIds,
         characterByGameId: gameCharacterByGameId,
+        lifecycleByGameId: dashboard.lifecycleByGameId,
         archivingGameId,
         isRunningCommand,
         onArchiveGame: (game) => {
@@ -394,6 +429,7 @@ function useHomePageViewModel(): HomePageViewModel {
     [
       archivingGameId,
       archiveGame,
+      dashboard.lifecycleByGameId,
       dashboard.myGames,
       gameCharacterByGameId,
       gmGameIds,
@@ -423,6 +459,7 @@ function useHomePageViewModel(): HomePageViewModel {
   return {
     actorId: auth.actorId,
     loading,
+    hasJoinedGames: dashboard.myGames.length > 0,
     quickStartHeadline: quickStart.headline,
     quickStartDetail: quickStart.detail,
     quickStartActions,
@@ -513,6 +550,7 @@ function MyGamesTable(input: {
             <tr key={row.key}>
               <td className={`${styles.bodyCell} t-small`}>
                 <div>{row.gameName}</div>
+                {row.phaseLabel ? <div className="t-small">Phase: {row.phaseLabel}</div> : null}
               </td>
               <td className={`${styles.bodyCell} t-small`}>{row.visibility}</td>
               <td className={`${styles.bodyCell} t-small`}>
@@ -559,6 +597,7 @@ export function PublicGamesTable(input: {
             <tr key={row.key}>
               <td className={`${styles.bodyCell} t-small`}>
                 <div>{row.gameName}</div>
+                {row.phaseLabel ? <div className="t-small">Phase: {row.phaseLabel}</div> : null}
               </td>
               <td className={`${styles.bodyCell} t-small`}>{row.visibility}</td>
               <td className={`${styles.bodyCell} t-small`}>
@@ -748,6 +787,7 @@ function buildMyGameRows(input: {
   games: GameItem[];
   gmGameIds: ReadonlySet<string>;
   characterByGameId: ReadonlyMap<string, CharacterItem>;
+  lifecycleByGameId: Readonly<Record<string, GameplayLifecycle['phase']>>;
   archivingGameId: string | null;
   isRunningCommand: boolean;
   onArchiveGame: (game: GameItem) => void;
@@ -756,6 +796,8 @@ function buildMyGameRows(input: {
     const gameId = encodeURIComponent(game.gameId);
     const character = input.characterByGameId.get(game.gameId) ?? null;
     const isGmGame = input.gmGameIds.has(game.gameId);
+    const phase = input.lifecycleByGameId[game.gameId] ?? 'PREGAME';
+    const phaseGate = deriveGameplayPhaseGate({ phase });
     const isArchiving = input.archivingGameId === game.gameId;
 
     const secondaryActions: ActionViewModel[] = [
@@ -831,12 +873,13 @@ function buildMyGameRows(input: {
     return {
       key: game.gameId,
       gameName: game.name,
-      visibility: game.visibility,
+      visibility: `${game.visibility}`,
+      phaseLabel: phase,
       actions: {
         primary: createLinkAction({
-          key: `${game.gameId}:lobby`,
-          label: 'Lobby',
-          to: `/games/${gameId}`,
+          key: `${game.gameId}:primary`,
+          label: phaseGate.isLive ? 'Continue Play' : 'Open Lobby',
+          to: phaseGate.isLive ? `/games/${gameId}/play` : `/games/${gameId}`,
         }),
         secondary: orderActions(secondaryActions),
         moreLabel: 'More Actions',
@@ -932,6 +975,7 @@ function buildPublicGameRows(input: {
       key: game.gameId,
       gameName: game.name,
       visibility: game.visibility,
+      phaseLabel: null,
       actions: {
         primary: canEnterLobby
           ? createLinkAction({

@@ -15,6 +15,7 @@ describe('PublicGamesTable', () => {
               key: 'game-gm',
               gameName: 'GM Game',
               visibility: 'PUBLIC',
+              phaseLabel: null,
               actions: {
                 primary: {
                   kind: 'link',

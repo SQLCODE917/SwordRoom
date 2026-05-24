@@ -71,6 +71,11 @@ describe('GMGamesPage', () => {
           version: 1,
         },
       ]);
+    const getGameplayLifecycle = vi.fn(async () => ({
+      gameId: 'game-new',
+      phase: 'PREGAME' as const,
+      hasGameplaySession: false,
+    }));
     const submitEnvelopeAndAwait = vi.fn(async () => ({
       commandId: 'cmd-create',
       status: 'PROCESSED' as const,
@@ -81,6 +86,7 @@ describe('GMGamesPage', () => {
     vi.mocked(useAuthProvider).mockReturnValue(createAuth());
     vi.mocked(createApiClient).mockReturnValue({
       getGmGames,
+      getGameplayLifecycle,
     } as unknown as ReturnType<typeof createApiClient>);
     vi.mocked(useCommandWorkflow).mockReturnValue({
       status: {
@@ -120,7 +126,8 @@ describe('GMGamesPage', () => {
       )
     );
 
-    expect((await screen.findByTestId('location')).textContent).toBe('/games/game-new');
+    expect((await screen.findByTestId('location')).textContent).toBe('/gm/games/game-new');
+    expect(screen.getByText('Phase: PREGAME')).toBeTruthy();
     expect(vi.mocked(notifyAuthStateChanged)).toHaveBeenCalledTimes(1);
   });
 
@@ -137,6 +144,11 @@ describe('GMGamesPage', () => {
         },
       ])
       .mockResolvedValueOnce([]);
+    const getGameplayLifecycle = vi.fn(async () => ({
+      gameId: 'game-delete',
+      phase: 'LIVE' as const,
+      hasGameplaySession: true,
+    }));
     const submitEnvelopeAndAwait = vi.fn(async () => ({
       commandId: 'cmd-create',
       status: 'PROCESSED' as const,
@@ -147,6 +159,7 @@ describe('GMGamesPage', () => {
     vi.mocked(useAuthProvider).mockReturnValue(createAuth());
     vi.mocked(createApiClient).mockReturnValue({
       getGmGames,
+      getGameplayLifecycle,
     } as unknown as ReturnType<typeof createApiClient>);
     vi.mocked(useCommandWorkflow).mockReturnValue({
       status: {
@@ -170,6 +183,7 @@ describe('GMGamesPage', () => {
 
     const row = await screen.findByText('Delete Me');
     expect(row).toBeTruthy();
+    expect(screen.getByText('Phase: LIVE')).toBeTruthy();
 
     const deleteButton = screen.getByRole('button', { name: 'Delete' });
     expect(deleteButton.className).toContain('c-btn--destructive');
