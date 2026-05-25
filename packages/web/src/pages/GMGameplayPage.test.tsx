@@ -112,7 +112,7 @@ function renderPage(initialEntry: string) {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
-        <Route path="/gm/:gameId/play" element={<><GMGameplayPage /><LocationProbe /></>} />
+        <Route path="/gm/games/:gameId" element={<><GMGameplayPage /><LocationProbe /></>} />
       </Routes>
     </MemoryRouter>
   );
@@ -180,7 +180,7 @@ describe('GMGameplayPage', () => {
       refresh: vi.fn(async () => undefined),
     });
 
-    renderPage('/gm/game-1/play?mode=bogus&panel=nope&utility=ghost&transcript=wrong');
+    renderPage('/gm/games/game-1?mode=bogus&panel=nope&utility=ghost&transcript=wrong');
 
     expect(await screen.findByRole('heading', { name: 'GM Play' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Current Step' }).getAttribute('aria-selected')).toBe('true');
@@ -198,7 +198,7 @@ describe('GMGameplayPage', () => {
       refresh: vi.fn(async () => undefined),
     });
 
-    renderPage('/gm/game-1/play?mode=control&panel=graph&transcript=public');
+    renderPage('/gm/games/game-1?mode=control&panel=graph&transcript=public');
 
     expect(await screen.findByRole('heading', { name: 'GM Play' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Whole Graph' })).toBeTruthy();
@@ -238,7 +238,7 @@ describe('GMGameplayPage', () => {
       refresh: vi.fn(async () => undefined),
     });
 
-    renderPage('/gm/game-1/play');
+    renderPage('/gm/games/game-1');
 
     expect(await screen.findByRole('heading', { name: 'Resolve Check' })).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'Player roll' })).toBeTruthy();
@@ -272,7 +272,7 @@ describe('GMGameplayPage', () => {
       refresh: vi.fn(async () => undefined),
     });
 
-    renderPage('/gm/game-1/play');
+    renderPage('/gm/games/game-1');
 
     expect(await screen.findByRole('heading', { name: 'Resolve Check' })).toBeTruthy();
     expect(screen.getByRole('textbox', { name: 'GM roll' })).toBeTruthy();
@@ -290,7 +290,7 @@ describe('GMGameplayPage', () => {
       refresh: vi.fn(async () => undefined),
     });
 
-    renderPage('/gm/game-1/play');
+    renderPage('/gm/games/game-1');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Show Info' }));
     expect(screen.getByText('Double sixes auto-succeed and double ones auto-fail.')).toBeTruthy();
@@ -305,7 +305,7 @@ describe('GMGameplayPage', () => {
       refresh: vi.fn(async () => undefined),
     });
 
-    renderPage('/gm/game-1/play');
+    renderPage('/gm/games/game-1');
 
     fireEvent.click(await screen.findByRole('button', { name: 'Open Transcript' }));
     const dialog = await screen.findByRole('dialog', { name: 'GM utility panel' });
@@ -325,13 +325,13 @@ describe('GMGameplayPage', () => {
       refresh: vi.fn(async () => undefined),
     });
 
-    const mobile = renderPage('/gm/game-1/play');
+    const mobile = renderPage('/gm/games/game-1');
     fireEvent.click(await screen.findByRole('button', { name: 'Open Status' }));
     expect(await screen.findByRole('dialog', { name: 'GM utility panel' })).toBeTruthy();
     mobile.unmount();
 
     mockMatchMedia(true);
-    renderPage('/gm/game-1/play');
+    renderPage('/gm/games/game-1');
     fireEvent.click(await screen.findByRole('button', { name: 'Open Status' }));
     expect(await screen.findByLabelText('GM utility dock')).toBeTruthy();
   });
@@ -345,7 +345,7 @@ describe('GMGameplayPage', () => {
       refresh: vi.fn(async () => undefined),
     });
 
-    renderPage('/gm/game-1/play');
+    renderPage('/gm/games/game-1');
 
     expect(await screen.findByText('Gameplay has not started yet. Load the RPG sample to move this game from Lobby into live GM Play.')).toBeTruthy();
     expect(screen.getByText('Phase: PREGAME')).toBeTruthy();

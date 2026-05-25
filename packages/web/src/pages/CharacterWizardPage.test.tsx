@@ -256,6 +256,6 @@ describe('CharacterWizardPage', () => {
     expect(await screen.findByRole('heading', { name: 'Edit Character Draft' })).toBeTruthy();
     expect(screen.getByText('Resume this draft and keep the pregame loop moving')).toBeTruthy();
     expect(screen.getByText('Opened from Pregame Digest as the shortest path back into the current planning loop.')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Back To Inbox' }).getAttribute('href')).toBe('/me/inbox');
+    expect(screen.getByRole('link', { name: 'Back To Inbox' }).getAttribute('href')).toBe('/inbox?mode=player');
   });
 });

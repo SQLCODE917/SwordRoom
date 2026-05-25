@@ -20,7 +20,7 @@ describe('PregameWorkflowNav', () => {
     expect(within(nav).getByRole('link', { name: 'Create' }).getAttribute('href')).toBe('/games/game-1/characters/char-1/edit');
     expect(within(nav).getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
     expect(within(nav).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
-    expect(within(nav).getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/me/inbox');
+    expect(within(nav).getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/inbox?mode=player');
   });
 
   it('defaults the characters entry to the game-scoped workbench route', () => {

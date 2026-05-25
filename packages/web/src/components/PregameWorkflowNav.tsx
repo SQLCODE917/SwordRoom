@@ -19,7 +19,7 @@ export function PregameWorkflowNav({
       <NavButton label="Create" to={createTo} />
       <NavButton label="Chat" to={`/games/${encodeURIComponent(gameId)}/chat`} />
       <NavButton label="Characters" to={charactersTo} />
-      {includeInbox ? <NavButton label="Inbox" to="/me/inbox" /> : null}
+      {includeInbox ? <NavButton label="Inbox" to="/inbox?mode=player" /> : null}
     </nav>
   );
 }

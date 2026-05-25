@@ -217,7 +217,7 @@ describe('App shell routes', () => {
     expect(await screen.findByRole('heading', { name: 'GM Play' })).toBeTruthy();
   });
 
-  it('redirects legacy /gm/:gameId/play links into the GM Game gm-play mode', async () => {
+  it('hard-cuts legacy /gm/:gameId/play links to home', async () => {
     writeDevSession({ username: 'gm-aaa', actorId: 'gm-aaa' });
     window.history.pushState({}, '', '/gm/game-1/play');
 
@@ -268,7 +268,8 @@ describe('App shell routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'GM Play' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'GM Play' })).toBeNull();
   });
 
   it('redirects non-GMs away from /gm/games/:gameId deep links', async () => {

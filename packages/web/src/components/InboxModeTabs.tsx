@@ -9,7 +9,7 @@ interface InboxModeTabsProps {
 export function InboxModeTabs({ playerInboxTo = '/inbox?mode=player', gmInboxTo }: InboxModeTabsProps) {
   const location = useLocation();
   const mode = new URLSearchParams(location.search).get('mode');
-  const isPlayerTabActive = location.pathname.startsWith('/me/inbox') || (location.pathname === '/inbox' && mode !== 'gm');
+  const isPlayerTabActive = location.pathname === '/inbox' && mode !== 'gm';
   const isGmTabActive = location.pathname.match(/^\/gm\/[^/]+\/inbox$/) !== null || (location.pathname === '/inbox' && mode === 'gm');
 
   const playerClassName = ['c-btn', 'c-btn--nav', 't-small', isPlayerTabActive ? 'is-active' : '']

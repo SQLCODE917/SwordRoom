@@ -814,7 +814,7 @@ function buildMyGameRows(input: {
       createLinkAction({
         key: `${game.gameId}:player-inbox`,
         label: 'Player Inbox',
-        to: '/me/inbox',
+        to: '/inbox?mode=player',
       }),
       createLinkAction({
         key: `${game.gameId}:new-character`,
@@ -932,7 +932,7 @@ function buildPublicGameRows(input: {
         createLinkAction({
           key: `${game.gameId}:player-inbox`,
           label: 'Player Inbox',
-          to: '/me/inbox',
+          to: '/inbox?mode=player',
         }),
       );
     }

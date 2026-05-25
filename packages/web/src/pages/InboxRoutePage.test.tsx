@@ -32,7 +32,6 @@ describe('InboxRoutePage', () => {
       <MemoryRouter initialEntries={['/inbox']}>
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
-          <Route path="/me/inbox" element={<LocationDump />} />
           <Route path="*" element={<LocationDump />} />
           <Route path="/gm/:gameId/inbox" element={<LocationDump />} />
         </Routes>
@@ -61,7 +60,6 @@ describe('InboxRoutePage', () => {
       <MemoryRouter initialEntries={['/inbox?mode=gm&gameId=game-2']}>
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
-          <Route path="/me/inbox" element={<LocationDump />} />
           <Route path="*" element={<LocationDump />} />
           <Route path="/gm/:gameId/inbox" element={<LocationDump />} />
         </Routes>
@@ -76,7 +74,6 @@ describe('InboxRoutePage', () => {
       <MemoryRouter initialEntries={['/inbox?mode=gm']}>
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
-          <Route path="/me/inbox" element={<LocationDump />} />
           <Route path="*" element={<LocationDump />} />
           <Route path="/gm/:gameId/inbox" element={<LocationDump />} />
         </Routes>

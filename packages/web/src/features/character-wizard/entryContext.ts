@@ -37,7 +37,7 @@ export function getCharacterWizardReturnPath(gameId: string, entrySource: Charac
     return `/games/${encodeURIComponent(gameId)}/characters`;
   }
   if (entrySource === 'inbox' || entrySource === 'digest') {
-    return '/me/inbox';
+    return '/inbox?mode=player';
   }
   if (entrySource === 'home') {
     return '/';

@@ -11,7 +11,6 @@ import { CharacterWizardPage } from './routes/CharacterWizardPage';
 import { GMInboxPage } from './routes/GMInboxPage';
 import { GMGamePage } from './routes/GMGamePage';
 import { GMGamesPage } from './routes/GMGamesPage';
-import { GMGameplayPage } from './routes/GMGameplayPage';
 import { GameChatPage } from './routes/GameChatPage';
 import { HomePage } from './routes/HomePage';
 import { AccountPage } from './routes/AccountPage';
@@ -58,10 +57,6 @@ export default function App() {
               element={<RequireAuthRoute><PlayerGameplayPage /></RequireAuthRoute>}
             />
             <Route
-              path="/game/:gameId/chat"
-              element={<RequireAuthRoute><GameChatPage /></RequireAuthRoute>}
-            />
-            <Route
               path="/player/:playerId/character/new"
               element={<RequireAuthRoute><RequireOwnPlayerRoute><CharacterWizardPage /></RequireOwnPlayerRoute></RequireAuthRoute>}
             />
@@ -72,14 +67,6 @@ export default function App() {
             <Route
               path="/player/:playerId/characters/:characterId/edit"
               element={<RequireAuthRoute><RequireOwnPlayerRoute><CharacterWizardPage /></RequireOwnPlayerRoute></RequireAuthRoute>}
-            />
-            <Route
-              path="/me/inbox"
-              element={
-                <RequireAuthRoute>
-                  <Navigate to="/inbox?mode=player" replace />
-                </RequireAuthRoute>
-              }
             />
             <Route
               path="/gm/games"
@@ -118,16 +105,6 @@ export default function App() {
                 <RequireAuthRoute>
                   <RequireGmRoute>
                     <GMInboxPage />
-                  </RequireGmRoute>
-                </RequireAuthRoute>
-              }
-            />
-            <Route
-              path="/gm/:gameId/play"
-              element={
-                <RequireAuthRoute>
-                  <RequireGmRoute>
-                    <GMGameplayPage />
                   </RequireGmRoute>
                 </RequireAuthRoute>
               }
