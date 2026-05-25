@@ -114,13 +114,12 @@ const actionPriorityOrder = [
   'Lobby',
   'Play',
   'Chat',
-  'Player Inbox',
+  'Inbox',
   'Sheet',
   'Edit',
   'New Character',
   'Apply to Join',
   'GM Play',
-  'GM Inbox',
   'Delete',
 ] as const;
 
@@ -812,9 +811,9 @@ function buildMyGameRows(input: {
         to: `/games/${gameId}/chat`,
       }),
       createLinkAction({
-        key: `${game.gameId}:player-inbox`,
-        label: 'Player Inbox',
-        to: '/inbox?mode=player',
+        key: `${game.gameId}:inbox`,
+        label: 'Inbox',
+        to: isGmGame ? `/inbox?mode=gm&gameId=${gameId}` : '/inbox?mode=player',
       }),
       createLinkAction({
         key: `${game.gameId}:new-character`,
@@ -850,13 +849,6 @@ function buildMyGameRows(input: {
           key: `${game.gameId}:gm-play`,
           label: 'GM Play',
           to: `/gm/games/${gameId}?mode=gm-play`,
-        }),
-      );
-      secondaryActions.push(
-        createLinkAction({
-          key: `${game.gameId}:gm-inbox`,
-          label: 'GM Inbox',
-          to: `/gm/${gameId}/inbox`,
         }),
       );
       secondaryActions.push(
@@ -930,9 +922,17 @@ function buildPublicGameRows(input: {
     if (joined) {
       secondaryActions.push(
         createLinkAction({
-          key: `${game.gameId}:player-inbox`,
-          label: 'Player Inbox',
-          to: '/inbox?mode=player',
+          key: `${game.gameId}:inbox`,
+          label: 'Inbox',
+          to: isGmGame ? `/inbox?mode=gm&gameId=${gameId}` : '/inbox?mode=player',
+        }),
+      );
+    } else if (isGmGame) {
+      secondaryActions.push(
+        createLinkAction({
+          key: `${game.gameId}:inbox`,
+          label: 'Inbox',
+          to: `/inbox?mode=gm&gameId=${gameId}`,
         }),
       );
     }
@@ -960,13 +960,6 @@ function buildPublicGameRows(input: {
           key: `${game.gameId}:gm-play`,
           label: 'GM Play',
           to: `/gm/games/${gameId}?mode=gm-play`,
-        }),
-      );
-      secondaryActions.push(
-        createLinkAction({
-          key: `${game.gameId}:gm-inbox`,
-          label: 'GM Inbox',
-          to: `/gm/${gameId}/inbox`,
         }),
       );
     }

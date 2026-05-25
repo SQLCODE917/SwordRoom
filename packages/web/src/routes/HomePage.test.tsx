@@ -39,8 +39,8 @@ describe('PublicGamesTable', () => {
                   {
                     kind: 'link',
                     key: 'game-gm:gm-inbox',
-                    label: 'GM Inbox',
-                    to: '/gm/game-gm/inbox',
+                    label: 'Inbox',
+                    to: '/inbox?mode=gm&gameId=game-gm',
                     disabled: false,
                     disabledReason: null,
                     variant: 'default',
@@ -64,7 +64,7 @@ describe('PublicGamesTable', () => {
     fireEvent.click(within(row as HTMLElement).getByText('More Actions'));
     expect(within(row as HTMLElement).getByRole('link', { name: 'Chat' })).toBeTruthy();
     expect(
-      within(row as HTMLElement).getByRole('link', { name: 'GM Inbox' }),
+      within(row as HTMLElement).getByRole('link', { name: 'Inbox' }),
     ).toBeTruthy();
   });
 });

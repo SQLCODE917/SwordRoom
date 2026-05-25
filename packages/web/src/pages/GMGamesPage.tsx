@@ -88,8 +88,8 @@ export function GMGamesPage() {
                         <ButtonLink className={styles.actionButton} to={`/games/${encodeURIComponent(game.gameId)}/chat`}>
                           Chat
                         </ButtonLink>
-                        <ButtonLink className={styles.actionButton} to={`/gm/${encodeURIComponent(game.gameId)}/inbox`}>
-                          GM Inbox
+                        <ButtonLink className={styles.actionButton} to={`/inbox?mode=gm&gameId=${encodeURIComponent(game.gameId)}`}>
+                          Inbox
                         </ButtonLink>
                         <ButtonLink className={styles.actionButton} to={`/games/${encodeURIComponent(game.gameId)}/character/new`}>
                           New Character
