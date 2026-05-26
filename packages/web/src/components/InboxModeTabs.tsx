@@ -10,7 +10,7 @@ export function InboxModeTabs({ playerInboxTo = '/inbox?mode=player', gmInboxTo 
   const location = useLocation();
   const mode = new URLSearchParams(location.search).get('mode');
   const isPlayerTabActive = location.pathname === '/inbox' && mode !== 'gm';
-  const isGmTabActive = location.pathname.match(/^\/gm\/[^/]+\/inbox$/) !== null || (location.pathname === '/inbox' && mode === 'gm');
+  const isGmTabActive = location.pathname === '/inbox' && mode === 'gm';
 
   const playerClassName = ['c-btn', 'c-btn--nav', 't-small', isPlayerTabActive ? 'is-active' : '']
     .filter(Boolean)

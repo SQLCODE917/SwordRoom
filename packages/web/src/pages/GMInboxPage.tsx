@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { createApiClient, type CommandEnvelopeInput, type GMInboxItem } from '../api/ApiClient';
 import { useAuthProvider } from '../auth/AuthProvider';
 import { ButtonLink } from '../components/ButtonLink';
@@ -22,13 +21,12 @@ interface ActivityRow {
   createdAt: string;
 }
 
-export function GMInboxPage() {
+export function GMInboxPage({ gameId = 'game-1' }: { gameId?: string }) {
   const auth = useAuthProvider();
   const api = useMemo(() => createApiClient({ auth }), [auth]);
-  const params = useParams<{ gameId: string }>();
-  const gameId = params.gameId ?? 'game-1';
+  const resolvedGameId = gameId;
   const playerInboxTo = '/inbox?mode=player';
-  const gmInboxTo = `/inbox?mode=gm&gameId=${encodeURIComponent(gameId)}`;
+  const gmInboxTo = `/inbox?mode=gm&gameId=${encodeURIComponent(resolvedGameId)}`;
 
   const [pendingRows, setPendingRows] = useState<PendingCharacterRow[]>([]);
   const [activityRows, setActivityRows] = useState<ActivityRow[]>([]);
@@ -42,12 +40,12 @@ export function GMInboxPage() {
   useEffect(() => {
     void refreshInbox();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId]);
+  }, [resolvedGameId]);
 
   return (
     <div className="l-page">
       <InboxModeTabs playerInboxTo={playerInboxTo} gmInboxTo={gmInboxTo} />
-      <Panel title="Inbox" subtitle={`Pending characters and invite responses for game ${gameId}.`}>
+      <Panel title="Inbox" subtitle={`Pending characters and invite responses for game ${resolvedGameId}.`}>
         <div className="c-table" role="table" aria-label="GM Pending Characters">
           <div className="c-table__head c-table__row" role="row">
             <div className="c-table__cell t-small">Character</div>
@@ -79,7 +77,7 @@ export function GMInboxPage() {
                   <div className="c-table__cell t-small">{row.submittedAt}</div>
                   <div className="c-table__cell">
                     <div className="l-col">
-                      <ButtonLink to={`/games/${encodeURIComponent(gameId)}/characters/${encodeURIComponent(row.characterId)}`}>
+                      <ButtonLink to={`/games/${encodeURIComponent(resolvedGameId)}/characters/${encodeURIComponent(row.characterId)}`}>
                         Sheet
                       </ButtonLink>
                       <div className={`c-field ${rowBusy ? 'is-disabled' : ''}`.trim()}>
@@ -157,10 +155,10 @@ export function GMInboxPage() {
     logWebFlow('WEB_GM_INBOX_REFRESH_START', {
       actorId: auth.actorId,
       authMode: auth.mode,
-      gameId,
+      gameId: resolvedGameId,
     });
     try {
-      const inbox = await api.getGmInbox(gameId);
+      const inbox = await api.getGmInbox(resolvedGameId);
       const normalized = normalizeInbox(inbox);
       setPendingRows(normalized.pendingRows);
       setActivityRows(normalized.activityRows);
@@ -168,7 +166,7 @@ export function GMInboxPage() {
       logWebFlow('WEB_GM_INBOX_REFRESH_OK', {
         actorId: auth.actorId,
         authMode: auth.mode,
-        gameId,
+        gameId: resolvedGameId,
         count: inbox.length,
       });
     } catch (error) {
@@ -178,7 +176,7 @@ export function GMInboxPage() {
       logWebFlow('WEB_GM_INBOX_REFRESH_FAILED', {
         actorId: auth.actorId,
         authMode: auth.mode,
-        gameId,
+        gameId: resolvedGameId,
         ...summarizeError(error),
       });
     } finally {
@@ -199,7 +197,7 @@ export function GMInboxPage() {
     logWebFlow('WEB_GM_REVIEW_START', {
       actorId: auth.actorId,
       authMode: auth.mode,
-      gameId,
+      gameId: resolvedGameId,
       characterId: row.characterId,
       decision,
       gmNotePresent: note.length > 0,
@@ -208,7 +206,7 @@ export function GMInboxPage() {
     try {
       await submitEnvelopeAndAwait(`GM ${decision.toLowerCase()}`, {
         commandId: createCommandId(),
-        gameId,
+        gameId: resolvedGameId,
         type: 'GMReviewCharacter',
         schemaVersion: 1,
         createdAt: new Date().toISOString(),

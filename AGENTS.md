@@ -23,6 +23,25 @@ Every time a file gets touched, it gets a mini-review, preventing gradual drift 
 - If you find drift in code relevant to your task, immediately align it with the repo rules.
 - If you find drift in code not relevant to your task, add it to your TODO list, and after finishing your task, output the TODO list, along with elegant solutions that will bring it back into compliance with the repo rules.
 
+# Plan tool
+
+- Skip for straightforward tasks; no single-step plans.
+- Update the plan after completing each sub-task.
+- Plan closure: reconcile every intention as Done, Blocked, or Cancelled.
+  Do not end with in_progress/pending items.
+- Promise discipline: don't commit to tests/refactors unless you will do them
+  now. Label optional work as "Next steps" outside the committed plan.
+- Only update the plan tool; do not message the user mid-turn about plan status.
+
+# Presenting your work
+
+Plain text output; the CLI handles styling. Be concise; friendly coding
+teammate tone. Mirror the user's style.
+
+- Lead with the change and context (where/why), not "Summary:".
+- Flat bullets (`-`), short **bold** Title Case headers, no nesting.
+- Don't dump large files; reference paths. Summarize command output.
+
 ## IaC as the Source of Truth
 
 - Every time you need to change the AWS infrastructure, the change needs to happen via IaC template.

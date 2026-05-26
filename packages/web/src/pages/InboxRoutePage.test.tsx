@@ -12,6 +12,10 @@ vi.mock('./PlayerInboxPage', () => ({
   PlayerInboxPage: () => <div data-testid="player-inbox">player inbox</div>,
 }));
 
+vi.mock('./GMInboxPage', () => ({
+  GMInboxPage: ({ gameId }: { gameId: string }) => <div data-testid="gm-inbox">{gameId}</div>,
+}));
+
 function LocationDump() {
   const location = useLocation();
   return <div data-testid="location">{`${location.pathname}${location.search}`}</div>;
@@ -33,7 +37,6 @@ describe('InboxRoutePage', () => {
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
           <Route path="*" element={<LocationDump />} />
-          <Route path="/gm/:gameId/inbox" element={<LocationDump />} />
         </Routes>
       </MemoryRouter>
     );
@@ -41,7 +44,7 @@ describe('InboxRoutePage', () => {
     expect(screen.getByTestId('player-inbox')).toBeTruthy();
   });
 
-  it('routes to the selected gm game inbox when mode=gm and gameId is provided', () => {
+  it('renders the selected gm game inbox when mode=gm and gameId is provided', () => {
     vi.mocked(useGmGames).mockReturnValue({
       games: [
         {
@@ -61,12 +64,38 @@ describe('InboxRoutePage', () => {
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
           <Route path="*" element={<LocationDump />} />
-          <Route path="/gm/:gameId/inbox" element={<LocationDump />} />
         </Routes>
       </MemoryRouter>
     );
 
-    expect(screen.getByTestId('location').textContent).toBe('/gm/game-2/inbox');
+    expect(screen.getByTestId('gm-inbox').textContent).toBe('game-2');
+  });
+
+  it('falls back to first gm game when mode=gm gameId is not a gm game', () => {
+    vi.mocked(useGmGames).mockReturnValue({
+      games: [
+        {
+          gameId: 'game-1',
+          name: 'Primary',
+          visibility: 'PUBLIC',
+          gmPlayerId: 'gm-1',
+          version: 1,
+        },
+      ],
+      loading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/inbox?mode=gm&gameId=game-9']}>
+        <Routes>
+          <Route path="/inbox" element={<InboxRoutePage />} />
+          <Route path="*" element={<LocationDump />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('gm-inbox').textContent).toBe('game-1');
   });
 
   it('falls back to player inbox when mode=gm has no gm games', () => {
@@ -75,7 +104,6 @@ describe('InboxRoutePage', () => {
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
           <Route path="*" element={<LocationDump />} />
-          <Route path="/gm/:gameId/inbox" element={<LocationDump />} />
         </Routes>
       </MemoryRouter>
     );

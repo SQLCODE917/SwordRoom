@@ -8,7 +8,6 @@ import { AuthCallbackPage } from './routes/AuthCallbackPage';
 import { AdminDashboardPage } from './routes/AdminDashboardPage';
 import { CharacterSheetPage } from './routes/CharacterSheetPage';
 import { CharacterWizardPage } from './routes/CharacterWizardPage';
-import { GMInboxPage } from './routes/GMInboxPage';
 import { GMGamePage } from './routes/GMGamePage';
 import { GMGamesPage } from './routes/GMGamesPage';
 import { GameChatPage } from './routes/GameChatPage';
@@ -98,16 +97,6 @@ export default function App() {
             <Route
               path="/inbox"
               element={<RequireAuthRoute><InboxPage /></RequireAuthRoute>}
-            />
-            <Route
-              path="/gm/:gameId/inbox"
-              element={
-                <RequireAuthRoute>
-                  <RequireGmRoute>
-                    <GMInboxPage />
-                  </RequireGmRoute>
-                </RequireAuthRoute>
-              }
             />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />

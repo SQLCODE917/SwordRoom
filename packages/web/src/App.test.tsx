@@ -272,6 +272,38 @@ describe('App shell routes', () => {
     expect(screen.queryByRole('heading', { name: 'GM Play' })).toBeNull();
   });
 
+  it('hard-cuts legacy /gm/:gameId/inbox links to home', async () => {
+    writeDevSession({ username: 'gm-aaa', actorId: 'gm-aaa' });
+    window.history.pushState({}, '', '/gm/game-1/inbox');
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+      if (url.endsWith('/api/games/game-1/me')) {
+        return new Response(
+          JSON.stringify({
+            actorId: 'gm-aaa',
+            displayName: 'Local GM',
+            roles: ['PLAYER', 'GM'],
+            gmPlayerId: 'gm-aaa',
+            isGameMaster: true,
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      }
+
+      return new Response(JSON.stringify([]), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Inbox' })).toBeNull();
+  });
+
   it('redirects non-GMs away from /gm/games/:gameId deep links', async () => {
     writeDevSession({ username: 'player-aaa', actorId: 'player-aaa' });
     window.history.pushState({}, '', '/gm/games/game-1?mode=gm-play');

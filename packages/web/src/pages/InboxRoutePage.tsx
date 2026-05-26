@@ -1,4 +1,5 @@
 import { Navigate, useSearchParams } from 'react-router-dom';
+import { GMInboxPage } from './GMInboxPage';
 import { PlayerInboxPage } from './PlayerInboxPage';
 import { useGmGames } from '../hooks/useGmGames';
 
@@ -17,15 +18,18 @@ export function InboxRoutePage() {
 
 function InboxGMModeRoute({ requestedGameId }: { requestedGameId: string | null }) {
   const { games, loading } = useGmGames();
-  const requestedOrFirstGameId = requestedGameId ?? games[0]?.gameId ?? null;
+  const resolvedGameId =
+    requestedGameId && games.some((game) => game.gameId === requestedGameId)
+      ? requestedGameId
+      : games[0]?.gameId ?? null;
 
   if (loading) {
     return null;
   }
 
-  if (!requestedOrFirstGameId) {
+  if (!resolvedGameId) {
     return <Navigate to={PLAYER_INBOX_PATH} replace />;
   }
 
-  return <Navigate to={`/gm/${encodeURIComponent(requestedOrFirstGameId)}/inbox`} replace />;
+  return <GMInboxPage gameId={resolvedGameId} />;
 }
