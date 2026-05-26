@@ -98,6 +98,14 @@ export default function App() {
               path="/inbox"
               element={<RequireAuthRoute><InboxPage /></RequireAuthRoute>}
             />
+            <Route
+              path="/gm/:gameId/play"
+              element={<RequireAuthRoute><LegacyGmPlayRedirect /></RequireAuthRoute>}
+            />
+            <Route
+              path="/gm/:gameId/inbox"
+              element={<RequireAuthRoute><LegacyGmInboxRedirect /></RequireAuthRoute>}
+            />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -161,4 +169,18 @@ function RequireRoleRoute({
   }
 
   return children;
+}
+
+function LegacyGmInboxRedirect() {
+  const params = useParams<{ gameId: string }>();
+  const gameId = params.gameId ?? 'game-1';
+  const query = new URLSearchParams({ mode: 'gm', gameId });
+  return <Navigate to={`/inbox?${query.toString()}`} replace />;
+}
+
+function LegacyGmPlayRedirect() {
+  const params = useParams<{ gameId: string }>();
+  const gameId = params.gameId ?? 'game-1';
+  const query = new URLSearchParams({ mode: 'gm-play' });
+  return <Navigate to={`/gm/games/${encodeURIComponent(gameId)}?${query.toString()}`} replace />;
 }

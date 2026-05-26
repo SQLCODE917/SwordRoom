@@ -48,6 +48,13 @@ describe('InboxRoutePage', () => {
     vi.mocked(useGmGames).mockReturnValue({
       games: [
         {
+          gameId: 'game-2',
+          name: 'Primary',
+          visibility: 'PUBLIC',
+          gmPlayerId: 'gm-1',
+          version: 2,
+        },
+        {
           gameId: 'game-1',
           name: 'Backup',
           visibility: 'PUBLIC',
