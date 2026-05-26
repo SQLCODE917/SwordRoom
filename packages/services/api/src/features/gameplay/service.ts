@@ -1,4 +1,5 @@
-import type { GameChatChannel, GameChatParticipantResponse } from '../../apiTypes.js';
+import type { GameChatChannel } from '@starter/shared';
+import type { GameChatParticipantResponse } from '../../apiTypes.js';
 import type { ApiServiceDependencies } from '../../index.js';
 import { assertActiveGame, buildGameplayView, formatChatDisplayName, readCharacterIdentityName, type ReadApisSubset } from '../../serviceSupport.js';
 

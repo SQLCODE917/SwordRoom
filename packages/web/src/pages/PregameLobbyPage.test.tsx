@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient, type CommandStatusResponse } from '../api/ApiClient';
@@ -16,6 +16,7 @@ vi.mock('../auth/AuthProvider', () => ({
 
 vi.mock('../hooks/useCommandStatus', () => ({
   useCommandWorkflow: vi.fn(),
+  createCommandId: vi.fn(() => 'cmd-test-id'),
 }));
 
 vi.mock('../logging/flowLog', () => ({
@@ -264,7 +265,38 @@ describe('PregameLobbyPage', () => {
     );
 
     expect(await screen.findByText('Prompt active: no GM prompt yet')).toBeTruthy();
+    const defaultPrompt =
+      'We still need Frontline, Healer, and Arcane Support. Please share a draft or revise your current build if you can cover one of those roles.';
+    const promptText = await screen.findByDisplayValue(defaultPrompt);
+    expect(promptText).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Set Planning Prompt' })).toBeTruthy();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Prompt text' }), {
+      target: {
+        value: 'Custom GM prompt for open roles.',
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Set Planning Prompt' }));
+
+    await waitFor(() => {
+      expect(submitEnvelopeAndAwait).toHaveBeenCalledTimes(1);
+    });
+    expect(submitEnvelopeAndAwait).toHaveBeenCalledWith(
+      'Post pregame prompt',
+      expect.objectContaining({
+        gameId: 'game-1',
+        type: 'SendGameChatMessage',
+        payload: expect.objectContaining({
+          body: 'GM posted a new pregame planning prompt.',
+          artifact: expect.objectContaining({
+            kind: 'GAME_PROMPT',
+            title: 'Party needs Frontline, Healer, and Arcane Support',
+            prompt: 'Custom GM prompt for open roles.',
+            suggestedRoles: ['FRONTLINE', 'HEALER', 'ARCANE'],
+          }),
+        }),
+      })
+    );
   });
 
   it('renders a recoverable error state when the lobby context fails to load', async () => {

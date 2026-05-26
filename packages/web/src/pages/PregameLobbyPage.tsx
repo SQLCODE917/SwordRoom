@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
@@ -13,20 +13,46 @@ export function PregameLobbyPage() {
   const lobby = usePregameLobby(gameId);
   const view = useMemo(() => createPregameLobbyViewModel(lobby.state), [lobby.state]);
   const { isRunning, submitEnvelopeAndAwait } = useCommandWorkflow();
+  const [gmPromptDraft, setGmPromptDraft] = useState('');
+  const [gmPromptSeed, setGmPromptSeed] = useState('');
 
-  async function postSuggestedPrompt() {
+  const suggestedPrompt = useMemo(() => {
     if (lobby.state.status !== 'ready' || !lobby.state.actorContext.isGameMaster) {
-      return;
+      return null;
     }
     const suggestedRoles = lobby.state.planning.partyNeeds.filter((need) => need.isOpen).map((need) => need.role);
-    const prompt = buildSuggestedGamePromptArtifact({ suggestedRoles });
+    return buildSuggestedGamePromptArtifact({ suggestedRoles });
+  }, [lobby.state]);
+
+  useEffect(() => {
+    if (!suggestedPrompt) {
+      return;
+    }
+    const nextSeed = suggestedPrompt.artifact.prompt;
+    setGmPromptDraft((current) => {
+      if (current.trim() === '' || current === gmPromptSeed) {
+        return nextSeed;
+      }
+      return current;
+    });
+    setGmPromptSeed(nextSeed);
+  }, [suggestedPrompt, gmPromptSeed]);
+
+  async function postSuggestedPrompt() {
+    if (lobby.state.status !== 'ready' || !lobby.state.actorContext.isGameMaster || !suggestedPrompt) {
+      return;
+    }
+    const promptText = gmPromptDraft.trim() || suggestedPrompt.artifact.prompt;
 
     const terminal = await submitEnvelopeAndAwait(
       'Post pregame prompt',
       buildPostGamePromptEnvelope({
         gameId,
-        body: prompt.body,
-        artifact: prompt.artifact,
+        body: suggestedPrompt.body,
+        artifact: {
+          ...suggestedPrompt.artifact,
+          prompt: promptText,
+        },
       })
     );
     if (terminal.status === 'PROCESSED') {
@@ -88,13 +114,26 @@ export function PregameLobbyPage() {
               <InfoList lines={view.promptLines} />
               {lobby.state.status === 'ready' && lobby.state.actorContext.isGameMaster ? (
                 <div className="l-row">
+                  <label className="c-field l-grow">
+                    <span className="c-field__label">Prompt text</span>
+                    <textarea
+                      className="c-field__control c-gameplay__textarea"
+                      value={gmPromptDraft}
+                      disabled={isRunning}
+                      onChange={(event) => setGmPromptDraft(event.target.value)}
+                    />
+                  </label>
+                </div>
+              ) : null}
+              {lobby.state.status === 'ready' && lobby.state.actorContext.isGameMaster ? (
+                <div className="l-row">
                   <button
                     className={`c-btn ${isRunning ? 'is-disabled' : ''}`.trim()}
                     type="button"
                     disabled={isRunning}
                     onClick={() => void postSuggestedPrompt()}
                   >
-                    Post Prompt For Open Roles
+                    Post Prompt
                   </button>
                 </div>
               ) : null}
