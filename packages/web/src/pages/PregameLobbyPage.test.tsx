@@ -138,7 +138,7 @@ describe('PregameLobbyPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1']}>
         <Routes>
           <Route path="/games/:gameId" element={<PregameLobbyPage />} />
         </Routes>
@@ -256,7 +256,7 @@ describe('PregameLobbyPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1']}>
         <Routes>
           <Route path="/games/:gameId" element={<PregameLobbyPage />} />
         </Routes>
@@ -306,7 +306,7 @@ describe('PregameLobbyPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1']}>
         <Routes>
           <Route path="/games/:gameId" element={<PregameLobbyPage />} />
         </Routes>
@@ -346,7 +346,7 @@ describe('PregameLobbyPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1']}>
         <Routes>
           <Route path="/games/:gameId" element={<PregameLobbyPage />} />
         </Routes>

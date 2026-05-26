@@ -141,7 +141,7 @@ describe('PregameCharactersPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/characters']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/characters']}>
         <Routes>
           <Route path="/games/:gameId/characters" element={<PregameCharactersPage />} />
         </Routes>
@@ -234,7 +234,7 @@ describe('PregameCharactersPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/characters?shared=msg-1']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/characters?shared=msg-1']}>
         <Routes>
           <Route path="/games/:gameId/characters" element={<PregameCharactersPage />} />
         </Routes>

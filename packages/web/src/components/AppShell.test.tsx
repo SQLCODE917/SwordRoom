@@ -142,7 +142,7 @@ function renderWithAuth(overrides?: Partial<AuthProvider>) {
 
   return render(
     <AuthProviderContext.Provider value={auth}>
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AppShell>
           <div>Body</div>
         </AppShell>

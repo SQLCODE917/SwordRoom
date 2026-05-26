@@ -18,7 +18,7 @@ vi.mock('./GMGameplayPage', () => ({
 
 function renderPage(initialEntry: string) {
   return render(
-    <MemoryRouter initialEntries={[initialEntry]}>
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/gm/games/:gameId" element={<GMGamePage />} />
         <Route path="/games/:gameId/play" element={<div>Player Play Route Stub</div>} />

@@ -33,7 +33,7 @@ describe('InboxRoutePage', () => {
 
   it('defaults to player inbox when mode is omitted', () => {
     render(
-      <MemoryRouter initialEntries={['/inbox']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/inbox']}>
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
           <Route path="*" element={<LocationDump />} />
@@ -67,7 +67,7 @@ describe('InboxRoutePage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/inbox?mode=gm&gameId=game-2']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/inbox?mode=gm&gameId=game-2']}>
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
           <Route path="*" element={<LocationDump />} />
@@ -94,7 +94,7 @@ describe('InboxRoutePage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/inbox?mode=gm&gameId=game-9']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/inbox?mode=gm&gameId=game-9']}>
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
           <Route path="*" element={<LocationDump />} />
@@ -107,7 +107,7 @@ describe('InboxRoutePage', () => {
 
   it('falls back to player inbox when mode=gm has no gm games', () => {
     render(
-      <MemoryRouter initialEntries={['/inbox?mode=gm']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/inbox?mode=gm']}>
         <Routes>
           <Route path="/inbox" element={<InboxRoutePage />} />
           <Route path="*" element={<LocationDump />} />

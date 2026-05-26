@@ -73,7 +73,7 @@ describe('AuthCallbackPage', () => {
 
     const renderTree = (auth: AuthProvider) => (
       <AuthProviderContext.Provider value={auth}>
-        <MemoryRouter initialEntries={['/auth/callback?code=abc123&state=state-1']}>
+        <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/auth/callback?code=abc123&state=state-1']}>
           <Routes>
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="/gm/games" element={<div>GM Games</div>} />

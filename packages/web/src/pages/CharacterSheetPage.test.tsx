@@ -101,7 +101,7 @@ describe('CharacterSheetPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/characters/char-1']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/characters/char-1']}>
         <Routes>
           <Route path="/games/:gameId/characters/:characterId" element={<CharacterSheetPage />} />
         </Routes>

@@ -31,7 +31,7 @@ export default function App() {
 
   return (
     <AuthProviderContext.Provider value={authProvider}>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AppShell>
           <Routes>
             <Route path="/" element={<RequireAuthRoute><HomePage /></RequireAuthRoute>} />

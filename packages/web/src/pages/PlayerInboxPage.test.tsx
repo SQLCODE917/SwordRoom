@@ -108,7 +108,7 @@ describe('PlayerInboxPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <PlayerInboxPage />
       </MemoryRouter>
     );

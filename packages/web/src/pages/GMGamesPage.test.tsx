@@ -103,7 +103,7 @@ describe('GMGamesPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/gm/games']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/gm/games']}>
         <GMGamesPage />
         <LocationProbe />
       </MemoryRouter>
@@ -176,7 +176,7 @@ describe('GMGamesPage', () => {
     });
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <GMGamesPage />
       </MemoryRouter>
     );

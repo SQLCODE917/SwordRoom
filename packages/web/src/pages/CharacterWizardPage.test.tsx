@@ -144,7 +144,7 @@ describe('CharacterWizardPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     const view = render(
-      <MemoryRouter initialEntries={['/games/game-private/character/new?entry=lobby&focus=role']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-private/character/new?entry=lobby&focus=role']}>
         <Routes>
           <Route path="/games/:gameId/character/new" element={<CharacterWizardPage />} />
         </Routes>
@@ -246,7 +246,7 @@ describe('CharacterWizardPage', () => {
     } as unknown as ReturnType<typeof createApiClient>);
 
     render(
-      <MemoryRouter initialEntries={['/games/game-private/characters/char-1/edit?entry=digest&focus=resume']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-private/characters/char-1/edit?entry=digest&focus=resume']}>
         <Routes>
           <Route path="/games/:gameId/characters/:characterId/edit" element={<CharacterWizardPage />} />
         </Routes>

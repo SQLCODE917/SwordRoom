@@ -6,7 +6,7 @@ import { PregameWorkflowNav } from './PregameWorkflowNav';
 describe('PregameWorkflowNav', () => {
   it('renders the shared workflow routes for a game-scoped planning surface', () => {
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <PregameWorkflowNav
           gameId="game-1"
           createTo="/games/game-1/characters/char-1/edit"
@@ -25,7 +25,7 @@ describe('PregameWorkflowNav', () => {
 
   it('defaults the characters entry to the game-scoped workbench route', () => {
     render(
-      <MemoryRouter initialEntries={['/games/game-1']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1']}>
         <PregameWorkflowNav gameId="game-1" createTo="/games/game-1/character/new" />
       </MemoryRouter>
     );

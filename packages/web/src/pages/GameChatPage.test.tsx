@@ -160,7 +160,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -238,7 +238,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -330,7 +330,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -414,7 +414,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -503,7 +503,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -571,7 +571,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -630,7 +630,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat?draft=About%20Aline%20v3%3A%20']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat?draft=About%20Aline%20v3%3A%20']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -697,7 +697,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat?artifact=msg-1&draft=About%20Borin%20v2%3A%20']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat?artifact=msg-1&draft=About%20Borin%20v2%3A%20']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -775,7 +775,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -881,7 +881,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -952,7 +952,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -1047,7 +1047,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat?artifact=msg-1&draft=About%20Borin%20v2%3A%20']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat?artifact=msg-1&draft=About%20Borin%20v2%3A%20']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -1112,7 +1112,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -1161,7 +1161,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
@@ -1238,7 +1238,7 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>

@@ -98,7 +98,7 @@ describe('HomePage', () => {
     vi.mocked(createApiClient).mockReturnValue(createApiClientMock());
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -131,7 +131,7 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -151,7 +151,7 @@ describe('HomePage', () => {
     vi.mocked(createApiClient).mockReturnValue(createApiClientMock());
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -189,7 +189,7 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -247,7 +247,7 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -297,7 +297,7 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -349,7 +349,7 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -404,7 +404,7 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -450,7 +450,7 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -492,7 +492,7 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );
@@ -530,7 +530,7 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <HomePage />
       </MemoryRouter>,
     );

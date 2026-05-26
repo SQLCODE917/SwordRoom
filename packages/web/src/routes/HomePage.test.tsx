@@ -6,7 +6,7 @@ import { PublicGamesTable } from './HomePage';
 describe('PublicGamesTable', () => {
   it('shows one dominant game action and reveals secondary actions on demand', () => {
     render(
-      <MemoryRouter>
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <PublicGamesTable
           loading={false}
           emptyText="No public games found."
