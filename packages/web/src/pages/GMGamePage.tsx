@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { readGMGameMode } from '../features/gameplay-lifecycle/gmGameMode';
 import { deriveGameLifecycleUiState } from '../features/gameplay-lifecycle/lifecycleUiState';
 import { useGameLifecycle } from '../hooks/useGameLifecycle';
 import { GMGameplayPage } from './GMGameplayPage';
-import { PlayerGameplayPage } from './PlayerGameplayPage';
 import { PregameLobbyPage } from './PregameLobbyPage';
 
 export function GMGamePage() {
@@ -63,7 +62,7 @@ export function GMGamePage() {
       </Panel>
 
       {mode === 'lobby' ? <PregameLobbyPage /> : null}
-      {mode === 'play' ? <PlayerGameplayPage /> : null}
+      {mode === 'play' ? <Navigate to={`/games/${encodeURIComponent(gameId)}/play`} replace /> : null}
       {mode === 'gm-play' ? <GMGameplayPage /> : null}
     </div>
   );

@@ -12,10 +12,6 @@ vi.mock('./PregameLobbyPage', () => ({
   PregameLobbyPage: () => <div>Pregame Lobby Stub</div>,
 }));
 
-vi.mock('./PlayerGameplayPage', () => ({
-  PlayerGameplayPage: () => <div>Player Play Stub</div>,
-}));
-
 vi.mock('./GMGameplayPage', () => ({
   GMGameplayPage: () => <div>GM Play Stub</div>,
 }));
@@ -25,6 +21,7 @@ function renderPage(initialEntry: string) {
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/gm/games/:gameId" element={<GMGamePage />} />
+        <Route path="/games/:gameId/play" element={<div>Player Play Route Stub</div>} />
       </Routes>
     </MemoryRouter>
   );
@@ -53,8 +50,8 @@ describe('GMGamePage', () => {
 
   it('renders play mode in-place when mode=play', async () => {
     renderPage('/gm/games/game-1?mode=play');
-    expect(await screen.findByText('Player Play Stub')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Lobby' }).getAttribute('href')).toBe('/gm/games/game-1');
+    expect(await screen.findByText('Player Play Route Stub')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'GM Game' })).toBeNull();
   });
 
   it('renders gm-play mode in-place when mode=gm-play', async () => {

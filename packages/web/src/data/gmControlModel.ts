@@ -175,10 +175,10 @@ const defaultUiState: GmPlayUiState = {
 };
 
 export function readGmPlayUiState(searchParams: URLSearchParams): GmPlayUiParseResult {
-  const modeValue = readSearchParam(searchParams, 'gmMode', 'mode');
-  const panelValue = readSearchParam(searchParams, 'gmPanel', 'panel');
-  const utilityValue = readSearchParam(searchParams, 'gmUtility', 'utility');
-  const transcriptValue = readSearchParam(searchParams, 'gmTranscript', 'transcript');
+  const modeValue = searchParams.get('gmMode');
+  const panelValue = searchParams.get('gmPanel');
+  const utilityValue = searchParams.get('gmUtility');
+  const transcriptValue = searchParams.get('gmTranscript');
 
   const mode = GM_PLAY_MODES.includes(modeValue as GmPlayMode)
     ? (modeValue as GmPlayMode)
@@ -214,14 +214,6 @@ export function createGmPlaySearchParams(state: GmPlayUiState): URLSearchParams 
   }
   searchParams.set('gmTranscript', state.transcript);
   return searchParams;
-}
-
-function readSearchParam(searchParams: URLSearchParams, canonicalKey: string, legacyKey: string): string | null {
-  const canonicalValue = searchParams.get(canonicalKey);
-  if (canonicalValue !== null) {
-    return canonicalValue;
-  }
-  return searchParams.get(legacyKey);
 }
 
 export function deriveGmControlModel(input: {

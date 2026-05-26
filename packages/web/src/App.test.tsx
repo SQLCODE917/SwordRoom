@@ -217,44 +217,36 @@ describe('App shell routes', () => {
     expect(await screen.findByRole('heading', { name: 'GM Game' })).toBeTruthy();
   });
 
-  it('migrates legacy /gm/:gameId/play links to canonical gm-play mode', async () => {
+  it('hard-cuts legacy /gm/:gameId/play links to home', async () => {
     writeDevSession({ username: 'gm-aaa', actorId: 'gm-aaa' });
     window.history.pushState({}, '', '/gm/game-1/play');
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-      if (url.endsWith('/api/games/game-1/me')) {
+      if (url.endsWith('/api/me')) {
         return new Response(
           JSON.stringify({
             actorId: 'gm-aaa',
             displayName: 'Local GM',
             roles: ['PLAYER', 'GM'],
             gmPlayerId: 'gm-aaa',
-            isGameMaster: true,
+            playerId: 'gm-aaa',
+            email: 'gm@example.com',
           }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
       }
 
-      if (url.endsWith('/api/games/game-1/state')) {
+      if (url.endsWith('/api/games/public')) {
         return new Response(
-          JSON.stringify({
-            gameId: 'game-1',
-            phase: 'PREGAME',
-            hasGameplaySession: false,
-          }),
+          JSON.stringify([]),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
       }
 
-      if (url.includes('/api/games/game-1/chat')) {
+      if (url.endsWith('/api/characters/mine')) {
         return new Response(
-          JSON.stringify({
-            gameId: 'game-1',
-            gameName: 'Local Demo Game',
-            participants: [],
-            messages: [],
-          }),
+          JSON.stringify([]),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
       }
@@ -268,41 +260,40 @@ describe('App shell routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'GM Game' })).toBeTruthy();
-    await waitFor(() => {
-      expect(window.location.pathname).toBe('/gm/games/game-1');
-      expect(window.location.search).toBe('?mode=gm-play&gmMode=control&gmPanel=step&gmTranscript=public');
-    });
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'GM Game' })).toBeNull();
   });
 
-  it('migrates legacy /gm/:gameId/inbox links to canonical /inbox gm mode', async () => {
+  it('hard-cuts legacy /gm/:gameId/inbox links to home', async () => {
     writeDevSession({ username: 'gm-aaa', actorId: 'gm-aaa' });
     window.history.pushState({}, '', '/gm/game-1/inbox');
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-      if (url.endsWith('/api/gm/games')) {
+      if (url.endsWith('/api/me')) {
         return new Response(
-          JSON.stringify([
-            {
-              gameId: 'game-1',
-              name: 'Local Demo Game',
-              visibility: 'PUBLIC',
-              gmPlayerId: 'gm-aaa',
-              version: 1,
-            },
-          ]),
+          JSON.stringify({
+            actorId: 'gm-aaa',
+            displayName: 'Local GM',
+            roles: ['PLAYER', 'GM'],
+            gmPlayerId: 'gm-aaa',
+            playerId: 'gm-aaa',
+            email: 'gm@example.com',
+          }),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
       }
 
-      if (url.endsWith('/api/gm/game-1/inbox')) {
+      if (url.endsWith('/api/games/public')) {
         return new Response(
-          JSON.stringify({
-            gameId: 'game-1',
-            gameName: 'Local Demo Game',
-            items: [],
-          }),
+          JSON.stringify([]),
+          { status: 200, headers: { 'content-type': 'application/json' } }
+        );
+      }
+
+      if (url.endsWith('/api/characters/mine')) {
+        return new Response(
+          JSON.stringify([]),
           { status: 200, headers: { 'content-type': 'application/json' } }
         );
       }
@@ -316,11 +307,8 @@ describe('App shell routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Inbox' })).toBeTruthy();
-    await waitFor(() => {
-      expect(window.location.pathname).toBe('/inbox');
-      expect(window.location.search).toBe('?mode=gm&gameId=game-1');
-    });
+    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Inbox' })).toBeNull();
   });
 
   it('redirects non-GMs away from /gm/games/:gameId deep links', async () => {

@@ -147,15 +147,15 @@ describe('readGmPlayUiState', () => {
     });
   });
 
-  it('normalizes legacy UI params to canonical gm-prefixed keys', () => {
-    expect(readGmPlayUiState(new URLSearchParams('mode=chat&panel=graph&utility=status&transcript=gm'))).toEqual({
+  it('ignores route mode when gm-prefixed UI params are already canonical', () => {
+    expect(readGmPlayUiState(new URLSearchParams('mode=gm-play&gmMode=chat&gmPanel=graph&gmUtility=status&gmTranscript=gm'))).toEqual({
       state: {
         mode: 'chat',
         panel: 'graph',
         utility: 'status',
         transcript: 'gm',
       },
-      needsNormalization: true,
+      needsNormalization: false,
     });
   });
 });
