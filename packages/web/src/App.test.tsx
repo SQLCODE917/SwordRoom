@@ -271,7 +271,7 @@ describe('App shell routes', () => {
     expect(await screen.findByRole('heading', { name: 'GM Game' })).toBeTruthy();
     await waitFor(() => {
       expect(window.location.pathname).toBe('/gm/games/game-1');
-      expect(window.location.search).not.toBe('');
+      expect(window.location.search).toBe('?mode=gm-play&gmMode=control&gmPanel=step&gmTranscript=public');
     });
   });
 

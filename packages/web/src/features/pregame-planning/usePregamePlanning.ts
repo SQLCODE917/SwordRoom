@@ -28,13 +28,15 @@ export function usePregamePlanning(gameId: string, enabled = true) {
     });
     try {
       const planning = await api.getPregamePlanning(gameId);
+      const viewerIsMember = planning.viewer?.isMember === true;
+      const viewerIsGameMaster = planning.viewer?.isGameMaster === true;
       setState({ status: 'ready', gameId, planning });
       logWebFlow('WEB_PREGAME_PLANNING_LOAD_OK', {
         actorId: auth.actorId,
         authMode: auth.mode,
         gameId,
-        isMember: planning.viewer.isMember,
-        isGameMaster: planning.viewer.isGameMaster,
+        isMember: viewerIsMember,
+        isGameMaster: viewerIsGameMaster,
         hasActivePrompt: planning.activePrompt !== null,
         partyNeedCount: planning.partyNeeds.length,
       });

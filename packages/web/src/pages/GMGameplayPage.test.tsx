@@ -185,7 +185,9 @@ describe('GMGameplayPage', () => {
     expect(await screen.findByRole('heading', { name: 'GM Play' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Current Step' }).getAttribute('aria-selected')).toBe('true');
     await waitFor(() =>
-      expect(screen.getByTestId('location-search').textContent).toBe('?mode=control&panel=step&transcript=public')
+      expect(screen.getByTestId('location-search').textContent).toBe(
+        '?mode=gm-play&gmMode=control&gmPanel=step&gmTranscript=public'
+      )
     );
   });
 
@@ -198,7 +200,7 @@ describe('GMGameplayPage', () => {
       refresh: vi.fn(async () => undefined),
     });
 
-    renderPage('/gm/games/game-1?mode=control&panel=graph&transcript=public');
+    renderPage('/gm/games/game-1?mode=gm-play&gmMode=control&gmPanel=graph&gmTranscript=public');
 
     expect(await screen.findByRole('heading', { name: 'GM Play' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Whole Graph' })).toBeTruthy();
@@ -208,7 +210,7 @@ describe('GMGameplayPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Back to Control Center' }));
     expect(await screen.findByRole('heading', { name: 'Whole Graph' })).toBeTruthy();
-    expect(screen.getByTestId('location-search').textContent).toContain('panel=graph');
+    expect(screen.getByTestId('location-search').textContent).toContain('gmPanel=graph');
   });
 
   it('renders only standard-check controls for standard check state', async () => {

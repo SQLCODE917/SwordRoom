@@ -29,6 +29,8 @@ import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
 import { useGmGameplayFormState } from '../hooks/useGmGameplayFormState';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 
+const GM_GAME_ROUTE_MODE = 'gm-play';
+
 export function GMGameplayPage() {
   const params = useParams<{ gameId: string }>();
   const gameId = params.gameId ?? 'game-1';
@@ -65,7 +67,7 @@ export function GMGameplayPage() {
     if (!parsedUiState.needsNormalization) {
       return;
     }
-    setSearchParams(createGmPlaySearchParams(parsedUiState.state), { replace: true });
+    setSearchParams(createCanonicalSearchParams(parsedUiState.state), { replace: true });
   }, [parsedUiState.needsNormalization, parsedUiState.state, setSearchParams]);
 
   useEffect(() => {
@@ -384,7 +386,17 @@ export function GMGameplayPage() {
       ...parsedUiState.state,
       ...nextPartial,
     };
-    setSearchParams(createGmPlaySearchParams(nextState));
+    setSearchParams(createCanonicalSearchParams(nextState));
+  }
+
+  function createCanonicalSearchParams(state: GmPlayUiState): URLSearchParams {
+    const searchParams = new URLSearchParams();
+    searchParams.set('mode', GM_GAME_ROUTE_MODE);
+    const uiSearchParams = createGmPlaySearchParams(state);
+    for (const [key, value] of uiSearchParams.entries()) {
+      searchParams.set(key, value);
+    }
+    return searchParams;
   }
 
   function renderUtilityContent(utility: GmUtilityId) {

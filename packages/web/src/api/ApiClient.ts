@@ -723,9 +723,10 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         authMode: auth.mode,
         gameId,
       });
-      const response = await requestJson<PregamePlanningResponse>(`${baseUrl}/games/${encodeURIComponent(gameId)}/pregame`, {
+      const rawResponse = await requestJson<unknown>(`${baseUrl}/games/${encodeURIComponent(gameId)}/pregame`, {
         headers: await withObservedAuthHeaders(auth),
       });
+      const response = normalizePregamePlanningResponse(gameId, rawResponse);
       logWebFlow('WEB_API_GET_PREGAME_PLANNING_OK', {
         actorId: auth.actorId,
         authMode: auth.mode,
@@ -879,6 +880,31 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
 
 function normalizeBaseUrl(baseUrl: string): string {
   return baseUrl.replace(/\/$/, '');
+}
+
+function normalizePregamePlanningResponse(gameId: string, value: unknown): PregamePlanningResponse {
+  const record = isRecord(value) ? value : {};
+  const activePromptValue = record.activePrompt;
+  return {
+    gameId: typeof record.gameId === 'string' && record.gameId.trim() !== '' ? record.gameId : gameId,
+    gameName: typeof record.gameName === 'string' ? record.gameName : '',
+    viewer: normalizePregameViewer(record.viewer),
+    activePrompt: isRecord(activePromptValue) ? (activePromptValue as PregamePlanningPrompt) : null,
+    partyNeeds: Array.isArray(record.partyNeeds) ? (record.partyNeeds as PregamePlanningNeed[]) : [],
+    recentClaims: Array.isArray(record.recentClaims) ? (record.recentClaims as PregamePlanningClaim[]) : [],
+  };
+}
+
+function normalizePregameViewer(value: unknown): PregamePlanningResponse['viewer'] {
+  const record = isRecord(value) ? value : {};
+  return {
+    isMember: record.isMember === true,
+    isGameMaster: record.isGameMaster === true,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 async function requestJsonOrNull<T>(url: string, auth: AuthProvider): Promise<T | null> {

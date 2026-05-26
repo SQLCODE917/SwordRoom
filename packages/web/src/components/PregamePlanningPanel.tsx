@@ -42,6 +42,7 @@ export function PregamePlanningPanel({
   }
 
   const planning = planningState.planning;
+  const viewerIsMember = planning.viewer?.isMember === true;
   const openRoles = planning.partyNeeds.filter((need) => need.isOpen);
 
   return (
@@ -75,7 +76,7 @@ export function PregamePlanningPanel({
         <div className="l-row">
           {PREGAME_ROLE_ORDER.map((role) => {
             const need = planning.partyNeeds.find((entry) => entry.role === role) ?? null;
-            const claimDisabled = disabled || !planning.viewer.isMember;
+            const claimDisabled = disabled || !viewerIsMember;
 
             return (
               <button
@@ -84,7 +85,7 @@ export function PregamePlanningPanel({
                 type="button"
                 disabled={claimDisabled}
                 onClick={() => void onClaimRole(role)}
-                title={!planning.viewer.isMember ? 'Join the game before posting structured planning updates.' : undefined}
+                title={!viewerIsMember ? 'Join the game before posting structured planning updates.' : undefined}
               >
                 {need?.isOpen ? `Claim ${PREGAME_ROLE_LABELS[role]}` : `Reinforce ${PREGAME_ROLE_LABELS[role]}`}
               </button>

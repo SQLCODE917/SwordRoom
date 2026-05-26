@@ -181,6 +181,11 @@ function LegacyGmInboxRedirect() {
 function LegacyGmPlayRedirect() {
   const params = useParams<{ gameId: string }>();
   const gameId = params.gameId ?? 'game-1';
-  const query = new URLSearchParams({ mode: 'gm-play' });
+  const query = new URLSearchParams({
+    mode: 'gm-play',
+    gmMode: 'control',
+    gmPanel: 'step',
+    gmTranscript: 'public',
+  });
   return <Navigate to={`/gm/games/${encodeURIComponent(gameId)}?${query.toString()}`} replace />;
 }

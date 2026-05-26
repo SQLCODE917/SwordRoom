@@ -175,21 +175,30 @@ const defaultUiState: GmPlayUiState = {
 };
 
 export function readGmPlayUiState(searchParams: URLSearchParams): GmPlayUiParseResult {
-  const mode = GM_PLAY_MODES.includes(searchParams.get('mode') as GmPlayMode)
-    ? (searchParams.get('mode') as GmPlayMode)
+  const modeValue = readSearchParam(searchParams, 'gmMode', 'mode');
+  const panelValue = readSearchParam(searchParams, 'gmPanel', 'panel');
+  const utilityValue = readSearchParam(searchParams, 'gmUtility', 'utility');
+  const transcriptValue = readSearchParam(searchParams, 'gmTranscript', 'transcript');
+
+  const mode = GM_PLAY_MODES.includes(modeValue as GmPlayMode)
+    ? (modeValue as GmPlayMode)
     : defaultUiState.mode;
-  const panel = GM_CONTROL_PANELS.includes(searchParams.get('panel') as GmControlPanelId)
-    ? (searchParams.get('panel') as GmControlPanelId)
+  const panel = GM_CONTROL_PANELS.includes(panelValue as GmControlPanelId)
+    ? (panelValue as GmControlPanelId)
     : defaultUiState.panel;
-  const utility = GM_UTILITY_IDS.includes(searchParams.get('utility') as GmUtilityId)
-    ? (searchParams.get('utility') as GmUtilityId)
+  const utility = GM_UTILITY_IDS.includes(utilityValue as GmUtilityId)
+    ? (utilityValue as GmUtilityId)
     : null;
-  const transcript = GM_TRANSCRIPT_MODES.includes(searchParams.get('transcript') as GmTranscriptMode)
-    ? (searchParams.get('transcript') as GmTranscriptMode)
+  const transcript = GM_TRANSCRIPT_MODES.includes(transcriptValue as GmTranscriptMode)
+    ? (transcriptValue as GmTranscriptMode)
     : defaultUiState.transcript;
   const state: GmPlayUiState = { mode, panel, utility, transcript };
+  const comparableCurrent = new URLSearchParams(searchParams);
+  if (comparableCurrent.get('mode') === 'gm-play') {
+    comparableCurrent.delete('mode');
+  }
   const normalized = createGmPlaySearchParams(state).toString();
-  const current = searchParams.toString();
+  const current = comparableCurrent.toString();
   return {
     state,
     needsNormalization: normalized !== current,
@@ -198,13 +207,21 @@ export function readGmPlayUiState(searchParams: URLSearchParams): GmPlayUiParseR
 
 export function createGmPlaySearchParams(state: GmPlayUiState): URLSearchParams {
   const searchParams = new URLSearchParams();
-  searchParams.set('mode', state.mode);
-  searchParams.set('panel', state.panel);
+  searchParams.set('gmMode', state.mode);
+  searchParams.set('gmPanel', state.panel);
   if (state.utility) {
-    searchParams.set('utility', state.utility);
+    searchParams.set('gmUtility', state.utility);
   }
-  searchParams.set('transcript', state.transcript);
+  searchParams.set('gmTranscript', state.transcript);
   return searchParams;
+}
+
+function readSearchParam(searchParams: URLSearchParams, canonicalKey: string, legacyKey: string): string | null {
+  const canonicalValue = searchParams.get(canonicalKey);
+  if (canonicalValue !== null) {
+    return canonicalValue;
+  }
+  return searchParams.get(legacyKey);
 }
 
 export function deriveGmControlModel(input: {
