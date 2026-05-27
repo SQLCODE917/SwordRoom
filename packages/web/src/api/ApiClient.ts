@@ -881,7 +881,7 @@ function normalizePregamePlanningResponse(gameId: string, value: unknown): Prega
     gameId: typeof record.gameId === 'string' && record.gameId.trim() !== '' ? record.gameId : gameId,
     gameName: typeof record.gameName === 'string' ? record.gameName : '',
     viewer: normalizePregameViewer(record.viewer),
-    activePrompt: isRecord(activePromptValue) ? (activePromptValue as PregamePlanningPrompt) : null,
+    activePrompt: isRecord(activePromptValue) ? normalizePregamePlanningPrompt(activePromptValue) : null,
     recentClaims: Array.isArray(record.recentClaims) ? (record.recentClaims as PregamePlanningClaim[]) : [],
   };
 }
@@ -891,6 +891,19 @@ function normalizePregameViewer(value: unknown): PregamePlanningResponse['viewer
   return {
     isMember: record.isMember === true,
     isGameMaster: record.isGameMaster === true,
+  };
+}
+
+function normalizePregamePlanningPrompt(value: Record<string, unknown>): PregamePlanningPrompt {
+  return {
+    promptId: typeof value.promptId === 'string' ? value.promptId : '',
+    title: typeof value.title === 'string' ? value.title : '',
+    prompt: typeof value.prompt === 'string' ? value.prompt : '',
+    suggestedRoles: Array.isArray(value.suggestedRoles)
+      ? (value.suggestedRoles.filter((role): role is PregameRole => typeof role === 'string') as PregameRole[])
+      : [],
+    senderDisplayName: typeof value.senderDisplayName === 'string' ? value.senderDisplayName : '',
+    createdAt: typeof value.createdAt === 'string' ? value.createdAt : '',
   };
 }
 

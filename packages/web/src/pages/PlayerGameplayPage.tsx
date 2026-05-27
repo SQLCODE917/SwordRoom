@@ -191,7 +191,6 @@ export function PlayerGameplayPage() {
                 onSendMessage={chat.sendMessage}
                 onReactToArtifact={chat.sendCharacterDraftReaction}
                 onReplyToArtifact={chat.beginReplyToCharacterDraft}
-                onReplyToPrompt={chat.beginReplyToPrompt}
                 activeArtifactMessageId={null}
               />
             </Panel>

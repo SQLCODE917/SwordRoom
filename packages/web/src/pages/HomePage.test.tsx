@@ -443,7 +443,7 @@ describe('HomePage', () => {
         ]),
         getGameplayLifecycle: vi.fn(async () => ({
           gameId: 'game-live',
-          phase: 'LIVE',
+          phase: 'LIVE' as const,
           hasGameplaySession: true,
         })),
       }),

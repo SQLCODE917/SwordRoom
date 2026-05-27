@@ -142,7 +142,7 @@ describe('useGameplayView', () => {
       kind: 'live',
       phase: 'LIVE',
       shouldLoadGameplay: true,
-      shouldPollGameplay: false,
+      shouldPollGameplay: true,
       errorMessage: null,
     };
 

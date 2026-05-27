@@ -71,7 +71,7 @@ export function useGameplayView(
           view,
           background,
           phase: lifecycleUiState.phase,
-          hasGameplaySession: lifecycleState.lifecycle.hasGameplaySession,
+          hasGameplaySession: lifecycleState.lifecycle?.hasGameplaySession ?? false,
           found: next !== null,
           currentNodeId: next?.session.currentNodeId ?? null,
         });

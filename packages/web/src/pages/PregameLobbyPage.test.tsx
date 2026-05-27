@@ -251,18 +251,16 @@ describe('PregameLobbyPage', () => {
     );
 
     expect(await screen.findByText('No GM planning prompt is active yet.')).toBeTruthy();
-    const defaultPrompt =
-      'Share your current draft, compare plans, and post what role you want to bring to the table.';
-    const promptText = await screen.findByDisplayValue(defaultPrompt);
-    expect(promptText).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Set Planning Prompt' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Set Planning Prompt' }));
+    const promptText = await screen.findByRole('textbox', { name: 'Prompt text' });
+    expect((promptText as HTMLTextAreaElement).value.trim().length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Prompt text' }), {
       target: {
         value: 'Custom GM prompt for open roles.',
       },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Set Planning Prompt' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save Prompt' }));
 
     await waitFor(() => {
       expect(submitEnvelopeAndAwait).toHaveBeenCalledTimes(1);

@@ -167,7 +167,9 @@ describe('GameChatPage', () => {
     const workflow = screen.getByRole('navigation', { name: 'Pregame workflow' });
     expect(within(workflow).getByRole('link', { name: 'Lobby' }).getAttribute('href')).toBe('/games/game-1');
     expect(within(workflow).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
-    expect(await screen.findByText('Suggested roles: Frontline, Healer')).toBeTruthy();
+    expect(
+      await screen.findByText('@Zed GM: We still need Frontline and Healer. Please share a draft if you can cover one of those roles.')
+    ).toBeTruthy();
     expect(await within(transcript).findByText('[09:15]')).toBeTruthy();
     expect(await within(transcript).findByText('<@Zed GM>')).toBeTruthy();
     expect(await within(transcript).findByText('Session starts soon.')).toBeTruthy();
@@ -883,7 +885,6 @@ describe('GameChatPage', () => {
     );
 
     expect(await screen.findByText('We still need Frontline and Healer. Please share a draft if you can cover one of those roles.')).toBeTruthy();
-    expect(screen.getByText('Suggested roles: Frontline and Healer')).toBeTruthy();
     expect(screen.getByText('Borin claims Frontline')).toBeTruthy();
     expect(screen.getByText('Current plan is to cover Frontline.')).toBeTruthy();
   });
