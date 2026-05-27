@@ -8,6 +8,7 @@ import { ButtonLink } from '../components/ButtonLink';
 import { appendCharacterWizardEntryContext } from '../features/character-wizard';
 import { usePregamePlanning } from '../features/pregame-planning';
 import { useGameChat } from '../hooks/useGameChat';
+import styles from './GameChatPage.module.css';
 
 export function GameChatPage() {
   const params = useParams<{ gameId: string }>();
@@ -23,8 +24,9 @@ export function GameChatPage() {
     activePromptMessageId,
   });
   const planning = usePregamePlanning(gameId, true);
+  const creatorLink = readChatCreatorLink(chat.chat, auth.actorId);
   const creatorFocus = planning.state.status === 'ready' && planning.state.planning.activePrompt ? 'prompt' : 'revise';
-  const creatorTarget = appendCharacterWizardEntryContext(readChatCreatorTarget(chat.chat, auth.actorId), {
+  const creatorTarget = appendCharacterWizardEntryContext(creatorLink.to, {
     entrySource: 'chat',
     focus: creatorFocus,
   });
@@ -55,18 +57,16 @@ export function GameChatPage() {
                 onSendMessage={chat.sendMessage}
                 onReactToArtifact={chat.sendCharacterDraftReaction}
                 onReplyToArtifact={chat.beginReplyToCharacterDraft}
-                onReplyToPrompt={chat.beginReplyToPrompt}
                 activeArtifactMessageId={activeArtifactMessageId}
               />
             </div>
 
-            <aside className="c-pregame-workspace__aside">
+            <aside className={`c-pregame-workspace__aside ${styles.planningAside}`}>
               <PregamePlanningPanel
                 planningState={planning.state}
                 actions={
                   <div className="l-row">
-                    <ButtonLink to={`/games/${encodeURIComponent(gameId)}`}>Open Lobby</ButtonLink>
-                    <ButtonLink to={creatorTarget}>Answer In Creator</ButtonLink>
+                    <ButtonLink to={creatorTarget}>{creatorLink.label}</ButtonLink>
                   </div>
                 }
               />
@@ -78,10 +78,19 @@ export function GameChatPage() {
   );
 }
 
-function readChatCreatorTarget(chat: { gameId: string; participants: Array<{ playerId: string; characterId: string | null }> }, actorId: string): string {
+function readChatCreatorLink(
+  chat: { gameId: string; participants: Array<{ playerId: string; characterId: string | null }> },
+  actorId: string
+): { to: string; label: string } {
   const actorCharacterId = chat.participants.find((participant) => participant.playerId === actorId)?.characterId ?? null;
   if (actorCharacterId) {
-    return `/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(actorCharacterId)}/edit`;
+    return {
+      to: `/games/${encodeURIComponent(chat.gameId)}/characters/${encodeURIComponent(actorCharacterId)}/edit`,
+      label: 'Edit my Character',
+    };
   }
-  return `/games/${encodeURIComponent(chat.gameId)}/character/new`;
+  return {
+    to: `/games/${encodeURIComponent(chat.gameId)}/character/new`,
+    label: 'Create a new Character',
+  };
 }

@@ -882,7 +882,7 @@ describe('GameChatPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('Party needs Frontline and Healer')).toBeTruthy();
+    expect(await screen.findByText('We still need Frontline and Healer. Please share a draft if you can cover one of those roles.')).toBeTruthy();
     expect(screen.getByText('Suggested roles: Frontline and Healer')).toBeTruthy();
     expect(screen.getByText('Borin claims Frontline')).toBeTruthy();
     expect(screen.getByText('Current plan is to cover Frontline.')).toBeTruthy();
@@ -946,15 +946,17 @@ describe('GameChatPage', () => {
     });
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }} initialEntries={['/games/game-1/chat']}>
+      <MemoryRouter
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        initialEntries={['/games/game-1/chat?prompt=msg-prompt-1']}
+      >
         <Routes>
           <Route path="/games/:gameId/chat" element={<GameChatPage />} />
         </Routes>
       </MemoryRouter>
     );
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Reply' }));
-    expect(screen.getByText('Replying to prompt: Party needs Frontline and Healer')).toBeTruthy();
+    expect(await screen.findByText('Replying to prompt: Party needs Frontline and Healer')).toBeTruthy();
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Message' }), {
       target: { value: 'I can probably cover frontline.' },
@@ -1072,7 +1074,7 @@ describe('GameChatPage', () => {
     );
   });
 
-  it('routes Answer In Creator to the existing game draft when the viewer already has one', async () => {
+  it('routes Edit my Character to the existing game draft when the viewer already has one', async () => {
     vi.mocked(useAuthProvider).mockReturnValue(
       createAuth({
         actorId: 'player-1',
@@ -1116,12 +1118,12 @@ describe('GameChatPage', () => {
     const planningPanel = await screen.findByRole('heading', { name: 'Pregame Planning' });
     const panel = planningPanel.closest('section') ?? planningPanel.parentElement;
     expect(panel).toBeTruthy();
-    expect(within(panel as HTMLElement).getByRole('link', { name: 'Answer In Creator' }).getAttribute('href')).toBe(
+    expect(within(panel as HTMLElement).getByRole('link', { name: 'Edit my Character' }).getAttribute('href')).toBe(
       '/games/game-1/characters/char-1/edit?entry=chat&focus=prompt'
     );
   });
 
-  it('routes Answer In Creator to a new game draft when the viewer does not have one yet', async () => {
+  it('routes Create a new Character to a new game draft when the viewer does not have one yet', async () => {
     vi.mocked(useAuthProvider).mockReturnValue(
       createAuth({
         actorId: 'player-2',
@@ -1165,7 +1167,7 @@ describe('GameChatPage', () => {
     const planningPanel = await screen.findByRole('heading', { name: 'Pregame Planning' });
     const panel = planningPanel.closest('section') ?? planningPanel.parentElement;
     expect(panel).toBeTruthy();
-    expect(within(panel as HTMLElement).getByRole('link', { name: 'Answer In Creator' }).getAttribute('href')).toBe(
+    expect(within(panel as HTMLElement).getByRole('link', { name: 'Create a new Character' }).getAttribute('href')).toBe(
       '/games/game-1/character/new?entry=chat&focus=prompt'
     );
   });

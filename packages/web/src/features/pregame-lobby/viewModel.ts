@@ -321,9 +321,13 @@ function buildLobbyStatusLines(state: Extract<PregameLobbyState, { status: 'read
       ? `Recent chat is active with ${state.chat.messages.length} message${state.chat.messages.length === 1 ? '' : 's'}.`
       : 'No pregame chat messages have been posted yet.'
   );
-  lines.push(
-    latestActivity ? `Latest: ${latestActivity.senderDisplayName} said "${latestActivity.body}"` : 'Latest: no pregame chat yet'
-  );
+  if (!latestActivity) {
+    lines.push('Latest: no pregame chat yet');
+  } else if (latestActivity.body === 'GM posted a new pregame planning prompt.' && state.planning.activePrompt) {
+    lines.push(`Latest prompt: "${state.planning.activePrompt.prompt}"`);
+  } else {
+    lines.push(`Latest: ${latestActivity.senderDisplayName} said "${latestActivity.body}"`);
+  }
 
   if (!ownCharacter) {
     lines.push('Your next useful move is to create a character draft or review the party conversation first.');

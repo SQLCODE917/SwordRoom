@@ -203,9 +203,9 @@ function SectionTitle({ title }: { title: string }) {
 
 function InfoList({ lines }: { lines: readonly string[] }) {
   return (
-    <div className="c-note c-note--info">
+    <div className={`c-note c-note--info ${styles.infoList}`}>
       {lines.map((line) => (
-        <div className="t-small" key={line}>
+        <div className={`t-small ${styles.infoListItem}`} key={line}>
           {line}
         </div>
       ))}

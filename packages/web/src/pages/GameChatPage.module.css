@@ -1,0 +1,12 @@
+.planningAside {
+  width: 100%;
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  :global(.c-pregame-workspace__aside).planningAside {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+    width: 100%;
+  }
+}

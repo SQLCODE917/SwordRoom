@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PregamePlanningPanel } from './PregamePlanningPanel';
 
 describe('PregamePlanningPanel', () => {
-  it('renders prompt and party need summaries for a ready planning state', () => {
+  it('renders prompt summary for a ready planning state', () => {
     const onClaimRole = vi.fn(async () => undefined);
 
     render(
@@ -34,7 +34,6 @@ describe('PregamePlanningPanel', () => {
     );
 
     expect(screen.getByText('@Zed GM: We still need Frontline. Please share a draft if you can cover it.')).toBeTruthy();
-    expect(screen.getByText('Suggested roles: Frontline')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Claim Frontline' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Claim Healer' })).toBeTruthy();
   });

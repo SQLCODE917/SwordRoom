@@ -1,3 +1,15 @@
+.infoList {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-1);
+}
+
+.infoListItem {
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
 .promptCard {
   flex-direction: column;
   align-items: stretch;

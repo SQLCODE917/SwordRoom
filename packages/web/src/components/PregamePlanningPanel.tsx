@@ -43,7 +43,6 @@ export function PregamePlanningPanel({
 
   const planning = planningState.planning;
   const viewerIsMember = planning.viewer?.isMember === true;
-  const suggestedRoleLabels = (planning.activePrompt?.suggestedRoles ?? []).map((role) => PREGAME_ROLE_LABELS[role]);
 
   return (
     <Panel
@@ -56,11 +55,6 @@ export function PregamePlanningPanel({
           {planning.activePrompt
             ? `${planning.activePrompt.senderDisplayName}: ${planning.activePrompt.prompt}`
             : 'No GM planning prompt is active yet.'}
-        </div>
-        <div className="t-small">
-          {suggestedRoleLabels.length > 0
-            ? `Suggested roles: ${suggestedRoleLabels.join(', ')}`
-            : 'No structured role suggestions are attached to the current prompt.'}
         </div>
       </div>
 

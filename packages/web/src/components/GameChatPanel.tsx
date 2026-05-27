@@ -36,10 +36,6 @@ interface GameChatPanelProps {
     targetMessageId: string;
     artifact: SharedCharacterDraftArtifact;
   }) => void;
-  onReplyToPrompt: (input: {
-    targetMessageId: string;
-    artifact: SharedGamePromptArtifact;
-  }) => void;
   activeArtifactMessageId: string | null;
 }
 
@@ -57,7 +53,6 @@ export function GameChatPanel({
   onSendMessage,
   onReactToArtifact,
   onReplyToArtifact,
-  onReplyToPrompt,
   activeArtifactMessageId,
 }: GameChatPanelProps) {
   const [previewArtifact, setPreviewArtifact] = useState<PreviewArtifactState | null>(null);
@@ -193,17 +188,7 @@ export function GameChatPanel({
                         </div>
                       </div>
                     ) : null}
-                    {promptArtifact ? (
-                      <PromptArtifactCard
-                        artifact={promptArtifact}
-                        onReply={() =>
-                          onReplyToPrompt({
-                            targetMessageId: message.messageId,
-                            artifact: promptArtifact,
-                          })
-                        }
-                      />
-                    ) : null}
+                    {promptArtifact ? <PromptArtifactCard artifact={promptArtifact} /> : null}
                     {roleClaimArtifact ? <RoleClaimArtifactCard artifact={roleClaimArtifact} /> : null}
                   </div>
                 );
@@ -354,25 +339,13 @@ export function GameChatPanel({
   );
 }
 
-function PromptArtifactCard({
-  artifact,
-  onReply,
-}: {
-  artifact: SharedGamePromptArtifact;
-  onReply: () => void;
-}) {
+function PromptArtifactCard({ artifact }: { artifact: SharedGamePromptArtifact }) {
   return (
     <div className={`c-note c-note--info ${styles.artifactCard}`}>
-      <div className="t-small">{artifact.title}</div>
       <div className="t-small">{artifact.prompt}</div>
       {artifact.suggestedRoles.length > 0 ? (
         <div className="t-small">{`Suggested roles: ${formatPregameRoleList(artifact.suggestedRoles)}`}</div>
       ) : null}
-      <div className={`l-row ${styles.artifactActions}`}>
-        <button className="c-btn" type="button" onClick={onReply}>
-          Reply
-        </button>
-      </div>
     </div>
   );
 }
