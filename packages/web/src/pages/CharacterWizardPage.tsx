@@ -47,6 +47,7 @@ import {
   WizardStepKey,
 } from '../features/character-wizard';
 import { usePregamePlanning } from '../features/pregame-planning';
+import { PREGAME_ROLE_LABELS } from '../features/pregame-planning/labels';
 import { useCommandWorkflow } from '../hooks/useCommandStatus';
 import { logWebFlow } from '../logging/flowLog';
 import { activatePregameObservationContext, deactivatePregameObservationContext } from '../logging/pregameObservationContext';
@@ -191,18 +192,15 @@ function CharacterWizardPageContent({
         isDraftReadyForCheckpointShare: view.isDraftReadyForCheckpointShare,
         activePromptTitle: activePregamePrompt?.title ?? null,
         activePromptPrompt: activePregamePrompt?.prompt ?? null,
-        openRoleLabels:
-          pregamePlanning.state.status === 'ready'
-            ? pregamePlanning.state.planning.partyNeeds.filter((need) => need.isOpen).map((need) => need.label)
-            : [],
+        openRoleLabels: activePregamePrompt ? activePregamePrompt.suggestedRoles.map((role) => PREGAME_ROLE_LABELS[role]) : [],
       }),
     [
       activePregamePrompt?.prompt,
+      activePregamePrompt?.suggestedRoles,
       activePregamePrompt?.title,
       activeStepIndex,
       entryContext,
       isEditMode,
-      pregamePlanning.state,
       state.characterId,
       state.name,
       view.isDraftReadyForCheckpointShare,

@@ -1,6 +1,5 @@
 import type { CharacterItem, GameChatMessage, GameChatParticipant } from '../../api/ApiClient';
 import { appendCharacterWizardEntryContext } from '../character-wizard';
-import { formatPregameRoleList } from '../pregame-planning/labels.js';
 import type { PregameLobbyState } from './usePregameLobby';
 
 export type PregameLobbyViewModel =
@@ -36,11 +35,9 @@ export type PregameLobbyViewModel =
       notice: string;
       actions: LobbyAction[];
       workflow: LobbyWorkflow;
-      loopStatusLines: string[];
+      statusLines: string[];
       primaryAction: LobbyPrimaryAction;
-      summaryLines: string[];
       promptLines: string[];
-      partyNeedsLines: string[];
       rosterRows: LobbyRosterRow[];
       recentActivityRows: LobbyActivityRow[];
     };
@@ -140,21 +137,8 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
   const ownParticipant = state.chat.participants.find((participant) => participant.playerId === state.actorContext.actorId) ?? null;
   const canEditOwnCharacter = ownCharacter ? ownCharacter.status !== 'PENDING' && ownCharacter.status !== 'APPROVED' : false;
 
-  const summaryLines = [
-    ownCharacter
-      ? `Your current character is ${readCharacterName(ownCharacter)} (${ownCharacter.status}).`
-      : 'You do not have a character in this game yet.',
-    state.actorContext.isGameMaster
-      ? 'You are coordinating the pregame planning loop for this table.'
-      : 'Use this lobby to move between your draft, the party conversation, and your sheet.',
-    state.chat.messages.length > 0
-      ? `Recent chat is active with ${state.chat.messages.length} message${state.chat.messages.length === 1 ? '' : 's'}.`
-      : 'No pregame chat messages have been posted yet.',
-  ];
-
-  const partyNeedsLines = buildPartyNeedsLines(state, ownCharacter);
   const promptLines = buildPromptLines(state);
-  const loopStatusLines = buildLoopStatusLines(state, ownCharacter);
+  const statusLines = buildLobbyStatusLines(state, ownCharacter);
   const primaryAction = buildPrimaryAction(state, ownCharacter, canEditOwnCharacter);
 
   return {
@@ -186,11 +170,9 @@ export function createPregameLobbyViewModel(state: PregameLobbyState): PregameLo
         ? `/games/${encodeURIComponent(state.game.gameId)}/characters/${encodeURIComponent(ownCharacter.characterId)}`
         : null,
     },
-    loopStatusLines,
+    statusLines,
     primaryAction,
-    summaryLines,
     promptLines,
-    partyNeedsLines,
     rosterRows: state.chat.participants.map((participant) => buildRosterRow(state.game.gameId, participant, ownCharacter)),
     recentActivityRows: state.chat.messages.slice(-3).reverse().map(buildActivityRow),
   };
@@ -245,7 +227,6 @@ function buildPrimaryAction(
   canEditOwnCharacter: boolean
 ): LobbyPrimaryAction {
   const gameId = state.game.gameId;
-  const firstOpenNeed = state.planning.partyNeeds.find((need) => need.isOpen) ?? null;
   const latestActivity = state.chat.messages[state.chat.messages.length - 1] ?? null;
 
   if (state.actorContext.isGameMaster) {
@@ -253,7 +234,7 @@ function buildPrimaryAction(
       return {
         kind: 'command',
         label: 'Set Planning Prompt',
-        detail: 'Guide the party by posting the next question for open roles.',
+        detail: 'Guide the party by posting a planning prompt.',
       };
     }
     if (latestActivity) {
@@ -286,15 +267,15 @@ function buildPrimaryAction(
     };
   }
 
-  if (!ownCharacter && firstOpenNeed) {
+  if (!ownCharacter) {
     return {
       kind: 'route',
-      label: `Create For ${firstOpenNeed.label}`,
+      label: 'Create Character',
       to: appendCharacterWizardEntryContext(`/games/${encodeURIComponent(gameId)}/character/new`, {
         entrySource: 'lobby',
         focus: 'role',
       }),
-      detail: 'Start a game-scoped draft that covers the party’s most visible open need.',
+      detail: 'Start a game-scoped character draft for this table.',
     };
   }
 
@@ -306,60 +287,24 @@ function buildPrimaryAction(
   };
 }
 
-function buildLoopStatusLines(
-  state: Extract<PregameLobbyState, { status: 'ready' }>,
-  ownCharacter: CharacterItem | null
-): string[] {
-  const firstOpenNeed = state.planning.partyNeeds.find((need) => need.isOpen) ?? null;
+function buildLobbyStatusLines(state: Extract<PregameLobbyState, { status: 'ready' }>, ownCharacter: CharacterItem | null): string[] {
+  const lines: string[] = [];
   const latestActivity = state.chat.messages[state.chat.messages.length - 1] ?? null;
-  const lines: string[] = [];
-
-  lines.push(firstOpenNeed ? `Need: ${firstOpenNeed.label}` : 'Need: no open role gaps called out');
-  lines.push(
-    state.planning.activePrompt ? `Prompt active: ${state.planning.activePrompt.title}` : 'Prompt active: no GM prompt yet'
-  );
-  lines.push(
-    latestActivity ? `Latest: ${latestActivity.senderDisplayName} said "${latestActivity.body}"` : 'Latest: no pregame chat yet'
-  );
-
-  if (!ownCharacter) {
-    lines.push('You do not have a game-scoped character draft yet.');
-  } else if (ownCharacter.status === 'DRAFT') {
-    lines.push(`Your draft ${readCharacterName(ownCharacter)} is still editable.`);
-  }
-
-  return lines;
-}
-
-function buildPromptLines(state: Extract<PregameLobbyState, { status: 'ready' }>): string[] {
-  const lines: string[] = [];
-
-  if (state.planning.activePrompt) {
-    lines.push(`${state.planning.activePrompt.senderDisplayName}: ${state.planning.activePrompt.title}`);
-    lines.push(state.planning.activePrompt.prompt);
-    if (state.planning.activePrompt.suggestedRoles.length > 0) {
-      lines.push(`Suggested roles: ${formatPregameRoleList(state.planning.activePrompt.suggestedRoles)}.`);
-    }
-  } else if (state.actorContext.isGameMaster) {
-    lines.push('No GM planning prompt is active yet.');
-    lines.push('Use Chat or the GM tools to set party direction before the session begins.');
-  } else {
-    lines.push('No GM planning prompt is active yet.');
-    lines.push('Share your current draft or review party needs to help the table converge.');
-  }
-
-  return lines;
-}
-
-function buildPartyNeedsLines(
-  state: Extract<PregameLobbyState, { status: 'ready' }>,
-  ownCharacter: CharacterItem | null
-): string[] {
-  const lines: string[] = [];
   const playerCount = state.chat.participants.filter((participant) => participant.role === 'PLAYER').length;
   const playersWithoutCharacterCount = state.chat.participants.filter(
     (participant) => participant.role === 'PLAYER' && participant.characterId === null
   ).length;
+
+  lines.push(
+    ownCharacter
+      ? `Your current character is ${readCharacterName(ownCharacter)} (${ownCharacter.status}).`
+      : 'You do not have a character in this game yet.'
+  );
+  lines.push(
+    state.actorContext.isGameMaster
+      ? 'You are coordinating the pregame planning loop for this table.'
+      : 'Use this lobby to move between your draft, the party conversation, and your sheet.'
+  );
 
   if (playerCount === 0) {
     lines.push('No players have joined this game yet.');
@@ -371,13 +316,14 @@ function buildPartyNeedsLines(
     lines.push(`${playersWithoutCharacterCount} players still need characters before the party is fully represented.`);
   }
 
-  for (const need of state.planning.partyNeeds) {
-    lines.push(
-      need.isOpen
-        ? `${need.label}: open`
-        : `${need.label}: claimed by ${need.claimedBy.join(', ')}`
-    );
-  }
+  lines.push(
+    state.chat.messages.length > 0
+      ? `Recent chat is active with ${state.chat.messages.length} message${state.chat.messages.length === 1 ? '' : 's'}.`
+      : 'No pregame chat messages have been posted yet.'
+  );
+  lines.push(
+    latestActivity ? `Latest: ${latestActivity.senderDisplayName} said "${latestActivity.body}"` : 'Latest: no pregame chat yet'
+  );
 
   if (!ownCharacter) {
     lines.push('Your next useful move is to create a character draft or review the party conversation first.');
@@ -387,6 +333,23 @@ function buildPartyNeedsLines(
     lines.push('Your character is approved. Use chat to align on party composition and opening plans.');
   } else {
     lines.push('Your character is still editable. Share updates in chat as you iterate on the draft.');
+  }
+
+  return lines;
+}
+
+function buildPromptLines(state: Extract<PregameLobbyState, { status: 'ready' }>): string[] {
+  const lines: string[] = [];
+
+  if (state.planning.activePrompt) {
+    lines.push(`${state.planning.activePrompt.senderDisplayName}: ${state.planning.activePrompt.title}`);
+    lines.push(state.planning.activePrompt.prompt);
+  } else if (state.actorContext.isGameMaster) {
+    lines.push('No GM planning prompt is active yet.');
+    lines.push('Use Chat or the GM tools to set party direction before the session begins.');
+  } else {
+    lines.push('No GM planning prompt is active yet.');
+    lines.push('Share your current draft or review the party conversation to help the table converge.');
   }
 
   return lines;

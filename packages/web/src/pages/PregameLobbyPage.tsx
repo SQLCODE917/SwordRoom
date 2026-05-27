@@ -4,8 +4,9 @@ import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { PregameWorkflowNav } from '../components/PregameWorkflowNav';
 import { createPregameLobbyViewModel, usePregameLobby } from '../features/pregame-lobby';
-import { buildPostGamePromptEnvelope, buildSuggestedGamePromptArtifact } from '../features/pregame-planning';
+import { buildGamePromptArtifact, buildPostGamePromptEnvelope, DEFAULT_GM_PREGAME_PROMPT_TEXT } from '../features/pregame-planning';
 import { useCommandWorkflow } from '../hooks/useCommandStatus';
+import styles from './PregameLobbyPage.module.css';
 
 export function PregameLobbyPage() {
   const params = useParams<{ gameId: string }>();
@@ -15,20 +16,15 @@ export function PregameLobbyPage() {
   const { isRunning, submitEnvelopeAndAwait } = useCommandWorkflow();
   const [gmPromptDraft, setGmPromptDraft] = useState('');
   const [gmPromptSeed, setGmPromptSeed] = useState('');
-
-  const suggestedPrompt = useMemo(() => {
-    if (lobby.state.status !== 'ready' || !lobby.state.actorContext.isGameMaster) {
-      return null;
-    }
-    const suggestedRoles = lobby.state.planning.partyNeeds.filter((need) => need.isOpen).map((need) => need.role);
-    return buildSuggestedGamePromptArtifact({ suggestedRoles });
-  }, [lobby.state]);
+  const [isPromptEditing, setIsPromptEditing] = useState(false);
+  const currentPromptText =
+    lobby.state.status === 'ready' ? (lobby.state.planning.activePrompt?.prompt.trim() ?? '') : '';
 
   useEffect(() => {
-    if (!suggestedPrompt) {
+    if (lobby.state.status !== 'ready' || !lobby.state.actorContext.isGameMaster) {
       return;
     }
-    const nextSeed = suggestedPrompt.artifact.prompt;
+    const nextSeed = lobby.state.planning.activePrompt?.prompt.trim() || DEFAULT_GM_PREGAME_PROMPT_TEXT;
     setGmPromptDraft((current) => {
       if (current.trim() === '' || current === gmPromptSeed) {
         return nextSeed;
@@ -36,27 +32,35 @@ export function PregameLobbyPage() {
       return current;
     });
     setGmPromptSeed(nextSeed);
-  }, [suggestedPrompt, gmPromptSeed]);
+  }, [lobby.state, gmPromptSeed]);
 
-  async function postSuggestedPrompt() {
-    if (lobby.state.status !== 'ready' || !lobby.state.actorContext.isGameMaster || !suggestedPrompt) {
+  async function savePrompt() {
+    if (lobby.state.status !== 'ready' || !lobby.state.actorContext.isGameMaster) {
       return;
     }
-    const promptText = gmPromptDraft.trim() || suggestedPrompt.artifact.prompt;
+    const baselinePrompt = (lobby.state.planning.activePrompt?.prompt ?? '').trim();
+    const nextPrompt = gmPromptDraft.trim();
+    if (nextPrompt.length === 0) {
+      return;
+    }
+    if (nextPrompt === baselinePrompt) {
+      setIsPromptEditing(false);
+      return;
+    }
+
+    const promptPayload = buildGamePromptArtifact({ prompt: nextPrompt });
 
     const terminal = await submitEnvelopeAndAwait(
       'Post pregame prompt',
       buildPostGamePromptEnvelope({
         gameId,
-        body: suggestedPrompt.body,
-        artifact: {
-          ...suggestedPrompt.artifact,
-          prompt: promptText,
-        },
+        body: promptPayload.body,
+        artifact: promptPayload.artifact,
       })
     );
     if (terminal.status === 'PROCESSED') {
       await lobby.refresh();
+      setIsPromptEditing(false);
     }
   }
 
@@ -85,8 +89,8 @@ export function PregameLobbyPage() {
         {view.status === 'ready' ? (
           <div className="l-split">
             <div className="l-col l-grow">
-              <SectionTitle title="Pregame Status" />
-              <InfoList lines={view.loopStatusLines} />
+              <SectionTitle title="Lobby Status" />
+              <InfoList lines={view.statusLines} />
 
               <SectionTitle title="Next Move" />
               <div className="c-note c-note--info c-pregame-planning__summary">
@@ -98,7 +102,7 @@ export function PregameLobbyPage() {
                       className={`c-btn ${isRunning ? 'is-disabled' : ''}`.trim()}
                       type="button"
                       disabled={isRunning}
-                      onClick={() => void postSuggestedPrompt()}
+                      onClick={() => setIsPromptEditing(true)}
                     >
                       {view.primaryAction.label}
                     </button>
@@ -107,36 +111,25 @@ export function PregameLobbyPage() {
                 <div className="t-small">{view.primaryAction.detail}</div>
               </div>
 
-              <SectionTitle title="Planning Status" />
-              <InfoList lines={view.summaryLines} />
-
               <SectionTitle title="GM Prompt" />
-              <InfoList lines={view.promptLines} />
-              {lobby.state.status === 'ready' && lobby.state.actorContext.isGameMaster ? (
-                <div className="l-row">
-                  <label className="c-field l-grow">
-                    <span className="c-field__label">Prompt text</span>
-                    <textarea
-                      className="c-field__control c-gameplay__textarea"
-                      value={gmPromptDraft}
-                      disabled={isRunning}
-                      onChange={(event) => setGmPromptDraft(event.target.value)}
-                    />
-                  </label>
-                </div>
-              ) : null}
-              {lobby.state.status === 'ready' && lobby.state.actorContext.isGameMaster ? (
-                <div className="l-row">
-                  <button
-                    className={`c-btn ${isRunning ? 'is-disabled' : ''}`.trim()}
-                    type="button"
-                    disabled={isRunning}
-                    onClick={() => void postSuggestedPrompt()}
-                  >
-                    Post Prompt
-                  </button>
-                </div>
-              ) : null}
+              {lobby.state.status === 'ready' ? (
+                <GmPromptWidget
+                  prompt={currentPromptText}
+                  canEdit={lobby.state.actorContext.isGameMaster}
+                  isEditing={isPromptEditing}
+                  draft={gmPromptDraft}
+                  isSaving={isRunning}
+                  onStartEdit={() => setIsPromptEditing(true)}
+                  onDraftChange={setGmPromptDraft}
+                  onCancelEdit={() => {
+                    setGmPromptDraft(currentPromptText || DEFAULT_GM_PREGAME_PROMPT_TEXT);
+                    setIsPromptEditing(false);
+                  }}
+                  onSave={() => void savePrompt()}
+                />
+              ) : (
+                <InfoList lines={view.promptLines} />
+              )}
 
               <SectionTitle title="Party Roster" />
               <div className="c-table" role="table" aria-label="Pregame party roster">
@@ -158,9 +151,6 @@ export function PregameLobbyPage() {
             </div>
 
             <div className="l-col l-grow">
-              <SectionTitle title="Party Needs" />
-              <InfoList lines={view.partyNeedsLines} />
-
               <SectionTitle title="Recent Activity" />
               <div className="c-table" role="table" aria-label="Pregame recent activity">
                 <div className="c-table__head c-table__row" role="row">
@@ -219,6 +209,59 @@ function InfoList({ lines }: { lines: readonly string[] }) {
           {line}
         </div>
       ))}
+    </div>
+  );
+}
+
+function GmPromptWidget(input: {
+  prompt: string;
+  canEdit: boolean;
+  isEditing: boolean;
+  draft: string;
+  isSaving: boolean;
+  onStartEdit: () => void;
+  onDraftChange: (value: string) => void;
+  onCancelEdit: () => void;
+  onSave: () => void;
+}) {
+  const promptText = input.prompt.trim() || 'No GM planning prompt is active yet.';
+
+  if (!input.canEdit || !input.isEditing) {
+    return (
+      <div className={`c-note c-note--info ${styles.promptCard}`}>
+        {input.canEdit ? (
+          <button className={styles.promptReadButton} type="button" disabled={input.isSaving} onClick={input.onStartEdit}>
+            <span className="t-small">{promptText}</span>
+            <span className={`t-small ${styles.promptReadHint}`}>Click to edit</span>
+          </button>
+        ) : (
+          <div className="t-small">{promptText}</div>
+        )}
+      </div>
+    );
+  }
+
+  const saveDisabled = input.isSaving || input.draft.trim().length === 0;
+
+  return (
+    <div className={`c-note c-note--info ${styles.promptCard}`}>
+      <label className={`c-field ${styles.promptField}`}>
+        <span className="c-field__label">Prompt text</span>
+        <textarea
+          className={`c-field__control c-gameplay__textarea ${styles.promptTextarea}`}
+          value={input.draft}
+          disabled={input.isSaving}
+          onChange={(event) => input.onDraftChange(event.target.value)}
+        />
+      </label>
+      <div className={styles.promptActions}>
+        <button className={`c-btn ${saveDisabled ? 'is-disabled' : ''}`.trim()} type="button" disabled={saveDisabled} onClick={input.onSave}>
+          Save Prompt
+        </button>
+        <button className={`c-btn ${input.isSaving ? 'is-disabled' : ''}`.trim()} type="button" disabled={input.isSaving} onClick={input.onCancelEdit}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }

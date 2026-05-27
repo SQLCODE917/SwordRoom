@@ -38,7 +38,7 @@ export function usePregamePlanning(gameId: string, enabled = true) {
         isMember: viewerIsMember,
         isGameMaster: viewerIsGameMaster,
         hasActivePrompt: planning.activePrompt !== null,
-        partyNeedCount: planning.partyNeeds.length,
+        recentClaimCount: planning.recentClaims.length,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

@@ -10,8 +10,6 @@ const PREGAME_ROLE_LABELS: Record<PregameRole, string> = {
   ARCANE: 'Arcane Support',
 };
 
-const PREGAME_ROLE_ORDER: PregameRole[] = ['FRONTLINE', 'HEALER', 'SCOUT', 'ARCANE'];
-
 export function createPregameReadApis(
   deps: ApiServiceDependencies
 ): ReadApisSubset<'getPregamePlanning' | 'getMyPregameDigest'> {
@@ -83,13 +81,6 @@ async function readPregamePlanning(
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
     .slice(0, 4);
 
-  const claimedByRole = new Map<PregameRole, string[]>();
-  for (const claim of latestClaimsByCharacterId.values()) {
-    for (const role of claim.roles) {
-      claimedByRole.set(role, [...(claimedByRole.get(role) ?? []), claim.characterName]);
-    }
-  }
-
   return {
     gameId: game.gameId,
     gameName: game.name,
@@ -108,12 +99,6 @@ async function readPregamePlanning(
             createdAt: activePromptMessage.createdAt,
           }
         : null,
-    partyNeeds: PREGAME_ROLE_ORDER.map((role) => ({
-      role,
-      label: PREGAME_ROLE_LABELS[role],
-      isOpen: (claimedByRole.get(role) ?? []).length === 0,
-      claimedBy: claimedByRole.get(role) ?? [],
-    })),
     recentClaims,
   };
 }
@@ -123,44 +108,44 @@ function buildPregameDigestEntry(input: {
   ownCharacter: Awaited<ReturnType<ApiServiceDependencies['db']['characterRepository']['findOwnedCharacterInGame']>>;
 }): PregameDigestEntryResponse | null {
   const latestClaim = input.planning.recentClaims[0] ?? null;
-  const openNeeds = input.planning.partyNeeds.filter((need) => need.isOpen);
+  const activePrompt = input.planning.activePrompt;
 
-  if (input.ownCharacter && input.ownCharacter.status === 'DRAFT' && openNeeds.length > 0) {
+  if (input.ownCharacter && input.ownCharacter.status === 'DRAFT' && activePrompt) {
     return {
       digestId: `${input.planning.gameId}:edit`,
       gameId: input.planning.gameId,
       gameName: input.planning.gameName,
-      headline: input.planning.activePrompt?.title ?? `Open roles in ${input.planning.gameName}`,
-      detail: `Your draft can still move toward ${openNeeds.map((need) => need.label).join(', ')}.`,
+      headline: activePrompt.title,
+      detail: 'Your draft can still move toward the current GM prompt.',
       destination: 'EDIT_CHARACTER',
       characterId: input.ownCharacter.characterId,
-      createdAt: input.planning.activePrompt?.createdAt ?? latestClaim?.createdAt ?? input.ownCharacter.updatedAt,
+      createdAt: activePrompt.createdAt,
     };
   }
 
-  if (!input.ownCharacter && openNeeds.length > 0) {
+  if (!input.ownCharacter && activePrompt) {
     return {
       digestId: `${input.planning.gameId}:create`,
       gameId: input.planning.gameId,
       gameName: input.planning.gameName,
-      headline: input.planning.activePrompt?.title ?? `Party needs ${openNeeds.map((need) => need.label).join(', ')}`,
-      detail: `Create a character if you want to cover ${openNeeds.map((need) => need.label).join(', ')}.`,
+      headline: activePrompt.title,
+      detail: 'Create a character draft and answer the current GM prompt.',
       destination: 'CREATE_CHARACTER',
       characterId: null,
-      createdAt: input.planning.activePrompt?.createdAt ?? latestClaim?.createdAt ?? '',
+      createdAt: activePrompt.createdAt,
     };
   }
 
-  if (input.planning.activePrompt) {
+  if (activePrompt) {
     return {
       digestId: `${input.planning.gameId}:lobby`,
       gameId: input.planning.gameId,
       gameName: input.planning.gameName,
-      headline: input.planning.activePrompt.title,
-      detail: input.planning.activePrompt.prompt,
+      headline: activePrompt.title,
+      detail: activePrompt.prompt,
       destination: 'LOBBY',
       characterId: input.ownCharacter?.characterId ?? null,
-      createdAt: input.planning.activePrompt.createdAt,
+      createdAt: activePrompt.createdAt,
     };
   }
 

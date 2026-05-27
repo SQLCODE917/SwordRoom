@@ -1256,13 +1256,6 @@ describe('pregame planning', () => {
 
     expect(planning.viewer.isMember).toBe(true);
     expect(planning.activePrompt?.title).toBe('Party needs Frontline and Healer');
-    expect(planning.partyNeeds.find((need) => need.role === 'FRONTLINE')).toEqual({
-      role: 'FRONTLINE',
-      label: 'Frontline',
-      isOpen: false,
-      claimedBy: ['Borin'],
-    });
-    expect(planning.partyNeeds.find((need) => need.role === 'HEALER')?.isOpen).toBe(true);
     expect(planning.recentClaims[0]).toEqual({
       claimId: 'claim-1',
       characterId: 'char-1',
@@ -1412,12 +1405,12 @@ describe('pregame planning', () => {
 
     expect(digest).toEqual([
       {
-        digestId: 'game-2:create',
+        digestId: 'game-2:chat',
         gameId: 'game-2',
         gameName: 'Forest Watch',
-        headline: 'Party needs Frontline, Scout, Arcane Support',
-        detail: 'Create a character if you want to cover Frontline, Scout, Arcane Support.',
-        destination: 'CREATE_CHARACTER',
+        headline: 'Asha updated party roles',
+        detail: 'Asha claimed Healer.',
+        destination: 'CHAT',
         characterId: null,
         createdAt: '2026-03-01T09:16:00.000Z',
       },
@@ -1426,7 +1419,7 @@ describe('pregame planning', () => {
         gameId: 'game-1',
         gameName: 'Dungeon Delvers',
         headline: 'Party needs Frontline',
-        detail: 'Your draft can still move toward Frontline, Healer, Scout, Arcane Support.',
+        detail: 'Your draft can still move toward the current GM prompt.',
         destination: 'EDIT_CHARACTER',
         characterId: 'char-1',
         createdAt: '2026-03-01T09:15:00.000Z',

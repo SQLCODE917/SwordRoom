@@ -1,7 +1,9 @@
-import type { PregameRole, SharedGamePromptArtifact, SharedPartyRoleClaimArtifact } from '@starter/shared';
+import type { SharedGamePromptArtifact, SharedPartyRoleClaimArtifact } from '@starter/shared';
 import type { CommandEnvelopeInput } from '../../api/ApiClient';
 import { createCommandId } from '../../hooks/useCommandStatus';
-import { formatPregameRoleList } from './labels.js';
+
+export const DEFAULT_GM_PREGAME_PROMPT_TEXT =
+  'Share your current draft, compare plans, and post what role you want to bring to the table.';
 
 export function buildSharePartyRoleClaimEnvelope(input: {
   gameId: string;
@@ -39,24 +41,36 @@ export function buildPostGamePromptEnvelope(input: {
   };
 }
 
-export function buildSuggestedGamePromptArtifact(input: {
-  suggestedRoles: PregameRole[];
-}): { body: string; artifact: SharedGamePromptArtifact } {
+export function buildGamePromptArtifact(input: { prompt: string }): { body: string; artifact: SharedGamePromptArtifact } {
   const promptId = createCommandId();
-  const rolesText = formatPregameRoleList(input.suggestedRoles);
-  const prompt =
-    input.suggestedRoles.length > 0
-      ? `We still need ${rolesText}. Please share a draft or revise your current build if you can cover one of those roles.`
-      : 'Share your current draft, compare plans, and post what role you want to bring to the table.';
+  const prompt = normalizePromptText(input.prompt);
+  const title = buildPromptTitle(prompt);
 
   return {
     body: 'GM posted a new pregame planning prompt.',
     artifact: {
       kind: 'GAME_PROMPT',
       promptId,
-      title: input.suggestedRoles.length > 0 ? `Party needs ${rolesText}` : 'General party planning',
+      title,
       prompt,
-      suggestedRoles: input.suggestedRoles,
+      suggestedRoles: [],
     },
   };
+}
+
+function normalizePromptText(prompt: string): string {
+  const trimmed = prompt.trim();
+  return trimmed.length > 0 ? trimmed : DEFAULT_GM_PREGAME_PROMPT_TEXT;
+}
+
+function buildPromptTitle(prompt: string): string {
+  const firstLine = prompt
+    .split(/\r?\n/u)
+    .find((line) => line.trim().length > 0)
+    ?.trim();
+  const normalized = firstLine && firstLine.length > 0 ? firstLine : 'General party planning';
+  if (normalized.length <= 80) {
+    return normalized;
+  }
+  return `${normalized.slice(0, 77).trimEnd()}...`;
 }

@@ -88,13 +88,6 @@ export interface PregamePlanningClaimResponse {
   createdAt: string;
 }
 
-export interface PregamePlanningNeedResponse {
-  role: PregameRole;
-  label: string;
-  isOpen: boolean;
-  claimedBy: string[];
-}
-
 export interface PregamePlanningResponse {
   gameId: string;
   gameName: string;
@@ -103,7 +96,6 @@ export interface PregamePlanningResponse {
     isGameMaster: boolean;
   };
   activePrompt: PregamePlanningPromptResponse | null;
-  partyNeeds: PregamePlanningNeedResponse[];
   recentClaims: PregamePlanningClaimResponse[];
 }
 

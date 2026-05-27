@@ -59,12 +59,6 @@ function createPregamePlanningResponse() {
       senderDisplayName: '@Zed GM',
       createdAt: '2026-03-01T09:15:00.000Z',
     },
-    partyNeeds: [
-      { role: 'FRONTLINE', label: 'Frontline', isOpen: true, claimedBy: [] },
-      { role: 'HEALER', label: 'Healer', isOpen: true, claimedBy: [] },
-      { role: 'SCOUT', label: 'Scout', isOpen: false, claimedBy: ['Alice'] },
-      { role: 'ARCANE', label: 'Arcane Support', isOpen: false, claimedBy: ['Borin'] },
-    ],
     recentClaims: [],
   } as const;
 }
@@ -173,7 +167,7 @@ describe('GameChatPage', () => {
     const workflow = screen.getByRole('navigation', { name: 'Pregame workflow' });
     expect(within(workflow).getByRole('link', { name: 'Lobby' }).getAttribute('href')).toBe('/games/game-1');
     expect(within(workflow).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
-    expect(await screen.findByText('Open roles: Frontline, Healer')).toBeTruthy();
+    expect(await screen.findByText('Suggested roles: Frontline, Healer')).toBeTruthy();
     expect(await within(transcript).findByText('[09:15]')).toBeTruthy();
     expect(await within(transcript).findByText('<@Zed GM>')).toBeTruthy();
     expect(await within(transcript).findByText('Session starts soon.')).toBeTruthy();

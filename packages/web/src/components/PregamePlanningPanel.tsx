@@ -43,7 +43,7 @@ export function PregamePlanningPanel({
 
   const planning = planningState.planning;
   const viewerIsMember = planning.viewer?.isMember === true;
-  const openRoles = planning.partyNeeds.filter((need) => need.isOpen);
+  const suggestedRoleLabels = (planning.activePrompt?.suggestedRoles ?? []).map((role) => PREGAME_ROLE_LABELS[role]);
 
   return (
     <Panel
@@ -58,24 +58,15 @@ export function PregamePlanningPanel({
             : 'No GM planning prompt is active yet.'}
         </div>
         <div className="t-small">
-          {openRoles.length > 0
-            ? `Open roles: ${openRoles.map((need) => need.label).join(', ')}`
-            : 'All tracked party roles currently have at least one claim.'}
+          {suggestedRoleLabels.length > 0
+            ? `Suggested roles: ${suggestedRoleLabels.join(', ')}`
+            : 'No structured role suggestions are attached to the current prompt.'}
         </div>
-      </div>
-
-      <div className="c-note c-note--info c-pregame-planning__needs">
-        {planning.partyNeeds.map((need) => (
-          <div className="t-small" key={need.role}>
-            {need.isOpen ? `${need.label}: open` : `${need.label}: claimed by ${need.claimedBy.join(', ')}`}
-          </div>
-        ))}
       </div>
 
       {onClaimRole ? (
         <div className="l-row">
           {PREGAME_ROLE_ORDER.map((role) => {
-            const need = planning.partyNeeds.find((entry) => entry.role === role) ?? null;
             const claimDisabled = disabled || !viewerIsMember;
 
             return (
@@ -87,7 +78,7 @@ export function PregamePlanningPanel({
                 onClick={() => void onClaimRole(role)}
                 title={!viewerIsMember ? 'Join the game before posting structured planning updates.' : undefined}
               >
-                {need?.isOpen ? `Claim ${PREGAME_ROLE_LABELS[role]}` : `Reinforce ${PREGAME_ROLE_LABELS[role]}`}
+                {`Claim ${PREGAME_ROLE_LABELS[role]}`}
               </button>
             );
           })}

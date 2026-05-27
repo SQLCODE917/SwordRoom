@@ -117,12 +117,6 @@ describe('PregameLobbyPage', () => {
           senderDisplayName: '@Zed GM',
           createdAt: '2026-03-01T09:15:00.000Z',
         },
-        partyNeeds: [
-          { role: 'FRONTLINE', label: 'Frontline', isOpen: true, claimedBy: [] },
-          { role: 'HEALER', label: 'Healer', isOpen: false, claimedBy: ['Borin Stonehand'] },
-          { role: 'SCOUT', label: 'Scout', isOpen: true, claimedBy: [] },
-          { role: 'ARCANE', label: 'Arcane Support', isOpen: true, claimedBy: [] },
-        ],
         recentClaims: [],
       })),
       getMyCharacters: vi.fn(async () => [
@@ -148,8 +142,8 @@ describe('PregameLobbyPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Pregame Lobby' })).toBeTruthy();
     expect(screen.getByText('Dungeon Delvers (game-1)')).toBeTruthy();
-    expect(screen.getByText('Need: Frontline')).toBeTruthy();
-    expect(screen.getByText('Prompt active: Party needs Frontline')).toBeTruthy();
+    expect(screen.getByText('One player still needs a character before the party is fully represented.')).toBeTruthy();
+    expect(screen.getByText('Latest: @Zed GM said "We still need a frontline character."')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Answer Prompt In Create' }).getAttribute('href')).toBe(
       '/games/game-1/characters/char-1/edit?entry=lobby&focus=prompt'
     );
@@ -169,10 +163,8 @@ describe('PregameLobbyPage', () => {
         .some((link) => link.getAttribute('href') === '/inbox?mode=player')
     ).toBe(true);
     expect(screen.getByText('Your current character is Borin Stonehand (DRAFT).')).toBeTruthy();
-    expect(screen.getByText('One player still needs a character before the party is fully represented.')).toBeTruthy();
     expect(screen.getByText('We still need Frontline. Please share a draft if you can cover it.')).toBeTruthy();
-    expect(screen.getByText('Frontline: open')).toBeTruthy();
-    expect(screen.getByText('Healer: claimed by Borin Stonehand')).toBeTruthy();
+    expect(screen.queryByText('Party Needs')).toBeNull();
 
     const roster = screen.getByRole('table', { name: 'Pregame party roster' });
     expect(within(roster).getByText('@Zed GM')).toBeTruthy();
@@ -245,12 +237,6 @@ describe('PregameLobbyPage', () => {
           isGameMaster: true,
         },
         activePrompt: null,
-        partyNeeds: [
-          { role: 'FRONTLINE', label: 'Frontline', isOpen: true, claimedBy: [] },
-          { role: 'HEALER', label: 'Healer', isOpen: true, claimedBy: [] },
-          { role: 'SCOUT', label: 'Scout', isOpen: false, claimedBy: ['Borin Stonehand'] },
-          { role: 'ARCANE', label: 'Arcane Support', isOpen: true, claimedBy: [] },
-        ],
         recentClaims: [],
       })),
       getMyCharacters: vi.fn(async () => []),
@@ -264,9 +250,9 @@ describe('PregameLobbyPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('Prompt active: no GM prompt yet')).toBeTruthy();
+    expect(await screen.findByText('No GM planning prompt is active yet.')).toBeTruthy();
     const defaultPrompt =
-      'We still need Frontline, Healer, and Arcane Support. Please share a draft or revise your current build if you can cover one of those roles.';
+      'Share your current draft, compare plans, and post what role you want to bring to the table.';
     const promptText = await screen.findByDisplayValue(defaultPrompt);
     expect(promptText).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Set Planning Prompt' })).toBeTruthy();
@@ -290,9 +276,9 @@ describe('PregameLobbyPage', () => {
           body: 'GM posted a new pregame planning prompt.',
           artifact: expect.objectContaining({
             kind: 'GAME_PROMPT',
-            title: 'Party needs Frontline, Healer, and Arcane Support',
+            title: 'Custom GM prompt for open roles.',
             prompt: 'Custom GM prompt for open roles.',
-            suggestedRoles: ['FRONTLINE', 'HEALER', 'ARCANE'],
+            suggestedRoles: [],
           }),
         }),
       })
@@ -331,7 +317,6 @@ describe('PregameLobbyPage', () => {
           isGameMaster: false,
         },
         activePrompt: null,
-        partyNeeds: [],
         recentClaims: [],
       })),
       getMyCharacters: vi.fn(async () => []),

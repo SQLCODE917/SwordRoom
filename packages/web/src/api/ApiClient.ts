@@ -299,13 +299,6 @@ export interface PregamePlanningClaim {
   createdAt: string;
 }
 
-export interface PregamePlanningNeed {
-  role: PregameRole;
-  label: string;
-  isOpen: boolean;
-  claimedBy: string[];
-}
-
 export interface PregamePlanningResponse {
   gameId: string;
   gameName: string;
@@ -314,7 +307,6 @@ export interface PregamePlanningResponse {
     isGameMaster: boolean;
   };
   activePrompt: PregamePlanningPrompt | null;
-  partyNeeds: PregamePlanningNeed[];
   recentClaims: PregamePlanningClaim[];
 }
 
@@ -734,7 +726,7 @@ export function createApiClient(options: ApiClientOptions): ApiClient {
         isMember: response.viewer.isMember,
         isGameMaster: response.viewer.isGameMaster,
         hasActivePrompt: response.activePrompt !== null,
-        partyNeedCount: response.partyNeeds.length,
+        recentClaimCount: response.recentClaims.length,
       });
       return response;
     },
@@ -890,7 +882,6 @@ function normalizePregamePlanningResponse(gameId: string, value: unknown): Prega
     gameName: typeof record.gameName === 'string' ? record.gameName : '',
     viewer: normalizePregameViewer(record.viewer),
     activePrompt: isRecord(activePromptValue) ? (activePromptValue as PregamePlanningPrompt) : null,
-    partyNeeds: Array.isArray(record.partyNeeds) ? (record.partyNeeds as PregamePlanningNeed[]) : [],
     recentClaims: Array.isArray(record.recentClaims) ? (record.recentClaims as PregamePlanningClaim[]) : [],
   };
 }

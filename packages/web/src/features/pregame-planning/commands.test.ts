@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildPostGamePromptEnvelope, buildSharePartyRoleClaimEnvelope, buildSuggestedGamePromptArtifact } from './commands.js';
+import { buildGamePromptArtifact, buildPostGamePromptEnvelope, buildSharePartyRoleClaimEnvelope } from './commands.js';
 
 describe('pregame planning command builders', () => {
   it('builds a party role claim envelope with an attached artifact', () => {
@@ -22,18 +22,18 @@ describe('pregame planning command builders', () => {
     expect(envelope.payload.body).toBe('Borin is claiming Frontline for the party.');
   });
 
-  it('builds a suggested GM prompt artifact from open roles', () => {
+  it('builds a GM prompt artifact from freeform text', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-03-01T00:00:00.000Z'));
 
-    const prompt = buildSuggestedGamePromptArtifact({
-      suggestedRoles: ['FRONTLINE', 'HEALER'],
+    const prompt = buildGamePromptArtifact({
+      prompt: 'Need a thief with city contacts and a temple tie-in for this session.',
     });
 
     expect(prompt.body).toBe('GM posted a new pregame planning prompt.');
     expect(prompt.artifact.kind).toBe('GAME_PROMPT');
-    expect(prompt.artifact.title).toBe('Party needs Frontline and Healer');
-    expect(prompt.artifact.suggestedRoles).toEqual(['FRONTLINE', 'HEALER']);
+    expect(prompt.artifact.title).toBe('Need a thief with city contacts and a temple tie-in for this session.');
+    expect(prompt.artifact.suggestedRoles).toEqual([]);
 
     const envelope = buildPostGamePromptEnvelope({
       gameId: 'game-1',

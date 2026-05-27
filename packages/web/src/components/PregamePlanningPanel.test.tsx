@@ -26,10 +26,6 @@ describe('PregamePlanningPanel', () => {
               senderDisplayName: '@Zed GM',
               createdAt: '2026-03-01T09:15:00.000Z',
             },
-            partyNeeds: [
-              { role: 'FRONTLINE', label: 'Frontline', isOpen: true, claimedBy: [] },
-              { role: 'HEALER', label: 'Healer', isOpen: false, claimedBy: ['Borin'] },
-            ],
             recentClaims: [],
           },
         }}
@@ -38,10 +34,8 @@ describe('PregamePlanningPanel', () => {
     );
 
     expect(screen.getByText('@Zed GM: We still need Frontline. Please share a draft if you can cover it.')).toBeTruthy();
-    expect(screen.getByText('Open roles: Frontline')).toBeTruthy();
-    expect(screen.getByText('Frontline: open')).toBeTruthy();
-    expect(screen.getByText('Healer: claimed by Borin')).toBeTruthy();
+    expect(screen.getByText('Suggested roles: Frontline')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Claim Frontline' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Reinforce Healer' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Claim Healer' })).toBeTruthy();
   });
 });
