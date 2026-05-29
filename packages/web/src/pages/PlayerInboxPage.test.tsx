@@ -69,7 +69,7 @@ describe('PlayerInboxPage', () => {
     });
   });
 
-  it('renders pregame digest re-entry links alongside the inbox table', async () => {
+  it('renders pregame digest re-entry links alongside compact inbox items', async () => {
     vi.mocked(createApiClient).mockReturnValue({
       getMyInbox: vi.fn(async () => [
         {
@@ -113,26 +113,56 @@ describe('PlayerInboxPage', () => {
       </MemoryRouter>
     );
 
-    const resumePanel = (await screen.findByRole('heading', { name: 'Resume Planning' })).closest('section');
-    expect(resumePanel).toBeTruthy();
-    expect(within(resumePanel as HTMLElement).getByText('Resume planning in Dungeon Delvers')).toBeTruthy();
-    expect(within(resumePanel as HTMLElement).getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe(
+    expect(screen.queryByRole('heading', { name: 'Resume Planning' })).toBeNull();
+
+    const nextMovePanel = (await screen.findByRole('heading', { name: 'Next Move' })).closest('section');
+    expect(nextMovePanel).toBeTruthy();
+    expect(within(nextMovePanel as HTMLElement).getByText('Dungeon Delvers')).toBeTruthy();
+    expect(within(nextMovePanel as HTMLElement).getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe(
       '/games/game-1/characters/char-1/edit?entry=digest&focus=resume'
     );
-    expect(within(resumePanel as HTMLElement).getByRole('link', { name: 'Open Chat: Forest Watch' }).getAttribute('href')).toBe(
-      '/games/game-2/chat'
+    expect(within(nextMovePanel as HTMLElement).getByText(/Forest Watch - Asha updated party roles/)).toBeTruthy();
+    expect(within(nextMovePanel as HTMLElement).getByRole('link', { name: 'Open Chat' }).getAttribute('href')).toBe('/games/game-2/chat');
+
+    const digestList = await screen.findByRole('list', { name: 'Pregame Digest Items' });
+    expect(within(digestList).queryByText('Dungeon Delvers')).toBeNull();
+    expect(within(digestList).getByText('Forest Watch')).toBeTruthy();
+    expect(within(digestList).getByText('Asha updated party roles')).toBeTruthy();
+    expect(within(digestList).getByRole('link', { name: 'Open Chat' }).getAttribute('href')).toBe('/games/game-2/chat');
+    expect(screen.queryByRole('table', { name: 'Pregame Digest Items' })).toBeNull();
+
+    const inboxList = screen.getByRole('list', { name: 'Player Inbox Items' });
+    expect(within(inboxList).getByText('Char Approved')).toBeTruthy();
+    expect(within(inboxList).getByRole('link', { name: 'Open Character' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
+    expect(screen.queryByRole('table', { name: 'Player Inbox Items' })).toBeNull();
+  });
+
+  it('labels character creation actions consistently', async () => {
+    vi.mocked(createApiClient).mockReturnValue({
+      getMyInbox: vi.fn(async () => []),
+      getMyPregameDigest: vi.fn(async () => [
+        {
+          digestId: 'game-1:create',
+          gameId: 'game-1',
+          gameName: 'Dungeon Delvers',
+          headline: 'Party needs Frontline',
+          detail: 'Create a character draft and answer the current GM prompt.',
+          destination: 'CREATE_CHARACTER',
+          characterId: null,
+          createdAt: '2026-03-01T09:15:00.000Z',
+        },
+      ]),
+    } as unknown as ReturnType<typeof createApiClient>);
+
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <PlayerInboxPage />
+      </MemoryRouter>
     );
 
-    const digestTable = await screen.findByRole('table', { name: 'Pregame Digest Items' });
-    expect(within(digestTable).getByText('Dungeon Delvers')).toBeTruthy();
-    expect(within(digestTable).getByText('Party needs Frontline')).toBeTruthy();
-    expect(within(digestTable).getByRole('link', { name: 'Edit Draft' }).getAttribute('href')).toBe(
-      '/games/game-1/characters/char-1/edit?entry=digest&focus=resume'
-    );
-    expect(within(digestTable).getByRole('link', { name: 'Open Chat' }).getAttribute('href')).toBe('/games/game-2/chat');
-
-    const inboxTable = screen.getByRole('table', { name: 'Player Inbox Items' });
-    expect(within(inboxTable).getByText('CHAR_APPROVED')).toBeTruthy();
-    expect(within(inboxTable).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
+    expect(
+      (await screen.findAllByRole('link', { name: '+ Create Character' })).length,
+    ).toBe(1);
+    expect(screen.queryByRole('link', { name: 'Create Character' })).toBeNull();
   });
 });
