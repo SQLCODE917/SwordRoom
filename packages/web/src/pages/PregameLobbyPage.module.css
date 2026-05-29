@@ -10,6 +10,61 @@
   overflow-wrap: anywhere;
 }
 
+.sectionTitle {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.statusBoard {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s-3);
+}
+
+.statusMetrics {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+}
+
+.statusMetric {
+  display: grid;
+  grid-template-columns: minmax(96px, 1fr) minmax(112px, max-content);
+  gap: var(--gap);
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--s-2);
+}
+
+.statusMetric:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.statusMetric dt {
+  color: var(--muted);
+}
+
+.statusMetric dd {
+  margin: 0;
+  text-align: right;
+}
+
+.statusMetric[data-tone='attention'] dd {
+  color: var(--error);
+}
+
+.statusMetric[data-tone='ready'] dd {
+  color: var(--ok);
+}
+
+.statusHint {
+  border-top: 1px solid var(--line);
+  padding-top: var(--s-2);
+}
+
 .promptCard {
   flex-direction: column;
   align-items: stretch;
@@ -35,8 +90,21 @@
   opacity: 0.75;
 }
 
-.promptReadHint {
+.promptReadButton:hover .promptEditHint,
+.promptReadButton:focus-visible .promptEditHint {
+  color: var(--fg);
+  text-decoration: underline;
+}
+
+.promptEditHint {
   color: var(--muted);
+}
+
+.activityKind {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--s-1) var(--s-2);
+  white-space: nowrap;
 }
 
 .promptField {
@@ -54,4 +122,89 @@
   flex-wrap: wrap;
   gap: var(--s-2);
   align-items: center;
+}
+
+.rosterList {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rosterItem {
+  border: 1px solid var(--line);
+  padding: var(--s-2) var(--s-3);
+}
+
+.rosterRole,
+.rosterDivider {
+  color: var(--muted);
+  margin-left: var(--s-1);
+}
+
+.rosterDivider {
+  margin-right: var(--s-1);
+}
+
+.rosterCharacterLink {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rosterNoCharacter {
+  color: var(--muted);
+}
+
+.activityLog {
+  display: grid;
+  gap: var(--s-2);
+  margin: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--focus);
+  list-style: none;
+}
+
+.activityEntry {
+  display: grid;
+  grid-template-columns: max-content minmax(72px, max-content) 1fr;
+  gap: var(--s-2);
+  align-items: baseline;
+}
+
+.activityEntryWithKind {
+  grid-template-columns: max-content minmax(72px, max-content) max-content 1fr;
+}
+
+.activityTime {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.activityActor {
+  white-space: nowrap;
+}
+
+.activityMessage {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.activityEmpty {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+@media (max-width: 520px) {
+  .activityEntry,
+  .activityEntryWithKind {
+    grid-template-columns: max-content minmax(0, 1fr);
+  }
+
+  .activityKind,
+  .activityMessage {
+    grid-column: 2;
+  }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { ButtonLink } from '../components/ButtonLink';
 import { Panel } from '../components/Panel';
 import { PregameWorkflowNav } from '../components/PregameWorkflowNav';
@@ -66,7 +66,13 @@ export function PregameLobbyPage() {
 
   return (
     <div className="l-page">
-      <Panel title={view.title} subtitle={view.subtitle} footer={<LobbyActions actions={view.actions} />}>
+      <Panel
+        title={view.title}
+        subtitle={view.subtitle}
+        footer={
+          view.status === 'ready' ? undefined : <LobbyActions actions={view.actions} />
+        }
+      >
         <div className={`c-note ${view.noticeTone === 'error' ? 'c-note--error' : 'c-note--info'}`}>
           <span className="t-small">{view.notice}</span>
         </div>
@@ -90,7 +96,7 @@ export function PregameLobbyPage() {
           <div className="l-split">
             <div className="l-col l-grow">
               <SectionTitle title="Lobby Status" />
-              <InfoList lines={view.statusLines} />
+              <LobbyStatus metrics={view.statusMetrics} hint={view.statusHint} />
 
               <SectionTitle title="Next Move" />
               <div className="c-note c-note--info c-pregame-planning__summary">
@@ -114,7 +120,7 @@ export function PregameLobbyPage() {
               <SectionTitle title="GM Prompt" />
               {lobby.state.status === 'ready' ? (
                 <GmPromptWidget
-                  prompt={currentPromptText}
+                  prompt={view.prompt}
                   canEdit={lobby.state.actorContext.isGameMaster}
                   isEditing={isPromptEditing}
                   draft={gmPromptDraft}
@@ -128,50 +134,16 @@ export function PregameLobbyPage() {
                   onSave={() => void savePrompt()}
                 />
               ) : (
-                <InfoList lines={view.promptLines} />
+                <InfoList lines={[view.prompt.text]} />
               )}
 
               <SectionTitle title="Party Roster" />
-              <div className="c-table" role="table" aria-label="Pregame party roster">
-                <div className="c-table__head c-table__row" role="row">
-                  <div className="c-table__cell t-small">Member</div>
-                  <div className="c-table__cell t-small">Role</div>
-                  <div className="c-table__cell t-small">Character</div>
-                </div>
-                {view.rosterRows.map((row) => (
-                  <div className="c-table__row" role="row" key={row.key}>
-                    <div className="c-table__cell t-small">{row.displayName}</div>
-                    <div className="c-table__cell t-small">{row.roleLabel}</div>
-                    <div className="c-table__cell t-small">
-                      {row.characterTo ? <ButtonLink to={row.characterTo}>Open {row.characterLabel}</ButtonLink> : row.characterLabel}
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <PartyRoster rows={view.rosterRows} />
             </div>
 
             <div className="l-col l-grow">
               <SectionTitle title="Recent Activity" />
-              <div className="c-table" role="table" aria-label="Pregame recent activity">
-                <div className="c-table__head c-table__row" role="row">
-                  <div className="c-table__cell t-small">Member</div>
-                  <div className="c-table__cell t-small">Message</div>
-                  <div className="c-table__cell t-small">When</div>
-                </div>
-                {view.recentActivityRows.length === 0 ? (
-                  <div className="c-table__row" role="row">
-                    <div className="c-table__cell t-small">No pregame chat yet. Open Chat to start the planning thread.</div>
-                  </div>
-                ) : (
-                  view.recentActivityRows.map((row) => (
-                    <div className="c-table__row" role="row" key={row.key}>
-                      <div className="c-table__cell t-small">{row.actorLabel}</div>
-                      <div className="c-table__cell t-small">{row.body}</div>
-                      <div className="c-table__cell t-small">{row.createdAtLabel}</div>
-                    </div>
-                  ))
-                )}
-              </div>
+              <ActivityLog entries={view.recentActivityEntries} />
             </div>
           </div>
         ) : null}
@@ -198,7 +170,7 @@ function LobbyActions({ actions }: { actions: ReadonlyArray<{ label: string; to:
 }
 
 function SectionTitle({ title }: { title: string }) {
-  return <h3 className="t-h4">{title}</h3>;
+  return <h3 className={`t-h4 ${styles.sectionTitle}`}>{title}</h3>;
 }
 
 function InfoList({ lines }: { lines: readonly string[] }) {
@@ -213,8 +185,99 @@ function InfoList({ lines }: { lines: readonly string[] }) {
   );
 }
 
+function LobbyStatus(input: {
+  metrics: ReadonlyArray<{ label: string; value: string; tone: 'neutral' | 'attention' | 'ready' }>;
+  hint: string;
+}) {
+  return (
+    <div className={`c-note c-note--info ${styles.statusBoard}`}>
+      <dl className={styles.statusMetrics}>
+        {input.metrics.map((metric) => (
+          <div className={styles.statusMetric} data-tone={metric.tone} key={metric.label}>
+            <dt className="t-small">{metric.label}</dt>
+            <dd className="t-small">{metric.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className={`t-small ${styles.statusHint}`}>{input.hint}</div>
+    </div>
+  );
+}
+
+function ActivityLog(input: {
+  entries: ReadonlyArray<{
+    key: string;
+    timeLabel: string;
+    actorLabel: string;
+    message: string;
+    kind: 'message' | 'prompt' | 'draft' | 'reaction' | 'claim';
+  }>;
+}) {
+  if (input.entries.length === 0) {
+    return (
+      <div className={`c-note c-note--info ${styles.activityEmpty}`}>
+        <div className="t-small">No activity yet.</div>
+      </div>
+    );
+  }
+
+  return (
+    <ol className={styles.activityLog} aria-label="Pregame recent activity">
+      {input.entries.map((entry) => (
+        <li
+          className={[
+            styles.activityEntry,
+            entry.kind !== 'message' ? styles.activityEntryWithKind : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          key={entry.key}
+        >
+          <time className={`t-small ${styles.activityTime}`}>{entry.timeLabel}</time>
+          <span className={`t-small ${styles.activityActor}`}>{entry.actorLabel}</span>
+          {entry.kind !== 'message' ? (
+            <span className={`t-small ${styles.activityKind}`}>{entry.kind.toUpperCase()}</span>
+          ) : null}
+          <span className={`t-small ${styles.activityMessage}`}>{entry.message}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function PartyRoster(input: {
+  rows: ReadonlyArray<{
+    key: string;
+    displayName: string;
+    roleLabel: string;
+    characterLabel: string;
+    characterTo: string | null;
+  }>;
+}) {
+  return (
+    <ol className={styles.rosterList} aria-label="Pregame party roster">
+      {input.rows.map((row) => (
+        <li className={styles.rosterItem} key={row.key}>
+          <span className="t-small">
+            <span>{row.displayName}</span>
+            <span className={styles.rosterRole}>({row.roleLabel})</span>
+            <span className={styles.rosterDivider}>-</span>
+            {row.characterTo ? (
+              <Link className={styles.rosterCharacterLink} to={row.characterTo}>
+                {row.characterLabel}
+              </Link>
+            ) : (
+              <span className={styles.rosterNoCharacter}>{row.characterLabel}</span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function GmPromptWidget(input: {
-  prompt: string;
+  prompt: { text: string };
   canEdit: boolean;
   isEditing: boolean;
   draft: string;
@@ -224,15 +287,21 @@ function GmPromptWidget(input: {
   onCancelEdit: () => void;
   onSave: () => void;
 }) {
-  const promptText = input.prompt.trim() || 'No GM planning prompt is active yet.';
+  const promptText = input.prompt.text.trim() || 'No GM planning prompt is active yet.';
 
   if (!input.canEdit || !input.isEditing) {
     return (
       <div className={`c-note c-note--info ${styles.promptCard}`}>
         {input.canEdit ? (
-          <button className={styles.promptReadButton} type="button" disabled={input.isSaving} onClick={input.onStartEdit}>
+          <button
+            className={styles.promptReadButton}
+            type="button"
+            disabled={input.isSaving}
+            aria-label="Edit GM prompt"
+            onClick={input.onStartEdit}
+          >
             <span className="t-small">{promptText}</span>
-            <span className={`t-small ${styles.promptReadHint}`}>Click to edit</span>
+            <span className={`t-small ${styles.promptEditHint}`}>Edit prompt</span>
           </button>
         ) : (
           <div className="t-small">{promptText}</div>

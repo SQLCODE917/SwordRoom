@@ -142,8 +142,13 @@ describe('PregameLobbyPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Pregame Lobby' })).toBeTruthy();
     expect(screen.getByText('Dungeon Delvers (game-1)')).toBeTruthy();
+    expect(screen.getByText('Players')).toBeTruthy();
+    expect(screen.getByText('2 joined')).toBeTruthy();
+    expect(screen.getAllByText('Characters').length).toBeGreaterThan(0);
+    expect(screen.getByText('1/2 ready')).toBeTruthy();
+    expect(screen.getByText('Prompt')).toBeTruthy();
+    expect(screen.getAllByText('09:15').length).toBeGreaterThan(0);
     expect(screen.getByText('One player still needs a character before the party is fully represented.')).toBeTruthy();
-    expect(screen.getByText('Latest: @Zed GM said "We still need a frontline character."')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Answer Prompt In Create' }).getAttribute('href')).toBe(
       '/games/game-1/characters/char-1/edit?entry=lobby&focus=prompt'
     );
@@ -153,25 +158,25 @@ describe('PregameLobbyPage', () => {
     );
     expect(within(workflow).getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
     expect(within(workflow).getByRole('link', { name: 'Characters' }).getAttribute('href')).toBe('/games/game-1/characters');
-    expect(screen.getByRole('link', { name: 'Continue Character' }).getAttribute('href')).toBe(
-      '/games/game-1/characters/char-1/edit?entry=lobby&focus=revise'
-    );
-    expect(screen.getByRole('link', { name: 'Character Sheet' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
     expect(
       screen
         .getAllByRole('link', { name: 'Inbox' })
         .some((link) => link.getAttribute('href') === '/inbox?mode=player')
     ).toBe(true);
-    expect(screen.getByText('Your current character is Borin Stonehand (DRAFT).')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Continue Character' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Character Sheet' })).toBeNull();
+    expect(screen.queryByText('Your current character is Borin Stonehand (DRAFT).')).toBeNull();
+    expect(screen.queryByText('PROMPT')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Edit Prompt' })).toBeNull();
     expect(screen.getByText('We still need Frontline. Please share a draft if you can cover it.')).toBeTruthy();
     expect(screen.queryByText('Party Needs')).toBeNull();
 
-    const roster = screen.getByRole('table', { name: 'Pregame party roster' });
+    const roster = screen.getByRole('list', { name: 'Pregame party roster' });
     expect(within(roster).getByText('@Zed GM')).toBeTruthy();
-    expect(within(roster).getByRole('link', { name: 'Open Borin Stonehand' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
+    expect(within(roster).getByRole('link', { name: 'Borin Stonehand' }).getAttribute('href')).toBe('/games/game-1/characters/char-1');
     expect(within(roster).getAllByText('No character yet')).toHaveLength(2);
 
-    const activity = screen.getByRole('table', { name: 'Pregame recent activity' });
+    const activity = screen.getByRole('list', { name: 'Pregame recent activity' });
     expect(within(activity).getByText('@Zed GM')).toBeTruthy();
     expect(within(activity).getByText('We still need a frontline character.')).toBeTruthy();
   });
@@ -250,7 +255,10 @@ describe('PregameLobbyPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('No GM planning prompt is active yet.')).toBeTruthy();
+    expect(await screen.findByText('Set a prompt to give players one clear character-building direction.')).toBeTruthy();
+    expect(screen.queryByText('Click to edit')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Edit GM prompt' })).toBeTruthy();
+    expect(screen.getByText('Edit prompt')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Set Planning Prompt' }));
     const promptText = await screen.findByRole('textbox', { name: 'Prompt text' });
     expect((promptText as HTMLTextAreaElement).value.trim().length).toBeGreaterThan(0);
@@ -330,7 +338,7 @@ describe('PregameLobbyPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Pregame Lobby' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Home' }).getAttribute('href')).toBe('/');
-    expect(screen.queryByRole('table', { name: 'Pregame party roster' })).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Pregame party roster' })).toBeNull();
   });
 
   it('shows a live handoff when gameplay has already started', async () => {
@@ -373,6 +381,6 @@ describe('PregameLobbyPage', () => {
     expect(screen.getByRole('link', { name: 'Play' }).getAttribute('href')).toBe('/games/game-1/play');
     expect(screen.getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');
     expect(screen.getByRole('link', { name: 'GM Play' }).getAttribute('href')).toBe('/gm/games/game-1?mode=gm-play');
-    expect(screen.queryByRole('table', { name: 'Pregame party roster' })).toBeNull();
+    expect(screen.queryByRole('list', { name: 'Pregame party roster' })).toBeNull();
   });
 });

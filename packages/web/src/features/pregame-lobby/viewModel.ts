@@ -39,11 +39,12 @@ export type PregameLobbyViewModel =
       notice: string;
       actions: LobbyAction[];
       workflow: LobbyWorkflow;
-      statusLines: string[];
+      statusMetrics: LobbyStatusMetric[];
+      statusHint: string;
       primaryAction: LobbyPrimaryAction;
-      promptLines: string[];
+      prompt: LobbyPromptViewModel;
       rosterRows: LobbyRosterRow[];
-      recentActivityRows: LobbyActivityRow[];
+      recentActivityEntries: LobbyActivityEntry[];
     };
 
 export interface LobbyAction {
@@ -51,6 +52,16 @@ export interface LobbyAction {
   to: string;
   disabled?: boolean;
   disabledReason?: string | null;
+}
+
+export interface LobbyStatusMetric {
+  label: string;
+  value: string;
+  tone: "neutral" | "attention" | "ready";
+}
+
+export interface LobbyPromptViewModel {
+  text: string;
 }
 
 export interface LobbyRosterRow {
@@ -61,11 +72,12 @@ export interface LobbyRosterRow {
   characterTo: string | null;
 }
 
-export interface LobbyActivityRow {
+export interface LobbyActivityEntry {
   key: string;
+  timeLabel: string;
   actorLabel: string;
-  body: string;
-  createdAtLabel: string;
+  message: string;
+  kind: "message" | "prompt" | "draft" | "reaction" | "claim";
 }
 
 export interface LobbyWorkflow {
@@ -161,8 +173,7 @@ export function createPregameLobbyViewModel(
     ? ownCharacter.status !== "PENDING" && ownCharacter.status !== "APPROVED"
     : false;
 
-  const promptLines = buildPromptLines(state);
-  const statusLines = buildLobbyStatusLines(state, ownCharacter);
+  const status = buildLobbyStatus(state, ownCharacter);
   const primaryAction = buildPrimaryAction(
     state,
     ownCharacter,
@@ -204,16 +215,17 @@ export function createPregameLobbyViewModel(
         ? `/games/${encodeURIComponent(state.game.gameId)}/characters/${encodeURIComponent(ownCharacter.characterId)}`
         : null,
     },
-    statusLines,
+    statusMetrics: status.metrics,
+    statusHint: status.hint,
     primaryAction,
-    promptLines,
+    prompt: buildPrompt(state),
     rosterRows: state.chat.participants.map((participant) =>
       buildRosterRow(state.game.gameId, participant, ownCharacter),
     ),
-    recentActivityRows: state.chat.messages
-      .slice(-3)
+    recentActivityEntries: state.chat.messages
+      .slice(-5)
       .reverse()
-      .map(buildActivityRow),
+      .map(buildActivityEntry),
   };
 }
 
@@ -274,6 +286,9 @@ function buildPrimaryAction(
   const gameId = state.game.gameId;
   const latestActivity =
     state.chat.messages[state.chat.messages.length - 1] ?? null;
+  const hasPlayerActivity = state.chat.messages.some(
+    (message) => message.senderRole === "PLAYER",
+  );
 
   if (state.actorContext.isGameMaster) {
     if (!state.planning.activePrompt) {
@@ -283,7 +298,7 @@ function buildPrimaryAction(
         detail: "Guide the party by posting a planning prompt.",
       };
     }
-    if (latestActivity) {
+    if (latestActivity && hasPlayerActivity) {
       return {
         kind: "route",
         label: "Respond In Chat",
@@ -297,7 +312,7 @@ function buildPrimaryAction(
       label: "Open Chat",
       to: `/games/${encodeURIComponent(gameId)}/chat`,
       detail:
-        "Start the planning conversation and guide the party toward a workable composition.",
+        "Engage your players - their character sheets are their wish lists.",
     };
   }
 
@@ -344,11 +359,10 @@ function buildPrimaryAction(
   };
 }
 
-function buildLobbyStatusLines(
+function buildLobbyStatus(
   state: Extract<PregameLobbyState, { status: "ready" }>,
   ownCharacter: CharacterItem | null,
-): string[] {
-  const lines: string[] = [];
+): { metrics: LobbyStatusMetric[]; hint: string } {
   const latestActivity =
     state.chat.messages[state.chat.messages.length - 1] ?? null;
   const playerCount = state.chat.participants.filter(
@@ -358,94 +372,96 @@ function buildLobbyStatusLines(
     (participant) =>
       participant.role === "PLAYER" && participant.characterId === null,
   ).length;
-
-  lines.push(
-    ownCharacter
-      ? `Your current character is ${readCharacterName(ownCharacter)} (${ownCharacter.status}).`
-      : "You do not have a character in this game yet.",
+  const readyCharacterCount = Math.max(
+    playerCount - playersWithoutCharacterCount,
+    0,
   );
-  lines.push(
-    state.actorContext.isGameMaster
-      ? "You are coordinating the pregame planning loop for this table."
-      : "Use this lobby to move between your draft, the party conversation, and your sheet.",
-  );
+  const hasActivePrompt = Boolean(state.planning.activePrompt);
 
-  if (playerCount === 0) {
-    lines.push("No players have joined this game yet.");
-  } else if (playersWithoutCharacterCount === 0) {
-    lines.push("Every listed player currently has a character attached.");
+  const metrics: LobbyStatusMetric[] = [
+    {
+      label: "Players",
+      value: playerCount === 1 ? "1 joined" : `${playerCount} joined`,
+      tone: playerCount === 0 ? "attention" : "neutral",
+    },
+    {
+      label: "Characters",
+      value:
+        playerCount === 0
+          ? "0 ready"
+          : `${readyCharacterCount}/${playerCount} ready`,
+      tone:
+        playerCount > 0 && playersWithoutCharacterCount === 0
+          ? "ready"
+          : "attention",
+    },
+    {
+      label: "Prompt",
+      value: state.planning.activePrompt
+        ? formatTime(state.planning.activePrompt.createdAt)
+        : "No prompt",
+      tone: hasActivePrompt ? "ready" : "attention",
+    },
+    {
+      label: "Latest",
+      value: latestActivity
+        ? `${latestActivity.senderDisplayName}, ${formatTime(latestActivity.createdAt)}`
+        : "No activity",
+      tone: latestActivity ? "neutral" : "attention",
+    },
+  ];
+
+  let hint: string;
+  if (state.actorContext.isGameMaster) {
+    if (playerCount === 0) {
+      hint = hasActivePrompt
+        ? "No players have joined yet. But there is a prompt."
+        : "No players have joined yet. Set a prompt so the first reply has direction.";
+    } else if (playersWithoutCharacterCount === 0) {
+      hint =
+        "Every listed player has a character attached. Use Chat to align on final party fit.";
+    } else if (playersWithoutCharacterCount === 1) {
+      hint =
+        "One player still needs a character before the party is fully represented.";
+    } else {
+      hint = `${playersWithoutCharacterCount} players still need characters before the party is fully represented.`;
+    }
   } else if (playersWithoutCharacterCount === 1) {
-    lines.push(
-      "One player still needs a character before the party is fully represented.",
-    );
-  } else {
-    lines.push(
-      `${playersWithoutCharacterCount} players still need characters before the party is fully represented.`,
-    );
-  }
-
-  lines.push(
-    state.chat.messages.length > 0
-      ? `Recent chat is active with ${state.chat.messages.length} message${state.chat.messages.length === 1 ? "" : "s"}.`
-      : "No pregame chat messages have been posted yet.",
-  );
-  if (!latestActivity) {
-    lines.push("Latest: no pregame chat yet");
-  } else if (
-    latestActivity.body === "GM posted a new pregame planning prompt." &&
-    state.planning.activePrompt
-  ) {
-    lines.push(`Latest prompt: "${state.planning.activePrompt.prompt}"`);
-  } else {
-    lines.push(
-      `Latest: ${latestActivity.senderDisplayName} said "${latestActivity.body}"`,
-    );
-  }
-
-  if (!ownCharacter) {
-    lines.push(
-      "Your next useful move is to create a character draft or review the party conversation first.",
-    );
+    hint =
+      "One player still needs a character before the party is fully represented.";
+  } else if (playersWithoutCharacterCount > 1) {
+    hint = `${playersWithoutCharacterCount} players still need characters before the party is fully represented.`;
+  } else if (!ownCharacter) {
+    hint =
+      "Create a character or review Chat before choosing your draft direction.";
   } else if (ownCharacter.status === "PENDING") {
-    lines.push(
-      "Your character is pending GM review. Use chat to coordinate with the table while you wait.",
-    );
+    hint =
+      "Your character is pending GM review. Use Chat to coordinate while you wait.";
   } else if (ownCharacter.status === "APPROVED") {
-    lines.push(
-      "Your character is approved. Use chat to align on party composition and opening plans.",
-    );
+    hint =
+      "Your character is approved. Use Chat to align on party composition and opening plans.";
   } else {
-    lines.push(
-      "Your character is still editable. Share updates in chat as you iterate on the draft.",
-    );
+    hint =
+      "Your character is still editable. Share updates in Chat as you iterate.";
   }
 
-  return lines;
+  return { metrics, hint };
 }
 
-function buildPromptLines(
+function buildPrompt(
   state: Extract<PregameLobbyState, { status: "ready" }>,
-): string[] {
-  const lines: string[] = [];
-
+): LobbyPromptViewModel {
   if (state.planning.activePrompt) {
-    lines.push(
-      `${state.planning.activePrompt.senderDisplayName}: ${state.planning.activePrompt.title}`,
-    );
-    lines.push(state.planning.activePrompt.prompt);
-  } else if (state.actorContext.isGameMaster) {
-    lines.push("No GM planning prompt is active yet.");
-    lines.push(
-      "Use Chat or the GM tools to set party direction before the session begins.",
-    );
-  } else {
-    lines.push("No GM planning prompt is active yet.");
-    lines.push(
-      "Share your current draft or review the party conversation to help the table converge.",
-    );
+    return {
+      text: state.planning.activePrompt.prompt,
+    };
   }
 
-  return lines;
+  return {
+    text: state.actorContext.isGameMaster
+      ? "Set a prompt to give players one clear character-building direction."
+      : "No GM planning prompt is active yet.",
+  };
 }
 
 function buildRosterRow(
@@ -474,13 +490,54 @@ function buildRosterRow(
   };
 }
 
-function buildActivityRow(message: GameChatMessage): LobbyActivityRow {
+function buildActivityEntry(message: GameChatMessage): LobbyActivityEntry {
   return {
     key: message.messageId,
+    timeLabel: formatTime(message.createdAt),
     actorLabel: message.senderDisplayName,
-    body: message.body,
-    createdAtLabel: formatTimestamp(message.createdAt),
+    message: readActivityMessage(message),
+    kind: readActivityKind(message),
   };
+}
+
+function readActivityKind(
+  message: GameChatMessage,
+): LobbyActivityEntry["kind"] {
+  if (message.artifact?.kind === "GAME_PROMPT") {
+    return "prompt";
+  }
+  if (message.artifact?.kind === "CHARACTER_DRAFT") {
+    return "draft";
+  }
+  if (message.artifact?.kind === "PARTY_ROLE_CLAIM") {
+    return "claim";
+  }
+  if (message.artifact?.kind === "CHARACTER_DRAFT_REACTION") {
+    return "reaction";
+  }
+  return "message";
+}
+
+function readActivityMessage(message: GameChatMessage): string {
+  if (message.artifact?.kind === "GAME_PROMPT") {
+    return message.artifact.prompt;
+  }
+  if (message.artifact?.kind === "CHARACTER_DRAFT") {
+    return (
+      message.artifact.contextNote ??
+      `Shared ${message.artifact.characterName}.`
+    );
+  }
+  if (message.artifact?.kind === "PARTY_ROLE_CLAIM") {
+    return (
+      message.artifact.note ??
+      `${message.artifact.characterName} claimed ${message.artifact.roles.join(", ")}.`
+    );
+  }
+  if (message.artifact?.kind === "CHARACTER_DRAFT_REACTION") {
+    return `${message.artifact.characterName}: ${message.artifact.reaction}`;
+  }
+  return message.body;
 }
 
 function readCharacterName(character: CharacterItem): string {
@@ -496,14 +553,12 @@ function readCharacterName(character: CharacterItem): string {
   return name || character.characterId;
 }
 
-function formatTimestamp(value: string): string {
+function formatTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
   }
   return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
