@@ -202,12 +202,6 @@ function MyGamesTable(input: {
           <th className={`${styles.headerCell} t-small`} scope="col">
             Game
           </th>
-          <th className={`${styles.headerCell} t-small`} scope="col">
-            Visibility
-          </th>
-          <th className={`${styles.headerCell} t-small`} scope="col">
-            Actions
-          </th>
         </tr>
       </thead>
       <tbody>
@@ -216,24 +210,55 @@ function MyGamesTable(input: {
             loading: input.loading,
             emptyText: input.emptyText,
             loadingLabel: 'Loading games...',
-            columnCount: 3,
+            columnCount: 1,
           })
         ) : (
           input.rows.map((row) => (
             <tr key={row.key}>
               <td className={`${styles.bodyCell} t-small`}>
-                <div>{row.gameName}</div>
-                {row.phaseLabel ? <div className="t-small">Phase: {row.phaseLabel}</div> : null}
-              </td>
-              <td className={`${styles.bodyCell} t-small`}>{row.visibility}</td>
-              <td className={`${styles.bodyCell} t-small`}>
-                <ActionDeck actions={row.actions} />
+                <div className={styles.myGameRow}>
+                  <div className={styles.myGameHeader}>
+                    <div className={styles.myGameIdentity}>
+                      <div>{row.gameName}</div>
+                      {row.phaseLabel ? (
+                        <div className="t-small">Phase: {row.phaseLabel}</div>
+                      ) : null}
+                    </div>
+                    <div className={styles.myGameStatus}>{row.visibility}</div>
+                  </div>
+                  <MyGameActions actions={row.actions} />
+                </div>
               </td>
             </tr>
           ))
         )}
       </tbody>
     </table>
+  );
+}
+
+function MyGameActions({ actions }: { actions: ActionDeckViewModel }) {
+  const destructiveActions = actions.secondary.filter(
+    (action) => action.variant === 'destructive',
+  );
+  const secondaryActions = actions.secondary.filter(
+    (action) => action.variant !== 'destructive',
+  );
+
+  return (
+    <div className={styles.myGameActions}>
+      <div className={styles.myGamePrimaryAction}>{renderAction(actions.primary)}</div>
+      {secondaryActions.length > 0 ? (
+        <div className={styles.myGameSecondaryActions}>
+          {secondaryActions.map((action) => renderAction(action))}
+        </div>
+      ) : null}
+      {destructiveActions.length > 0 ? (
+        <div className={styles.myGameDestructiveActions}>
+          {destructiveActions.map((action) => renderAction(action))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

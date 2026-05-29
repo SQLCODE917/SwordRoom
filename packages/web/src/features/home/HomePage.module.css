@@ -59,6 +59,44 @@
   vertical-align: top;
 }
 
+.myGameRow {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.myGameHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap);
+}
+
+.myGameIdentity {
+  min-width: 0;
+  display: grid;
+  gap: var(--s-1);
+}
+
+.myGameStatus {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: var(--s-1) var(--s-2);
+  white-space: nowrap;
+}
+
+.myGameActions {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.myGamePrimaryAction,
+.myGameSecondaryActions,
+.myGameDestructiveActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
 .actionDeck {
   display: grid;
   gap: var(--s-2);
@@ -123,5 +161,14 @@
 
   .secondaryActions {
     align-self: start;
+  }
+
+  .myGameRow {
+    grid-template-columns: minmax(180px, 1fr) minmax(280px, 2fr);
+    align-items: start;
+  }
+
+  .myGameActions {
+    justify-items: start;
   }
 }

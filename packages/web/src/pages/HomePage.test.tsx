@@ -379,7 +379,7 @@ describe('HomePage', () => {
     ).toBeNull();
   });
 
-  it('keeps one dominant action visible on game rows and nests secondary actions', async () => {
+  it('shows game status inline and keeps game actions visible in My Games rows', async () => {
     vi.mocked(useAuthProvider).mockReturnValue(createAuth());
     vi.mocked(useMyProfile).mockReturnValue({
       profile: {
@@ -413,11 +413,13 @@ describe('HomePage', () => {
 
     const row = (await screen.findByText('Game One')).closest('tr');
     expect(row).toBeTruthy();
+    expect(screen.queryByRole('columnheader', { name: 'Visibility' })).toBeNull();
+    expect(within(row as HTMLElement).getByText('PUBLIC')).toBeTruthy();
     expect(within(row as HTMLElement).getByRole('link', { name: 'Open Lobby' })).toBeTruthy();
-    expect(within(row as HTMLElement).getByText('More Actions')).toBeTruthy();
-
-    openRowMoreActions(row as HTMLElement);
     expect(within(row as HTMLElement).getByRole('link', { name: 'Chat' })).toBeTruthy();
+    expect(within(row as HTMLElement).getByRole('link', { name: 'Inbox' })).toBeTruthy();
+    expect(within(row as HTMLElement).getByRole('link', { name: 'Play' })).toBeTruthy();
+    expect(within(row as HTMLElement).queryByText('More Actions')).toBeNull();
   });
 
   it('disables New Character on joined games where the player already has a character', async () => {
