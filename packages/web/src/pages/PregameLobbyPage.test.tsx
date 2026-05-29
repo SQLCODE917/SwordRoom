@@ -148,7 +148,7 @@ describe('PregameLobbyPage', () => {
       '/games/game-1/characters/char-1/edit?entry=lobby&focus=prompt'
     );
     const workflow = screen.getByRole('navigation', { name: 'Pregame workflow' });
-    expect(within(workflow).getByRole('link', { name: 'Create' }).getAttribute('href')).toBe(
+    expect(within(workflow).getByRole('link', { name: '+ Create Character' }).getAttribute('href')).toBe(
       '/games/game-1/characters/char-1/edit?entry=lobby&focus=prompt'
     );
     expect(within(workflow).getByRole('link', { name: 'Chat' }).getAttribute('href')).toBe('/games/game-1/chat');

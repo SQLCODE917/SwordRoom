@@ -16,7 +16,7 @@ export function PregameWorkflowNav({
   return (
     <nav className="c-pregame-nav" aria-label="Pregame workflow">
       <NavButton label="Lobby" to={`/games/${encodeURIComponent(gameId)}`} end />
-      <NavButton label="Create" to={createTo} />
+      <NavButton label="+ Create Character" to={createTo} />
       <NavButton label="Chat" to={`/games/${encodeURIComponent(gameId)}/chat`} />
       <NavButton label="Characters" to={charactersTo} />
       {includeInbox ? <NavButton label="Inbox" to="/inbox?mode=player" /> : null}

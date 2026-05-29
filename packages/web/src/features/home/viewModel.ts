@@ -787,7 +787,7 @@ function readPregameDigestActionLabel(entry: PregameDigestEntry): string {
     return 'Open Chat';
   }
   if (entry.destination === 'CREATE_CHARACTER') {
-    return '+ Create Draft';
+    return '+ Create Character';
   }
   if (entry.destination === 'EDIT_CHARACTER') {
     return 'Edit Draft';
