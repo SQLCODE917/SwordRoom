@@ -149,13 +149,15 @@ export async function deleteGame(page: Page, gameName: string): Promise<void> {
 
 export async function createLibraryCharacter(page: Page, name: string): Promise<void> {
   await page.goto('/');
-  await expect(page.getByRole('table', { name: 'My Characters' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Your Characters' }).click();
+  await expect(page.getByRole('table', { name: 'Your Characters' })).toBeVisible();
   await page.getByRole('link', { name: 'New Character' }).click();
   await autofillCharacterWizardDraft(page, name);
   await openWizardSubmitStep(page);
   await page.getByRole('button', { name: /^Create Character$/ }).click();
   await page.getByRole('link', { name: 'Home' }).click();
-  await expect(page.getByRole('table', { name: 'My Characters' }).getByText(name, { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Your Characters' }).click();
+  await expect(page.getByRole('table', { name: 'Your Characters' }).getByText(name, { exact: true })).toBeVisible();
 }
 
 export async function applyToJoinWithNewCharacter(page: Page, gameName: string, characterName: string): Promise<void> {
@@ -513,7 +515,7 @@ export function myGamesRow(page: Page, gameName: string): Locator {
 }
 
 export function myCharactersRow(page: Page, characterName: string): Locator {
-  return rowInTable(page, 'My characters', characterName);
+  return rowInTable(page, 'Your Characters', characterName);
 }
 
 export function publicGamesRow(page: Page, gameName: string): Locator {

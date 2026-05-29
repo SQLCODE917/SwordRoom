@@ -12,6 +12,26 @@
   flex-wrap: wrap;
 }
 
+.homeWorkspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.tabList {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--s-2);
+}
+
+.tabLink {
+  width: 100%;
+}
+
+.tabPanel {
+  min-height: 220px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -86,6 +106,10 @@
 }
 
 @media (min-width: 640px) {
+  .tabList {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .actionDeck {
     grid-template-columns: minmax(120px, max-content) 1fr;
     align-items: start;

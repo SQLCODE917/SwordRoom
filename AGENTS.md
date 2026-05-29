@@ -17,7 +17,7 @@ If the human corrects the same class of mistake twice, update the relevant agent
 
 ## Continuous Maintenance Discipline
 
-Every time a file gets touched, it gets a mini-review, preventing gradual drift away from the repo rules.
+Every time you touch a file, give it a review, as to prevent drift away from the repo rules.
 
 - Every time you edit a file, review that file for adherence to the repo rules in `AGENTS.md` and relevant `docs/` files.
 - If you find drift in code relevant to your task, immediately align it with the repo rules.

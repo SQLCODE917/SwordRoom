@@ -98,7 +98,10 @@ describe('HomePage', () => {
     vi.mocked(createApiClient).mockReturnValue(createApiClientMock());
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter
+        initialEntries={['/?tab=my-games']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <HomePage />
       </MemoryRouter>,
     );
@@ -137,8 +140,105 @@ describe('HomePage', () => {
     );
 
     expect(screen.getByText('Pregame Quick Start')).toBeTruthy();
-    expect(screen.getAllByText('Loading characters...').length).toBeGreaterThan(0);
+    expect(screen.getByRole('tab', { name: 'My Games' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Public Games' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Your Characters' })).toBeTruthy();
     expect(screen.getAllByText('Loading games...').length).toBeGreaterThan(0);
+  });
+
+  it('defaults to Public Games when the player is not in any games', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(createAuth());
+    vi.mocked(useMyProfile).mockReturnValue({
+      profile: {
+        playerId: 'player-aaa',
+        displayName: 'Local Player',
+        email: 'player@example.com',
+        roles: ['PLAYER'],
+      },
+      loading: false,
+      error: null,
+    });
+    vi.mocked(createApiClient).mockReturnValue(createApiClientMock());
+
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    const publicGamesTab = await screen.findByRole('tab', { name: 'Public Games' });
+    expect(publicGamesTab.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('table', { name: 'Public Games' })).toBeTruthy();
+  });
+
+  it('defaults to My Games when the player is in a game', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(createAuth());
+    vi.mocked(useMyProfile).mockReturnValue({
+      profile: {
+        playerId: 'player-aaa',
+        displayName: 'Local Player',
+        email: 'player@example.com',
+        roles: ['PLAYER'],
+      },
+      loading: false,
+      error: null,
+    });
+    vi.mocked(createApiClient).mockReturnValue(
+      createApiClientMock({
+        getMyGames: vi.fn(async (): Promise<GameItem[]> => [
+          {
+            gameId: 'game-1',
+            name: 'Game One',
+            visibility: 'PUBLIC',
+            gmPlayerId: 'gm-zzz',
+            version: 1,
+          },
+        ]),
+      }),
+    );
+
+    render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    const myGamesTab = await screen.findByRole('tab', { name: 'My Games' });
+    expect(myGamesTab.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('table', { name: 'My Games' })).toBeTruthy();
+  });
+
+  it('honors a deep link to Your Characters', async () => {
+    vi.mocked(useAuthProvider).mockReturnValue(createAuth());
+    vi.mocked(useMyProfile).mockReturnValue({
+      profile: {
+        playerId: 'player-aaa',
+        displayName: 'Local Player',
+        email: 'player@example.com',
+        roles: ['PLAYER'],
+      },
+      loading: false,
+      error: null,
+    });
+    vi.mocked(createApiClient).mockReturnValue(createApiClientMock());
+
+    render(
+      <MemoryRouter
+        initialEntries={['/?tab=your-characters']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    const charactersTab = await screen.findByRole('tab', {
+      name: 'Your Characters',
+    });
+    expect(charactersTab.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('table', { name: 'Your Characters' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'New Character' }).getAttribute('href')).toBe(
+      '/player/player-aaa/character/new',
+    );
   });
 
   it('keeps debug-only profile errors out of the main Home surface', async () => {
@@ -189,7 +289,10 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter
+        initialEntries={['/?tab=your-characters']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <HomePage />
       </MemoryRouter>,
     );
@@ -247,7 +350,10 @@ describe('HomePage', () => {
     );
 
     render(
-      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <MemoryRouter
+        initialEntries={['/?tab=your-characters']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
         <HomePage />
       </MemoryRouter>,
     );
