@@ -91,7 +91,7 @@ function MyGamesWorkspace({ state }: { state: MyGamesWorkspaceStateViewModel }) 
     <section className="l-col" aria-label="My Games section">
       <div className={styles.sectionHeader}>
         <SectionTitle title={state.title} />
-        <ButtonLink to={state.createGameHref}>Create Game</ButtonLink>
+        <ButtonLink to={state.createGameHref}>+ Create Game</ButtonLink>
       </div>
       <MyGamesTable
         rows={state.rows}
@@ -111,7 +111,7 @@ function PublicGamesWorkspace({
     <section className="l-col" aria-label="Public Games section">
       <div className={styles.sectionHeader}>
         <SectionTitle title={state.title} />
-        <ButtonLink to={state.createGameHref}>Create Game</ButtonLink>
+        <ButtonLink to={state.createGameHref}>+ Create Game</ButtonLink>
       </div>
       <PublicGamesTable
         rows={state.rows}

@@ -9,19 +9,20 @@ import {
 import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { reportDebugStatusRegion } from '../debug/debugTelemetry';
 import { Panel } from '../components/Panel';
-import { ActionDeck, HomeWorkspace } from '../features/home/components/HomeWorkspace';
+import { ButtonLink } from '../components/ButtonLink';
+import { HomeWorkspace } from '../features/home/components/HomeWorkspace';
 import {
   buildCharacterRows,
   buildGameCharacterByGameId,
   buildMyGameRows,
   buildPublicGameRows,
   createHomeWorkspaceViewModel,
-  createQuickStartActionDeckViewModel,
-  createQuickStartViewModel,
+  createNextMoveViewModel,
   emptyDashboardState,
   parseHomeTab,
   type DashboardState,
   type HomeWorkspaceViewModel,
+  type NextMoveViewModel,
 } from '../features/home/viewModel';
 import {
   createCommandId,
@@ -32,9 +33,7 @@ import { logWebFlow, summarizeError } from '../logging/flowLog';
 import styles from '../features/home/HomePage.module.css';
 
 interface HomePageViewModel {
-  quickStartHeadline: string;
-  quickStartDetail: string;
-  quickStartActions: ReturnType<typeof createQuickStartActionDeckViewModel>;
+  nextMove: NextMoveViewModel;
   workspace: HomeWorkspaceViewModel;
 }
 
@@ -44,15 +43,12 @@ export function HomePage() {
   return (
     <div className="l-page">
       <Panel title="Home" subtitle="Your characters and visible games.">
-        <Panel
-          title="Pregame Quick Start"
-          subtitle="Fastest path into active planning on a phone."
-        >
-          <div className={`c-note c-note--info ${styles.quickStartNote}`}>
-            <div className="t-small">{view.quickStartHeadline}</div>
-            <div className="t-small">{view.quickStartDetail}</div>
+        <Panel title={view.nextMove.title}>
+          <div className={`c-note c-note--info ${styles.nextMoveNote}`}>
+            <div className="t-small">{view.nextMove.headline}</div>
+            <div className="t-small">{view.nextMove.detail}</div>
           </div>
-          <ActionDeck actions={view.quickStartActions} />
+          <NextMoveActions nextMove={view.nextMove} />
         </Panel>
 
         <HomeWorkspace workspace={view.workspace} />
@@ -236,9 +232,9 @@ function useHomePageViewModel(): HomePageViewModel {
   const gameCharacterByGameId = useMemo(() => {
     return buildGameCharacterByGameId(dashboard.characters);
   }, [dashboard.characters]);
-  const quickStart = useMemo(
+  const nextMove = useMemo(
     () =>
-      createQuickStartViewModel({
+      createNextMoveViewModel({
         actorId: auth.actorId,
         dashboard,
         joinedGameIds,
@@ -246,11 +242,6 @@ function useHomePageViewModel(): HomePageViewModel {
         gameCharacterByGameId,
       }),
     [auth.actorId, dashboard, joinedGameIds, gmGameIds, gameCharacterByGameId],
-  );
-
-  const quickStartActions = useMemo(
-    () => createQuickStartActionDeckViewModel(quickStart),
-    [quickStart],
   );
 
   const characterRows = useMemo(
@@ -333,11 +324,29 @@ function useHomePageViewModel(): HomePageViewModel {
   }, [auth.actorId, errorText, loading]);
 
   return {
-    quickStartHeadline: quickStart.headline,
-    quickStartDetail: quickStart.detail,
-    quickStartActions,
+    nextMove,
     workspace,
   };
+}
+
+function NextMoveActions({ nextMove }: { nextMove: NextMoveViewModel }) {
+  return (
+    <div className={styles.nextMoveActions}>
+      <ButtonLink to={nextMove.primaryAction.to}>
+        {nextMove.primaryAction.label}
+      </ButtonLink>
+      {nextMove.secondaryActions.map((action) => (
+        <ButtonLink
+          key={`${action.label}:${action.to}`}
+          to={action.to}
+          disabled={action.disabled}
+          disabledReason={action.disabledReason}
+        >
+          {action.label}
+        </ButtonLink>
+      ))}
+    </div>
+  );
 }
 
 export { PublicGamesTable } from '../features/home/components/HomeWorkspace';

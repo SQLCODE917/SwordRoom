@@ -107,16 +107,26 @@ export interface GameRowViewModel {
   actions: ActionDeckViewModel;
 }
 
-export interface QuickStartAction {
+export interface NextMoveAction {
   label: string;
   to: string;
+  disabled: boolean;
+  disabledReason: string | null;
 }
 
-export interface QuickStartViewModel {
+export type NextMoveKind =
+  | 'resume-planning'
+  | 'join-public-game'
+  | 'create-for-game'
+  | 'start-table';
+
+export interface NextMoveViewModel {
+  kind: NextMoveKind;
+  title: string;
   headline: string;
   detail: string;
-  primaryAction: QuickStartAction;
-  secondaryActions: QuickStartAction[];
+  primaryAction: NextMoveAction;
+  secondaryActions: NextMoveAction[];
 }
 
 const existingCharacterDisabledReason =
@@ -229,26 +239,6 @@ function createHomeWorkspaceState(input: {
     rows: input.publicGameRows,
     loading: input.loading,
     emptyText: 'No public games found.',
-  };
-}
-
-export function createQuickStartActionDeckViewModel(
-  quickStart: QuickStartViewModel,
-): ActionDeckViewModel {
-  return {
-    primary: createLinkAction({
-      key: `quick-start:${quickStart.primaryAction.label}`,
-      label: quickStart.primaryAction.label,
-      to: quickStart.primaryAction.to,
-    }),
-    secondary: quickStart.secondaryActions.map((action) =>
-      createLinkAction({
-        key: `quick-start:${action.label}`,
-        label: action.label,
-        to: action.to,
-      }),
-    ),
-    moreLabel: 'More Start Actions',
   };
 }
 
@@ -515,13 +505,13 @@ export function buildGameCharacterByGameId(
   return next;
 }
 
-export function createQuickStartViewModel(input: {
+export function createNextMoveViewModel(input: {
   actorId: string;
   dashboard: DashboardState;
   joinedGameIds: ReadonlySet<string>;
   gmGameIds: ReadonlySet<string>;
   gameCharacterByGameId: ReadonlyMap<string, CharacterItem>;
-}): QuickStartViewModel {
+}): NextMoveViewModel {
   const digestEntry = input.dashboard.pregameDigest[0] ?? null;
   const joinableGame =
     input.dashboard.publicGames.find(
@@ -538,27 +528,33 @@ export function createQuickStartViewModel(input: {
 
   if (digestEntry) {
     return {
-      headline: `Resume planning in ${digestEntry.gameName}`,
+      kind: 'resume-planning',
+      title: 'Next Move',
+      headline: `Continue in ${digestEntry.gameName}`,
       detail: digestEntry.headline,
       primaryAction: {
         label: readPregameDigestActionLabel(digestEntry),
         to: toPregameDigestPath(digestEntry),
+        disabled: false,
+        disabledReason: null,
       },
-      secondaryActions: buildSecondaryQuickStartActions({
+      secondaryActions: buildSecondaryNextMoveActions({
         actorId: input.actorId,
         joinableGame,
         gameNeedingCharacter,
+        hasSavedCharacters: hasSavedCharacters(input.dashboard.characters),
       }),
     };
   }
 
   if (joinableGame) {
     return {
-      headline: `Join ${joinableGame.name}`,
-      detail:
-        'Start planning by creating a character draft for a visible game.',
+      kind: 'join-public-game',
+      title: 'Next Move',
+      headline: `${joinableGame.name} is open`,
+      detail: 'Create a draft to join the table.',
       primaryAction: {
-        label: 'Join a Game',
+        label: '+ Create Character',
         to: appendCharacterWizardEntryContext(
           `/games/${encodeURIComponent(joinableGame.gameId)}/character/new`,
           {
@@ -566,22 +562,26 @@ export function createQuickStartViewModel(input: {
             focus: 'start',
           },
         ),
+        disabled: false,
+        disabledReason: null,
       },
-      secondaryActions: buildSecondaryQuickStartActions({
+      secondaryActions: buildSecondaryNextMoveActions({
         actorId: input.actorId,
         joinableGame,
         gameNeedingCharacter,
-      }).filter((action) => action.label !== 'Join a Game'),
+        hasSavedCharacters: hasSavedCharacters(input.dashboard.characters),
+      }).filter((action) => action.label !== '+ Create Character'),
     };
   }
 
   if (gameNeedingCharacter) {
     return {
-      headline: `Create for ${gameNeedingCharacter.name}`,
-      detail:
-        'Enter the game-scoped creator and start the pregame loop immediately.',
+      kind: 'create-for-game',
+      title: 'Next Move',
+      headline: `${gameNeedingCharacter.name} needs your character`,
+      detail: 'No character from you yet.',
       primaryAction: {
-        label: 'Create a Character',
+        label: '+ Create Character',
         to: appendCharacterWizardEntryContext(
           `/games/${encodeURIComponent(gameNeedingCharacter.gameId)}/character/new`,
           {
@@ -589,28 +589,35 @@ export function createQuickStartViewModel(input: {
             focus: 'start',
           },
         ),
+        disabled: false,
+        disabledReason: null,
       },
-      secondaryActions: buildSecondaryQuickStartActions({
+      secondaryActions: buildSecondaryNextMoveActions({
         actorId: input.actorId,
         joinableGame,
         gameNeedingCharacter,
-      }).filter((action) => action.label !== 'Create a Character'),
+        hasSavedCharacters: hasSavedCharacters(input.dashboard.characters),
+      }).filter((action) => action.label !== '+ Create Character'),
     };
   }
 
   return {
-    headline: 'Start the pregame loop',
-    detail:
-      'Create a game, join a visible game, or start a character draft with the fewest possible steps.',
+    kind: 'start-table',
+    title: 'Next Move',
+    headline: 'Start a table',
+    detail: 'Create a game or make a saved character.',
     primaryAction: {
-      label: 'Start a Game',
+      label: '+ Create Game',
       to: '/gm/games',
+      disabled: false,
+      disabledReason: null,
     },
-    secondaryActions: buildSecondaryQuickStartActions({
+    secondaryActions: buildSecondaryNextMoveActions({
       actorId: input.actorId,
       joinableGame,
       gameNeedingCharacter,
-    }).filter((action) => action.label !== 'Start a Game'),
+      hasSavedCharacters: hasSavedCharacters(input.dashboard.characters),
+    }).filter((action) => action.label !== '+ Create Game'),
   };
 }
 
@@ -703,15 +710,16 @@ function isRemovableGameCharacter(character: CharacterItem): boolean {
   return !isPlayerCharacterLibraryGameId(character.gameId);
 }
 
-function buildSecondaryQuickStartActions(input: {
+function buildSecondaryNextMoveActions(input: {
   actorId: string;
   joinableGame: GameItem | null;
   gameNeedingCharacter: GameItem | null;
-}): QuickStartAction[] {
-  const actions: QuickStartAction[] = [];
+  hasSavedCharacters: boolean;
+}): NextMoveAction[] {
+  const actions: NextMoveAction[] = [];
   if (input.joinableGame) {
     actions.push({
-      label: 'Join a Game',
+      label: '+ Create Character',
       to: appendCharacterWizardEntryContext(
         `/games/${encodeURIComponent(input.joinableGame.gameId)}/character/new`,
         {
@@ -719,30 +727,22 @@ function buildSecondaryQuickStartActions(input: {
           focus: 'start',
         },
       ),
+      disabled: false,
+      disabledReason: null,
     });
   }
   actions.push({
-    label: 'Start a Game',
-    to: '/gm/games',
+    label: 'Saved Character',
+    to: `/player/${encodeURIComponent(input.actorId)}/character/new`,
+    disabled: !input.hasSavedCharacters,
+    disabledReason: input.hasSavedCharacters ? null : 'No saved characters yet.',
   });
-  actions.push({
-    label: 'Create a Character',
-    to: input.gameNeedingCharacter
-      ? appendCharacterWizardEntryContext(
-          `/games/${encodeURIComponent(input.gameNeedingCharacter.gameId)}/character/new`,
-          {
-            entrySource: 'home',
-            focus: 'start',
-          },
-        )
-      : `/player/${encodeURIComponent(input.actorId)}/character/new`,
-  });
-  return dedupeQuickStartActions(actions);
+  return dedupeNextMoveActions(actions);
 }
 
-function dedupeQuickStartActions(
-  actions: QuickStartAction[],
-): QuickStartAction[] {
+function dedupeNextMoveActions(
+  actions: NextMoveAction[],
+): NextMoveAction[] {
   const seen = new Set<string>();
   return actions.filter((action) => {
     const key = `${action.label}:${action.to}`;
@@ -752,6 +752,12 @@ function dedupeQuickStartActions(
     seen.add(key);
     return true;
   });
+}
+
+function hasSavedCharacters(characters: CharacterItem[]): boolean {
+  return characters.some((character) =>
+    isPlayerCharacterLibraryGameId(character.gameId),
+  );
 }
 
 function toPregameDigestPath(entry: PregameDigestEntry): string {
@@ -781,7 +787,7 @@ function readPregameDigestActionLabel(entry: PregameDigestEntry): string {
     return 'Open Chat';
   }
   if (entry.destination === 'CREATE_CHARACTER') {
-    return 'Create Draft';
+    return '+ Create Draft';
   }
   if (entry.destination === 'EDIT_CHARACTER') {
     return 'Edit Draft';

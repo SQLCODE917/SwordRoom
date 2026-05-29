@@ -106,7 +106,10 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    const createGameLink = await screen.findByRole('link', { name: 'Create Game' });
+    const myGamesSection = await screen.findByLabelText('My Games section');
+    const createGameLink = within(myGamesSection).getByRole('link', {
+      name: '+ Create Game',
+    });
     expect(createGameLink.getAttribute('href')).toBe('/gm/games');
   });
 
@@ -139,7 +142,7 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Pregame Quick Start')).toBeTruthy();
+    expect(screen.getByText('Next Move')).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'My Games' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Public Games' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Your Characters' })).toBeTruthy();
@@ -256,7 +259,7 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Pregame Quick Start')).toBeTruthy();
+    expect(await screen.findByText('Next Move')).toBeTruthy();
     expect(screen.queryByText('Profile load failed.')).toBeNull();
   });
 
@@ -603,7 +606,7 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Resume planning in Goblin Cave')).toBeTruthy();
+    expect(await screen.findByText('Continue in Goblin Cave')).toBeTruthy();
     expect(
       screen.getByRole('link', { name: 'Edit Draft' }).getAttribute('href'),
     ).toBe('/games/game-1/characters/char-1/edit?entry=digest&focus=resume');
@@ -641,17 +644,20 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByText('Join Goblin Cave')).toBeTruthy();
+    expect(await screen.findByText('Goblin Cave is open')).toBeTruthy();
     expect(
-      screen.getByRole('link', { name: 'Join a Game' }).getAttribute('href'),
+      screen.getByRole('link', { name: '+ Create Character' }).getAttribute('href'),
     ).toBe('/games/game-public/character/new?entry=home&focus=start');
 
-    fireEvent.click(screen.getByText('More Start Actions'));
+    const nextMovePanel = screen.getByLabelText('Next Move');
+    const savedCharacterLink = within(nextMovePanel).getByRole('link', {
+      name: 'Saved Character',
+    });
+    expect(savedCharacterLink.getAttribute('aria-disabled')).toBe('true');
+    expect(savedCharacterLink.getAttribute('title')).toBe('No saved characters yet.');
     expect(
-      screen.getByRole('link', { name: 'Start a Game' }).getAttribute('href'),
-    ).toBe('/gm/games');
-    expect(
-      screen.getByRole('link', { name: 'Create a Character' }).getAttribute('href'),
-    ).toBe('/games/game-public/character/new?entry=home&focus=start');
+      within(nextMovePanel).queryByRole('link', { name: '+ Create Game' }),
+    ).toBeNull();
+    expect(screen.queryByText('Other Paths')).toBeNull();
   });
 });

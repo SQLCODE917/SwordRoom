@@ -5,8 +5,10 @@ import {
   buildGameCharacterByGameId,
   buildMyGameRows,
   createHomeWorkspaceViewModel,
+  createNextMoveViewModel,
   emptyDashboardState,
   parseHomeTab,
+  type DashboardState,
 } from './viewModel';
 
 function createGame(overrides?: Partial<GameItem>): GameItem {
@@ -93,6 +95,151 @@ describe('home view model', () => {
       kind: 'your-characters',
       title: 'Your Characters',
       newCharacterHref: '/player/player-1/character/new',
+    });
+  });
+
+  it('uses digest data for the resume next move', () => {
+    const dashboard: DashboardState = {
+      ...emptyDashboardState,
+      pregameDigest: [
+        {
+          digestId: 'game-1:edit',
+          gameId: 'game-1',
+          gameName: 'Goblin Cave',
+          headline: 'Party needs Frontline',
+          detail: 'Your draft can still move toward Frontline.',
+          destination: 'EDIT_CHARACTER',
+          characterId: 'char-1',
+          createdAt: '2026-03-01T00:00:00.000Z',
+        },
+      ],
+    };
+
+    const nextMove = createNextMoveViewModel({
+      actorId: 'player-1',
+      dashboard,
+      joinedGameIds: new Set(),
+      gmGameIds: new Set(),
+      gameCharacterByGameId: new Map(),
+    });
+
+    expect(nextMove).toMatchObject({
+      kind: 'resume-planning',
+      title: 'Next Move',
+      headline: 'Continue in Goblin Cave',
+      detail: 'Party needs Frontline',
+      primaryAction: {
+        label: 'Edit Draft',
+        to: '/games/game-1/characters/char-1/edit?entry=digest&focus=resume',
+      },
+    });
+  });
+
+  it('uses public game data for the join next move', () => {
+    const dashboard: DashboardState = {
+      ...emptyDashboardState,
+      publicGames: [createGame({ gameId: 'game-public', name: 'Goblin Cave' })],
+    };
+
+    const nextMove = createNextMoveViewModel({
+      actorId: 'player-1',
+      dashboard,
+      joinedGameIds: new Set(),
+      gmGameIds: new Set(),
+      gameCharacterByGameId: new Map(),
+    });
+    expect(nextMove).toMatchObject({
+      kind: 'join-public-game',
+      title: 'Next Move',
+      headline: 'Goblin Cave is open',
+      detail: 'Create a draft to join the table.',
+      primaryAction: {
+        label: '+ Create Character',
+        to: '/games/game-public/character/new?entry=home&focus=start',
+      },
+      secondaryActions: [
+        {
+          label: 'Saved Character',
+          to: '/player/player-1/character/new',
+          disabled: true,
+          disabledReason: 'No saved characters yet.',
+        },
+      ],
+    });
+  });
+
+  it('enables the saved character next move when a saved character exists', () => {
+    const dashboard: DashboardState = {
+      ...emptyDashboardState,
+      publicGames: [createGame({ gameId: 'game-public', name: 'Goblin Cave' })],
+      characters: [
+        createCharacter({
+          gameId: 'PLAYER_CHARACTER_LIBRARY::player-1',
+          characterId: 'saved-1',
+        }),
+      ],
+    };
+
+    const nextMove = createNextMoveViewModel({
+      actorId: 'player-1',
+      dashboard,
+      joinedGameIds: new Set(),
+      gmGameIds: new Set(),
+      gameCharacterByGameId: new Map(),
+    });
+
+    expect(nextMove.secondaryActions).toContainEqual({
+      label: 'Saved Character',
+      to: '/player/player-1/character/new',
+      disabled: false,
+      disabledReason: null,
+    });
+  });
+
+  it('uses joined game data for the create-for-game next move', () => {
+    const dashboard: DashboardState = {
+      ...emptyDashboardState,
+      myGames: [createGame({ gameId: 'game-local', name: 'Local Demo Game' })],
+    };
+
+    const nextMove = createNextMoveViewModel({
+      actorId: 'player-1',
+      dashboard,
+      joinedGameIds: new Set(['game-local']),
+      gmGameIds: new Set(),
+      gameCharacterByGameId: new Map(),
+    });
+
+    expect(nextMove).toMatchObject({
+      kind: 'create-for-game',
+      title: 'Next Move',
+      headline: 'Local Demo Game needs your character',
+      detail: 'No character from you yet.',
+      primaryAction: {
+        label: '+ Create Character',
+        to: '/games/game-local/character/new?entry=home&focus=start',
+      },
+    });
+  });
+
+  it('uses start-table next move when there is no active game path', () => {
+    const nextMove = createNextMoveViewModel({
+      actorId: 'player-1',
+      dashboard: emptyDashboardState,
+      joinedGameIds: new Set(),
+      gmGameIds: new Set(),
+      gameCharacterByGameId: new Map(),
+    });
+
+    expect(nextMove).toMatchObject({
+      kind: 'start-table',
+      title: 'Next Move',
+      headline: 'Start a table',
+      detail: 'Create a game or make a saved character.',
+      primaryAction: {
+        label: '+ Create Game',
+        to: '/gm/games',
+      },
     });
   });
 

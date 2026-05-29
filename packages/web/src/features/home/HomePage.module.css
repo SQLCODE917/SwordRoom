@@ -1,6 +1,12 @@
-.quickStartNote {
+.nextMoveNote {
   align-items: flex-start;
   flex-direction: column;
+  gap: var(--s-2);
+}
+
+.nextMoveActions {
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--s-2);
 }
 
