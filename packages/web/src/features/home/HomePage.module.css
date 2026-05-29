@@ -59,39 +59,39 @@
   vertical-align: top;
 }
 
-.myGameRow {
+.gameRow {
   display: grid;
   gap: var(--s-3);
 }
 
-.myGameHeader {
+.gameRowHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--gap);
 }
 
-.myGameIdentity {
+.gameRowIdentity {
   min-width: 0;
   display: grid;
   gap: var(--s-1);
 }
 
-.myGameStatus {
+.gameRowStatus {
   border: 1px solid var(--line);
   background: var(--panel);
   padding: var(--s-1) var(--s-2);
   white-space: nowrap;
 }
 
-.myGameActions {
+.gameRowActions {
   display: grid;
   gap: var(--s-2);
 }
 
-.myGamePrimaryAction,
-.myGameSecondaryActions,
-.myGameDestructiveActions {
+.gameRowPrimaryAction,
+.gameRowSecondaryActions,
+.gameRowDestructiveActions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-2);
@@ -163,12 +163,12 @@
     align-self: start;
   }
 
-  .myGameRow {
+  .gameRow {
     grid-template-columns: minmax(180px, 1fr) minmax(280px, 2fr);
     align-items: start;
   }
 
-  .myGameActions {
+  .gameRowActions {
     justify-items: start;
   }
 }

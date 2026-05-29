@@ -139,7 +139,7 @@ const actionPriorityOrder = [
   'Inbox',
   'Sheet',
   'Edit',
-  'New Character',
+  '+ Create Character',
   'Apply to Join',
   'GM Play',
   'Delete',
@@ -322,7 +322,7 @@ export function buildMyGameRows(input: {
       }),
       createLinkAction({
         key: `${game.gameId}:new-character`,
-        label: 'New Character',
+        label: '+ Create Character',
         to: `/games/${gameId}/character/new`,
         disabled: Boolean(character),
         disabledReason: character ? existingCharacterDisabledReason : null,

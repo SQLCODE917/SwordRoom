@@ -216,17 +216,8 @@ function MyGamesTable(input: {
           input.rows.map((row) => (
             <tr key={row.key}>
               <td className={`${styles.bodyCell} t-small`}>
-                <div className={styles.myGameRow}>
-                  <div className={styles.myGameHeader}>
-                    <div className={styles.myGameIdentity}>
-                      <div>{row.gameName}</div>
-                      {row.phaseLabel ? (
-                        <div className="t-small">Phase: {row.phaseLabel}</div>
-                      ) : null}
-                    </div>
-                    <div className={styles.myGameStatus}>{row.visibility}</div>
-                  </div>
-                  <MyGameActions actions={row.actions} />
+                <div className={styles.gameRow}>
+                  <GameObjectRow row={row} />
                 </div>
               </td>
             </tr>
@@ -237,7 +228,24 @@ function MyGamesTable(input: {
   );
 }
 
-function MyGameActions({ actions }: { actions: ActionDeckViewModel }) {
+function GameObjectRow({ row }: { row: GameRowViewModel }) {
+  return (
+    <>
+      <div className={styles.gameRowHeader}>
+        <div className={styles.gameRowIdentity}>
+          <div>{row.gameName}</div>
+          {row.phaseLabel ? (
+            <div className="t-small">Phase: {row.phaseLabel}</div>
+          ) : null}
+        </div>
+        <div className={styles.gameRowStatus}>{row.visibility}</div>
+      </div>
+      <GameObjectActions actions={row.actions} />
+    </>
+  );
+}
+
+function GameObjectActions({ actions }: { actions: ActionDeckViewModel }) {
   const destructiveActions = actions.secondary.filter(
     (action) => action.variant === 'destructive',
   );
@@ -246,15 +254,15 @@ function MyGameActions({ actions }: { actions: ActionDeckViewModel }) {
   );
 
   return (
-    <div className={styles.myGameActions}>
-      <div className={styles.myGamePrimaryAction}>{renderAction(actions.primary)}</div>
+    <div className={styles.gameRowActions}>
+      <div className={styles.gameRowPrimaryAction}>{renderAction(actions.primary)}</div>
       {secondaryActions.length > 0 ? (
-        <div className={styles.myGameSecondaryActions}>
+        <div className={styles.gameRowSecondaryActions}>
           {secondaryActions.map((action) => renderAction(action))}
         </div>
       ) : null}
       {destructiveActions.length > 0 ? (
-        <div className={styles.myGameDestructiveActions}>
+        <div className={styles.gameRowDestructiveActions}>
           {destructiveActions.map((action) => renderAction(action))}
         </div>
       ) : null}
@@ -274,12 +282,6 @@ export function PublicGamesTable(input: {
           <th className={`${styles.headerCell} t-small`} scope="col">
             Game
           </th>
-          <th className={`${styles.headerCell} t-small`} scope="col">
-            Visibility
-          </th>
-          <th className={`${styles.headerCell} t-small`} scope="col">
-            Actions
-          </th>
         </tr>
       </thead>
       <tbody>
@@ -288,18 +290,15 @@ export function PublicGamesTable(input: {
             loading: input.loading,
             emptyText: input.emptyText,
             loadingLabel: 'Loading games...',
-            columnCount: 3,
+            columnCount: 1,
           })
         ) : (
           input.rows.map((row) => (
             <tr key={row.key}>
               <td className={`${styles.bodyCell} t-small`}>
-                <div>{row.gameName}</div>
-                {row.phaseLabel ? <div className="t-small">Phase: {row.phaseLabel}</div> : null}
-              </td>
-              <td className={`${styles.bodyCell} t-small`}>{row.visibility}</td>
-              <td className={`${styles.bodyCell} t-small`}>
-                <ActionDeck actions={row.actions} />
+                <div className={styles.gameRow}>
+                  <GameObjectRow row={row} />
+                </div>
               </td>
             </tr>
           ))

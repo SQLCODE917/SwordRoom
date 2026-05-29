@@ -422,7 +422,7 @@ describe('HomePage', () => {
     expect(within(row as HTMLElement).queryByText('More Actions')).toBeNull();
   });
 
-  it('disables New Character on joined games where the player already has a character', async () => {
+  it('disables Create Character on joined games where the player already has a character', async () => {
     vi.mocked(useAuthProvider).mockReturnValue(createAuth());
     vi.mocked(useMyProfile).mockReturnValue({
       profile: {
@@ -470,7 +470,7 @@ describe('HomePage', () => {
     openRowMoreActions(gameRow as HTMLElement);
 
     const newCharacterControl = within(gameRow as HTMLElement).getByRole('link', {
-      name: 'New Character',
+      name: '+ Create Character',
     });
     expect(newCharacterControl.getAttribute('aria-disabled')).toBe('true');
     expect(newCharacterControl.getAttribute('title')).toBe(

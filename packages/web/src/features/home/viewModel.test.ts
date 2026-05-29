@@ -279,7 +279,7 @@ describe('home view model', () => {
     });
 
     const newCharacterAction = rows[0]?.actions.secondary.find(
-      (action) => action.label === 'New Character',
+      (action) => action.label === '+ Create Character',
     );
     expect(newCharacterAction).toMatchObject({
       disabled: true,
