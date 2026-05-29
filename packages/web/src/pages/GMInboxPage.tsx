@@ -6,20 +6,8 @@ import { InboxModeTabs } from '../components/InboxModeTabs';
 import { logWebFlow, summarizeError } from '../logging/flowLog';
 import { Panel } from '../components/Panel';
 import { createCommandId, useCommandWorkflow } from '../hooks/useCommandStatus';
-
-interface PendingCharacterRow {
-  key: string;
-  characterId: string;
-  ownerPlayerId: string;
-  submittedAt: string;
-}
-
-interface ActivityRow {
-  key: string;
-  kind: string;
-  message: string;
-  createdAt: string;
-}
+import { createGMInboxViewModel, type PendingCharacterReviewViewModel } from '../features/gm-inbox';
+import styles from './GMInboxPage.module.css';
 
 export function GMInboxPage({ gameId = 'game-1' }: { gameId?: string }) {
   const auth = useAuthProvider();
@@ -28,8 +16,7 @@ export function GMInboxPage({ gameId = 'game-1' }: { gameId?: string }) {
   const playerInboxTo = '/inbox?mode=player';
   const gmInboxTo = `/inbox?mode=gm&gameId=${encodeURIComponent(resolvedGameId)}`;
 
-  const [pendingRows, setPendingRows] = useState<PendingCharacterRow[]>([]);
-  const [activityRows, setActivityRows] = useState<ActivityRow[]>([]);
+  const [items, setItems] = useState<GMInboxItem[]>([]);
   const [notesByCharacterId, setNotesByCharacterId] = useState<Record<string, string>>({});
   const [errorsByCharacterId, setErrorsByCharacterId] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -42,109 +29,94 @@ export function GMInboxPage({ gameId = 'game-1' }: { gameId?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resolvedGameId]);
 
+  const view = useMemo(
+    () => createGMInboxViewModel({ gameId: resolvedGameId, items, loading, error }),
+    [error, items, loading, resolvedGameId],
+  );
+
   return (
     <div className="l-page">
       <InboxModeTabs playerInboxTo={playerInboxTo} gmInboxTo={gmInboxTo} />
       <Panel title="Inbox" subtitle={`Pending characters and invite responses for game ${resolvedGameId}.`}>
-        <div className="c-table" role="table" aria-label="GM Pending Characters">
-          <div className="c-table__head c-table__row" role="row">
-            <div className="c-table__cell t-small">Character</div>
-            <div className="c-table__cell t-small">Owner</div>
-            <div className="c-table__cell t-small">Submitted</div>
-            <div className="c-table__cell t-small">Review</div>
-          </div>
-
-          {pendingRows.length === 0 ? (
-            <div className="c-table__row" role="row">
-              <div className="c-table__cell t-small">
-                {error
-                  ? `Unable to load GM inbox: ${error}`
-                  : loading
-                    ? 'Loading pending characters...'
-                    : 'No pending characters.'}
-              </div>
-            </div>
+        <ol className={styles.reviewList} aria-label="GM Pending Characters">
+          {view.pendingReviews.length === 0 ? (
+            <li className={styles.emptyItem}>
+              <span className={`${styles.emptyText} t-small`}>{view.pendingEmptyText}</span>
+            </li>
           ) : (
-            pendingRows.map((row) => {
+            view.pendingReviews.map((row) => {
               const note = notesByCharacterId[row.characterId] ?? '';
               const rowError = errorsByCharacterId[row.characterId] ?? ' ';
               const rowBusy = activeCharacterId === row.characterId;
 
               return (
-                <div className="c-table__row" role="row" key={row.key}>
-                  <div className="c-table__cell t-small">{row.characterId}</div>
-                  <div className="c-table__cell t-small">{row.ownerPlayerId}</div>
-                  <div className="c-table__cell t-small">{row.submittedAt}</div>
-                  <div className="c-table__cell">
-                    <div className="l-col">
-                      <ButtonLink to={`/games/${encodeURIComponent(resolvedGameId)}/characters/${encodeURIComponent(row.characterId)}`}>
-                        Sheet
-                      </ButtonLink>
-                      <div className={`c-field ${rowBusy ? 'is-disabled' : ''}`.trim()}>
-                        <label className="c-field__label">GM note</label>
-                        <input
-                          className="c-field__control"
-                          value={note}
-                          disabled={rowBusy}
-                          onChange={(event) => {
-                            const next = event.target.value;
-                            setNotesByCharacterId((prev) => ({ ...prev, [row.characterId]: next }));
-                            setErrorsByCharacterId((prev) => ({ ...prev, [row.characterId]: ' ' }));
-                          }}
-                        />
-                        <div className="c-field__hint">Required for reject; optional for approve.</div>
-                        <div className="c-field__err">{rowError}</div>
-                      </div>
-
-                      <div className="l-row">
-                        <button
-                          className={`c-btn ${rowBusy ? 'is-disabled' : ''}`.trim()}
-                          type="button"
-                          disabled={rowBusy || loading}
-                          onClick={() => void reviewRow(row, 'APPROVE')}
-                        >
-                          Approve
-                        </button>
-                        <button
-                          className={`c-btn ${rowBusy ? 'is-disabled' : ''}`.trim()}
-                          type="button"
-                          disabled={rowBusy || loading || note.trim() === ''}
-                          onClick={() => void reviewRow(row, 'REJECT')}
-                        >
-                          Reject
-                        </button>
-                      </div>
-                    </div>
+                <li className={styles.reviewCard} key={row.key}>
+                  <div className={styles.reviewHeader}>
+                    <span className={`${styles.reviewTitle} t-small`}>{row.characterId}</span>
+                    <span className={`${styles.reviewMeta} t-small`}>
+                      {row.ownerPlayerId} - {row.submittedAt}
+                    </span>
                   </div>
-                </div>
+
+                  <div className={styles.reviewActions}>
+                    <ButtonLink to={row.sheetHref}>Sheet</ButtonLink>
+                    <button
+                      className={`c-btn ${rowBusy ? 'is-disabled' : ''}`.trim()}
+                      type="button"
+                      disabled={rowBusy || loading}
+                      onClick={() => void reviewRow(row, 'APPROVE')}
+                    >
+                      Approve
+                    </button>
+                    <button
+                      className={`c-btn ${rowBusy ? 'is-disabled' : ''}`.trim()}
+                      type="button"
+                      disabled={rowBusy || loading || note.trim() === ''}
+                      onClick={() => void reviewRow(row, 'REJECT')}
+                    >
+                      Reject
+                    </button>
+                  </div>
+
+                  <div className={`c-field ${rowBusy ? 'is-disabled' : ''}`.trim()}>
+                    <label className="c-field__label">GM note</label>
+                    <input
+                      className="c-field__control"
+                      value={note}
+                      disabled={rowBusy}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        setNotesByCharacterId((prev) => ({ ...prev, [row.characterId]: next }));
+                        setErrorsByCharacterId((prev) => ({ ...prev, [row.characterId]: ' ' }));
+                      }}
+                    />
+                    <div className="c-field__hint">Required for reject; optional for approve.</div>
+                    <div className="c-field__err">{rowError}</div>
+                  </div>
+                </li>
               );
             })
           )}
-        </div>
+        </ol>
 
         <Panel title="Invite Activity" subtitle="Player invite responses sent back to the GM inbox.">
-          <div className="c-table" role="table" aria-label="GM invite activity">
-            <div className="c-table__head c-table__row" role="row">
-              <div className="c-table__cell t-small">Kind</div>
-              <div className="c-table__cell t-small">Message</div>
-              <div className="c-table__cell t-small">Created</div>
-            </div>
-            {activityRows.length === 0 ? (
-              <div className="c-table__row" role="row">
-                <div className="c-table__cell t-small">
-                  {error ? 'Invite activity unavailable while inbox is in error state.' : 'No invite activity yet.'}
-                </div>
-              </div>
+          <ol className={styles.activityList} aria-label="GM invite activity">
+            {view.inviteActivity.length === 0 ? (
+              <li className={styles.emptyItem}>
+                <span className={`${styles.emptyText} t-small`}>{view.activityEmptyText}</span>
+              </li>
             ) : (
-              activityRows.map((row) => (
-                <div className="c-table__row" role="row" key={row.key}>
-                  <div className="c-table__cell t-small">{row.kind}</div>
-                  <div className="c-table__cell t-small">{row.message}</div>
-                  <div className="c-table__cell t-small">{row.createdAt}</div>
-                </div>
+              view.inviteActivity.map((row) => (
+                <li className={styles.activityItem} key={row.key}>
+                  <div className={styles.activityHeader}>
+                    <span className={`${styles.activityKind} t-small`}>{row.kind}</span>
+                    <span className={`${styles.activityTime} t-small`}>{row.createdAt}</span>
+                  </div>
+                  <span className={`${styles.activityMessage} t-small`}>{row.message}</span>
+                </li>
               ))
             )}
-          </div>
+          </ol>
         </Panel>
       </Panel>
     </div>
@@ -159,9 +131,7 @@ export function GMInboxPage({ gameId = 'game-1' }: { gameId?: string }) {
     });
     try {
       const inbox = await api.getGmInbox(resolvedGameId);
-      const normalized = normalizeInbox(inbox);
-      setPendingRows(normalized.pendingRows);
-      setActivityRows(normalized.activityRows);
+      setItems(inbox);
       setError(null);
       logWebFlow('WEB_GM_INBOX_REFRESH_OK', {
         actorId: auth.actorId,
@@ -170,8 +140,7 @@ export function GMInboxPage({ gameId = 'game-1' }: { gameId?: string }) {
         count: inbox.length,
       });
     } catch (error) {
-      setPendingRows([]);
-      setActivityRows([]);
+      setItems([]);
       setError(error instanceof Error ? error.message : String(error));
       logWebFlow('WEB_GM_INBOX_REFRESH_FAILED', {
         actorId: auth.actorId,
@@ -184,7 +153,7 @@ export function GMInboxPage({ gameId = 'game-1' }: { gameId?: string }) {
     }
   }
 
-  async function reviewRow(row: PendingCharacterRow, decision: 'APPROVE' | 'REJECT') {
+  async function reviewRow(row: PendingCharacterReviewViewModel, decision: 'APPROVE' | 'REJECT') {
     const note = (notesByCharacterId[row.characterId] ?? '').trim();
     if (decision === 'REJECT' && note === '') {
       setErrorsByCharacterId((prev) => ({ ...prev, [row.characterId]: 'Rejection note is required.' }));
@@ -226,35 +195,4 @@ export function GMInboxPage({ gameId = 'game-1' }: { gameId?: string }) {
       setActiveCharacterId(null);
     }
   }
-}
-
-function normalizeInbox(items: GMInboxItem[]): {
-  pendingRows: PendingCharacterRow[];
-  activityRows: ActivityRow[];
-} {
-  const pendingRows: PendingCharacterRow[] = [];
-  const activityRows: ActivityRow[] = [];
-
-  for (const item of items) {
-    const ref = typeof item.ref === 'object' && item.ref !== null ? (item.ref as Record<string, unknown>) : null;
-    const key = item.promptId || `${item.kind}:${item.createdAt}`;
-    if (item.kind === 'PENDING_CHARACTER' && typeof ref?.characterId === 'string') {
-      pendingRows.push({
-        key,
-        characterId: ref.characterId,
-        ownerPlayerId: item.ownerPlayerId ?? (typeof ref.playerId === 'string' ? ref.playerId : 'unknown'),
-        submittedAt: item.submittedAt ?? item.createdAt ?? '',
-      });
-      continue;
-    }
-
-    activityRows.push({
-      key,
-      kind: item.kind,
-      message: typeof item.message === 'string' ? item.message : '',
-      createdAt: typeof item.createdAt === 'string' ? item.createdAt : '',
-    });
-  }
-
-  return { pendingRows, activityRows };
 }
