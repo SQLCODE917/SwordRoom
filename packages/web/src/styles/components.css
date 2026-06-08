@@ -269,7 +269,6 @@
 
 .c-field__hint,
 .c-field__err {
-  min-height: 18px;
   font-size: var(--fs-1);
   line-height: 1.35;
 }
@@ -318,7 +317,6 @@
 }
 
 .c-inventory-row__hint {
-  min-height: 18px;
   font-size: var(--fs-1);
   line-height: 1.35;
   color: var(--muted);

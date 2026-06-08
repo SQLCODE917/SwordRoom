@@ -647,7 +647,7 @@ function validateStartingSkillChoices(
     return withError(
       state,
       'MISSING_STARTING_PACKAGE_CHOICE',
-      'merchant/scholar background requires choosing Merchant or Sage',
+      'Merchant 3 or Sage 1 must be selected for this background.',
       { required: 'merchantScholarChoice' }
     );
   }

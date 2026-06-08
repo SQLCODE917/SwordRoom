@@ -80,26 +80,22 @@ export function RaceStepPanel(props: {
 }) {
   return (
     <WizardStep title="1) Race" enabled={props.active}>
-      <FieldSelect
-        label="Race"
-        value={props.state.race}
-        options={raceOptions}
-        onChange={(value) => props.onRaceChange(value as Race)}
-        disabled={props.isExecutingCommand}
-      />
-      <FieldSelect
-        label="Raised by"
-        value={props.state.raisedBy}
-        options={raisedByOptions}
-        onChange={(value) => props.onRaisedByChange(value as HalfElfRaisedBy)}
-        disabled={props.state.race !== 'HALF_ELF' || props.isExecutingCommand}
-        hint="Only used when race is HALF_ELF."
-      />
-      <InfoList
-        lines={[
-          `STR: ${props.view.derived.STR}. MP: ${props.view.derived.MP}.`,
-        ]}
-      />
+      <fieldset className={styles.stepFields} disabled={props.isExecutingCommand}>
+        <FieldSelect
+          label="Race"
+          value={props.state.race}
+          options={raceOptions}
+          onChange={(value) => props.onRaceChange(value as Race)}
+        />
+        <FieldSelect
+          label="Raised by"
+          value={props.state.raisedBy}
+          options={raisedByOptions}
+          onChange={(value) => props.onRaisedByChange(value as HalfElfRaisedBy)}
+          disabled={props.state.race !== 'HALF_ELF'}
+          hint="Only used when race is HALF_ELF."
+        />
+      </fieldset>
     </WizardStep>
   );
 }
@@ -201,7 +197,7 @@ export function BackgroundStepPanel(props: {
 }) {
   return (
     <WizardStep title="3) Background rolls" enabled={props.active}>
-      <fieldset className="l-col" disabled={props.isExecutingCommand}>
+      <fieldset className={styles.stepFields} disabled={props.isExecutingCommand}>
         {props.view.backgroundEligible ? (
           <>
             <FieldSelect
@@ -237,7 +233,7 @@ export function BackgroundStepPanel(props: {
                     purchases: props.normalizePurchasesForBaseSkills(prev.purchases, props.view.startingPreview.startingSkills),
                   }))
                 }
-                hint="Merchant 3 or Sage 1 must be selected for background roll 8."
+                hint="Merchant 3 or Sage 1 must be selected for this background."
               />
             ) : null}
             {props.state.backgroundRoll2dTotal === 7 ? (
@@ -296,7 +292,7 @@ export function IdentityStepPanel(props: {
 }) {
   return (
     <WizardStep title="4) Name/identity" enabled={props.active}>
-      <fieldset className="l-col" disabled={props.isExecutingCommand}>
+      <fieldset className={styles.stepFields} disabled={props.isExecutingCommand}>
         <FieldText
           label="Name"
           value={props.state.name}
@@ -331,13 +327,12 @@ export function ExpStepPanel(props: {
 }) {
   return (
     <WizardStep title="5) EXP spend" enabled={props.active}>
-      <fieldset className="l-col" disabled={props.isExecutingCommand}>
+      <fieldset className={styles.stepFields} disabled={props.isExecutingCommand}>
         {skillOptions.map((option) => {
           const baseLevel = findSkillLevel(props.view.startingPreview.startingSkills, option.skill);
           const currentTarget = findPurchaseTargetLevel(props.state.purchases, option.skill) ?? baseLevel;
           const levels = Array.from({ length: option.maxLevel + 1 }, (_, index) => index);
           const levelCosts = describeSkillLevelCosts(props.view.startingPreview.state, option.skill, option.maxLevel);
-          const costSchedule = formatSkillCostSchedule(levelCosts);
 
           return (
             <FieldSelect
@@ -355,7 +350,6 @@ export function ExpStepPanel(props: {
                 disabled: level !== baseLevel && !props.isSkillTargetAffordable(option.skill, level, baseLevel),
               }))}
               onChange={(value) => props.onUpdateSkillPurchase(option.skill, Number(value), baseLevel)}
-              hint={`Base ${baseLevel}. Costs: ${costSchedule}. Final skills: ${formatSkillList(props.view.purchasePreview.skills)}`}
             />
           );
         })}
@@ -381,7 +375,7 @@ export function EquipmentStepPanel(props: {
 }) {
   return (
     <WizardStep title="6) Equipment cart" enabled={props.active}>
-      <fieldset className="l-col" disabled={props.isExecutingCommand}>
+      <fieldset className={styles.stepFields} disabled={props.isExecutingCommand}>
         {renderInventorySections({
           category: 'weapon',
           title: 'Weapons',
@@ -453,7 +447,7 @@ export function SubmitStepPanel(props: {
 
   return (
     <WizardStep title={props.wizardMode === 'library' ? '7) Create Character' : '7) Submit'} enabled={props.active}>
-      <fieldset className="l-col" disabled={props.isExecutingCommand}>
+      <fieldset className={styles.stepFields} disabled={props.isExecutingCommand}>
         <FieldText
           label="Note to GM"
           value={props.state.submitNoteToGm}
@@ -666,6 +660,7 @@ function FieldText(props: {
   errorText?: string;
 }) {
   const fieldId = useId();
+  const helpText = props.isError ? props.errorText : props.hint;
 
   return (
     <label className={`c-field ${props.isError ? 'is-error' : ''}`.trim()} htmlFor={fieldId}>
@@ -677,7 +672,7 @@ function FieldText(props: {
         value={props.value}
         onChange={(event) => props.onChange(event.target.value)}
       />
-      <span className="c-field__hint">{props.isError ? props.errorText : props.hint ?? ' '}</span>
+      {helpText ? <span className="c-field__hint">{helpText}</span> : null}
     </label>
   );
 }
@@ -732,7 +727,7 @@ function FieldSelect(props: {
           </option>
         ))}
       </select>
-      <span className="c-field__hint">{props.hint ?? ' '}</span>
+      {props.hint ? <span className="c-field__hint">{props.hint}</span> : null}
     </label>
   );
 }
@@ -820,28 +815,11 @@ function formatCartSummary(cart: { weapons: string[]; armor: string[]; shields: 
   return [...counts.entries()].map(([itemId, qty]) => (qty > 1 ? `${itemId} x${qty}` : itemId)).join(', ');
 }
 
-function formatSkillCostSchedule(
-  costs: Array<{ level: number; costExp: number | null; note?: string }>
-): string {
-  if (costs.length === 0) {
-    return 'no additional levels available';
-  }
-
-  return costs
-    .map((cost) => {
-      if (cost.costExp === null) {
-        return `Lv${cost.level} n/a`;
-      }
-      return cost.note ? `Lv${cost.level} ${cost.costExp} EXP (${cost.note})` : `Lv${cost.level} ${cost.costExp} EXP`;
-    })
-    .join(', ');
-}
-
 function formatSkillLevelOptionLabel(level: number, costExp: number | null, note?: string): string {
   if (costExp === null) {
-    return `Level ${level} (n/a)`;
+    return `Level ${level} (not available)`;
   }
-  return note ? `Level ${level} (${costExp} EXP, ${note})` : `Level ${level} (${costExp} EXP)`;
+  return note ? `Level ${level} (cost ${costExp} EXP, ${note})` : `Level ${level} (cost ${costExp} EXP)`;
 }
 
 function formatSkillTargetOptionLabel(input: {
@@ -1081,7 +1059,7 @@ function InventoryQuantityField(props: {
           ))}
         </select>
       </div>
-      <div className="c-inventory-row__hint">{props.hint ?? ' '}</div>
+      {props.hint ? <div className="c-inventory-row__hint">{props.hint}</div> : null}
     </div>
   );
 }

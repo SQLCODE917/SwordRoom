@@ -336,7 +336,7 @@ function FieldText(input: { label: string; value: string; onChange: (value: stri
     <label className="c-field l-col l-grow">
       <span className="c-field__label">{input.label}</span>
       <input className="c-field__control" value={input.value} onChange={(event) => input.onChange(event.target.value)} />
-      <span className="c-field__hint">{input.hint ?? ' '}</span>
+      {input.hint ? <span className="c-field__hint">{input.hint}</span> : null}
     </label>
   );
 }

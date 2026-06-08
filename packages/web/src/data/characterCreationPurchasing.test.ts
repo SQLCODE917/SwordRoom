@@ -10,7 +10,7 @@ import {
 const humanRuneMasterSubAbility = { A: 9, B: 8, C: 6, D: 7, E: 7, F: 12, G: 8, H: 6 };
 
 describe('computeStartingPackagePreview', () => {
-  it('requires a merchant or sage choice for background roll 8', () => {
+  it('requires a merchant or sage choice for the Merchant/Scholar background', () => {
     const preview = computeStartingPackagePreview({
       characterId: 'char-merchant-choice',
       race: 'HUMAN',
@@ -20,7 +20,7 @@ describe('computeStartingPackagePreview', () => {
       startingMoneyRoll2dTotal: 7,
     });
 
-    expect(preview.errors).toEqual(['merchant/scholar background requires choosing Merchant or Sage']);
+    expect(preview.errors).toEqual(['Merchant 3 or Sage 1 must be selected for this background.']);
   });
 
   it('resolves merchant background choice into starting skills and money', () => {
