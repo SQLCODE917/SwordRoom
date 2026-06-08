@@ -21,7 +21,7 @@ describe('App shell routes', () => {
     writeDevSession({ username: 'player-aaa', actorId: 'player-aaa' });
     window.history.pushState({}, '', '/');
     render(<App />);
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    await expectHomePageRendered();
   });
 
   it('renders account page when /account is opened by an authenticated user', async () => {
@@ -67,7 +67,7 @@ describe('App shell routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    await expectHomePageRendered();
     expect(screen.queryByRole('heading', { name: 'GM Games' })).toBeNull();
   });
 
@@ -261,7 +261,7 @@ describe('App shell routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    await expectHomePageRendered();
     expect(screen.queryByRole('heading', { name: 'GM Game' })).toBeNull();
   });
 
@@ -308,7 +308,7 @@ describe('App shell routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    await expectHomePageRendered();
     expect(screen.queryByRole('heading', { name: 'Inbox' })).toBeNull();
   });
 
@@ -340,7 +340,12 @@ describe('App shell routes', () => {
 
     render(<App />);
 
-    expect(await screen.findByRole('heading', { name: 'Home' })).toBeTruthy();
+    await expectHomePageRendered();
     expect(screen.queryByRole('heading', { name: 'GM Play' })).toBeNull();
   });
 });
+
+async function expectHomePageRendered() {
+  expect(await screen.findByRole('heading', { name: 'Workspace' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Next Move' })).toBeTruthy();
+}
