@@ -209,7 +209,7 @@ export async function openLobbyFromMyGames(page: Page, gameName: string): Promis
 
 export async function autofillCharacterWizardDraft(page: Page, name: string): Promise<void> {
   await expect(page.getByRole('heading', { name: /Character Wizard|Create Personal Character|Edit Character Draft/ })).toBeVisible();
-  await page.getByRole('button', { name: 'Autofill from fixture' }).click();
+  await page.getByLabel('Autofill from saved character').selectOption({ label: 'Ducard Sample II (DRAFT)' });
   await page.getByRole('textbox', { name: /^Name$/ }).fill(name);
 }
 

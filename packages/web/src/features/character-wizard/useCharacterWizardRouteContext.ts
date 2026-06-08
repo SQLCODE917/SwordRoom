@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CharacterItem, GameItem } from '../../api/ApiClient';
+import { appendBuiltInSavedCharacters } from './sampleCharacters.js';
 
 export function useCharacterWizardRouteContext(input: {
   actorId: string | null;
@@ -45,7 +46,7 @@ export function useCharacterWizardRouteContext(input: {
         ) {
           throw new Error('You already have a character in this game. Open it from My Characters or remove it before applying again.');
         }
-        setSavedCharacters(characters);
+        setSavedCharacters(appendBuiltInSavedCharacters(input.actorId, characters));
         setRouteError(null);
       } catch (error) {
         if (cancelled) {

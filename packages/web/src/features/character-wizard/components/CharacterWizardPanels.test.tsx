@@ -26,12 +26,12 @@ describe('CharacterWizardAutofillControls', () => {
         ]}
         selectedSavedCharacterId=""
         currentCharacterId="char-1"
-        onAutofillFixture={() => undefined}
         onSelectSavedCharacter={onSelectSavedCharacter}
       />
     );
 
     const select = screen.getByLabelText('Autofill from saved character');
+    expect(screen.queryByRole('button', { name: 'Autofill from fixture' })).toBeNull();
     expect(screen.queryByRole('option', { name: 'Current Draft (DRAFT)' })).toBeNull();
     expect(screen.getByRole('option', { name: 'Reusable Hero (APPROVED)' })).toBeTruthy();
 

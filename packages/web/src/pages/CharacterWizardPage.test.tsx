@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApiClient } from '../api/ApiClient';
@@ -150,8 +150,13 @@ describe('CharacterWizardPage', () => {
     expect(screen.getByText('Draft toward Frontline')).toBeTruthy();
     expect(screen.getByText('Opened from Lobby so the game need stays visible while you draft.')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Back To Lobby' }).getAttribute('href')).toBe('/games/game-private');
+    expect(screen.queryByRole('button', { name: 'Autofill from fixture' })).toBeNull();
+    const savedCharacterSelect = screen.getByLabelText('Autofill from saved character');
+    expect(screen.getByRole('option', { name: 'Ducard Sample II (DRAFT)' })).toBeTruthy();
+    fireEvent.change(savedCharacterSelect, { target: { value: 'ducard-sample-ii' } });
+    expect(screen.getByDisplayValue('Ducard Sample II')).toBeTruthy();
     expect(screen.queryByText('Route validation failed.')).toBeNull();
-    expect(screen.getByText(/Create or revise a character inside this game's pregame planning loop\./)).toBeTruthy();
+    expect(screen.queryByText(/Create or revise a character inside this game's pregame planning loop\./)).toBeNull();
 
     view.unmount();
     await waitFor(() =>

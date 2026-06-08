@@ -16,7 +16,6 @@ import {
 } from '../data/characterCreationReference';
 import { computeSkillPurchasePreview } from '../data/characterCreationPurchasing';
 import {
-  applyFixtureAutofill,
   BackgroundStepPanel,
   buildInitialState,
   type CharacterShareIntent,
@@ -431,7 +430,7 @@ function CharacterWizardPageContent({
             ? 'Edit an existing character draft. Each save and final action sends one command, then polls until terminal.'
             : wizardMode === 'library'
               ? 'Create a character in your saved character library. Saving and creating persist drafts owned by the signed-in player.'
-              : "Create or revise a character inside this game's pregame planning loop. Each save and submit sends one command, then polls until terminal."
+              : ' '
         }
       >
         <div className="l-col">
@@ -452,15 +451,6 @@ function CharacterWizardPageContent({
             savedCharacters={savedCharacters}
             selectedSavedCharacterId={selectedSavedCharacterId}
             currentCharacterId={state.characterId}
-            onAutofillFixture={() => {
-              logWebFlow('WEB_CHARACTER_WIZARD_AUTOFILL_APPLIED', {
-                gameId: state.gameId,
-                characterId: state.characterId,
-                fixtureId: 'good.human_rune_master_sorcerer_starter',
-              });
-              applyFixtureAutofill(setState);
-              setStepError(' ');
-            }}
             onSelectSavedCharacter={(value) => {
               if (!value) {
                 return;

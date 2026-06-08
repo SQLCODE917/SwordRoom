@@ -17,7 +17,7 @@ import {
   skillOptions,
   type EquipmentOption,
 } from '../../../data/characterCreationPurchasing';
-import { CHARACTER_SHARE_INTENT_OPTIONS, goodHumanRuneMasterAutofill, readCharacterIdentityName, toInventoryQuantitiesFromIds } from '../index.js';
+import { CHARACTER_SHARE_INTENT_OPTIONS, readCharacterIdentityName } from '../index.js';
 import type { CharacterPlanningFocusViewModel } from '../planningFocus.js';
 import type { CharacterShareIntent, InventoryCategory, InventoryQuantitiesKey, SaveButtonState, WizardMode, WizardState } from '../types.js';
 import type { createCharacterWizardViewModel } from '../viewModel.js';
@@ -48,42 +48,28 @@ export function CharacterWizardAutofillControls(props: {
   savedCharacters: CharacterItem[];
   selectedSavedCharacterId: string;
   currentCharacterId: string;
-  onAutofillFixture: () => void;
   onSelectSavedCharacter: (characterId: string) => void;
 }) {
   return (
-    <>
-      <div className="c-note c-note--info">
-        <span className="t-small">Autofill uses fixture good.human_rune_master_sorcerer_starter.</span>
-      </div>
-      <button
-        className={`c-btn ${props.isExecutingCommand ? 'is-disabled' : ''}`.trim()}
-        type="button"
-        disabled={props.isExecutingCommand}
-        onClick={props.onAutofillFixture}
-      >
-        Autofill from fixture
-      </button>
-      <FieldSelect
-        label="Autofill from saved character"
-        value={props.selectedSavedCharacterId}
-        options={[
-          {
-            value: '',
-            label: props.savedCharacters.length > 0 ? 'Choose a saved character' : 'No saved characters available',
-          },
-          ...props.savedCharacters
-            .filter((item) => item.characterId !== props.currentCharacterId)
-            .map((item) => ({
-              value: item.characterId,
-              label: `${readCharacterIdentityName(item) || item.characterId} (${item.status})`,
-            })),
-        ]}
-        onChange={props.onSelectSavedCharacter}
-        disabled={props.isExecutingCommand || props.savedCharacters.length === 0}
-        hint="Copies the selected saved character into the current wizard without changing this draft's owner or target."
-      />
-    </>
+    <FieldSelect
+      label="Autofill from saved character"
+      value={props.selectedSavedCharacterId}
+      options={[
+        {
+          value: '',
+          label: props.savedCharacters.length > 0 ? 'Choose a saved character' : 'No saved characters available',
+        },
+        ...props.savedCharacters
+          .filter((item) => item.characterId !== props.currentCharacterId)
+          .map((item) => ({
+            value: item.characterId,
+            label: `${readCharacterIdentityName(item) || item.characterId} (${item.status})`,
+          })),
+      ]}
+      onChange={props.onSelectSavedCharacter}
+      disabled={props.isExecutingCommand || props.savedCharacters.length === 0}
+      hint="Copies the selected saved character into the current wizard without changing this draft's owner or target."
+    />
   );
 }
 
@@ -1111,29 +1097,4 @@ function InventoryQuantityField(props: {
       <div className="c-inventory-row__hint">{props.hint ?? ' '}</div>
     </div>
   );
-}
-
-export function applyFixtureAutofill(setState: Dispatch<SetStateAction<WizardState>>) {
-  setState((prev) => ({
-    ...prev,
-    race: goodHumanRuneMasterAutofill.race,
-    raisedBy: goodHumanRuneMasterAutofill.raisedBy,
-    subAbility: { ...goodHumanRuneMasterAutofill.subAbility },
-    backgroundRoll2dTotal: goodHumanRuneMasterAutofill.backgroundRoll2dTotal,
-    moneyRoll2dTotal: goodHumanRuneMasterAutofill.startingMoneyRoll2dTotal,
-    craftsmanSkill: '',
-    merchantScholarChoice: '',
-    generalSkillName: '',
-    name: goodHumanRuneMasterAutofill.identity.name,
-    age: goodHumanRuneMasterAutofill.identity.age,
-    gender: goodHumanRuneMasterAutofill.identity.gender,
-    purchases: goodHumanRuneMasterAutofill.purchases,
-    equipment: {
-      weaponQuantities: toInventoryQuantitiesFromIds(goodHumanRuneMasterAutofill.cart.weapons),
-      armorQuantities: toInventoryQuantitiesFromIds(goodHumanRuneMasterAutofill.cart.armor),
-      shieldQuantities: toInventoryQuantitiesFromIds(goodHumanRuneMasterAutofill.cart.shields),
-      gearQuantities: toInventoryQuantitiesFromIds(goodHumanRuneMasterAutofill.cart.gear),
-    },
-    submitNoteToGm: goodHumanRuneMasterAutofill.submitNoteToGm,
-  }));
 }
