@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { type AuthProvider, useAuthProvider } from '../auth/AuthProvider';
 import { AccountPage } from './AccountPage';
 import { useMyProfile } from '../hooks/useMyProfile';
@@ -40,6 +40,46 @@ describe('AccountPage', () => {
     expect(screen.getByRole('heading', { name: 'Account' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Profile' })).toBeTruthy();
     expect(screen.getByText('Local Player | PLAYER | player@example.com')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Log out' })).toBeTruthy();
+  });
+
+  it('logs out and redirects to Login', async () => {
+    const logout = vi.fn(async () => ({ ok: true, redirectTo: '/login' }));
+    vi.mocked(useAuthProvider).mockReturnValue(
+      createAuth({
+        actorId: 'gm-zzz',
+        logout,
+      })
+    );
+    vi.mocked(useMyProfile).mockReturnValue({
+      profile: {
+        playerId: 'gm-zzz',
+        displayName: 'Local GM',
+        email: 'gm@example.com',
+        roles: ['PLAYER', 'GM'],
+      },
+      loading: false,
+      error: null,
+    });
+
+    render(
+      <MemoryRouter
+        initialEntries={['/account']}
+        future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+      >
+        <Routes>
+          <Route path="/account" element={<AccountPage />} />
+          <Route path="/login" element={<h1>Login</h1>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log out' }));
+
+    await waitFor(() => {
+      expect(logout).toHaveBeenCalledWith({ returnToPath: '/login' });
+    });
+    expect(await screen.findByRole('heading', { name: 'Login' })).toBeTruthy();
   });
 });
 

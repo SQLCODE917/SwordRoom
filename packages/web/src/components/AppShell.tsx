@@ -88,20 +88,10 @@ export function AppShell({ children }: PropsWithChildren) {
             />
           </div>
         </div>
-        <nav className="l-row" aria-label="Primary">
-          <AppShellNavButton label="Inbox" to="/inbox?mode=player" />
-          <AppShellNavButton
-            label="GM Games"
-            to="/gm/games"
-            disabled={!canOpenGmGames}
-          />
-          <AppShellNavButton
-            label="Admin"
-            to="/admin"
-            disabled={!canOpenAdmin}
-          />
-          <AppShellNavButton label="Account" to="/account" />
-        </nav>
+        <AppShellUtilityNav
+          canOpenAdmin={canOpenAdmin}
+          canOpenGmGames={canOpenGmGames}
+        />
       </header>
       {debugOpen ? (
         <DebugWidget
@@ -114,11 +104,62 @@ export function AppShell({ children }: PropsWithChildren) {
   );
 }
 
+interface AppShellUtilityNavProps {
+  canOpenAdmin: boolean;
+  canOpenGmGames: boolean;
+}
+
+function AppShellUtilityNav({
+  canOpenAdmin,
+  canOpenGmGames,
+}: AppShellUtilityNavProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = () => setMenuOpen(false);
+
+  return (
+    <nav className={styles.utilityNav} aria-label="Primary">
+      <AppShellNavButton label="Inbox" to="/inbox?mode=player" />
+      <div className={styles.utilityMenu}>
+        <button
+          className={`c-btn c-btn--nav t-small ${styles.utilityMenuSummary}`}
+          type="button"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((current) => !current)}
+        >
+          Menu
+        </button>
+        {menuOpen ? (
+          <div className={styles.utilityMenuList}>
+            <AppShellNavButton
+              label="GM Games"
+              to="/gm/games"
+              disabled={!canOpenGmGames}
+              onNavigate={closeMenu}
+            />
+            <AppShellNavButton
+              label="Admin"
+              to="/admin"
+              disabled={!canOpenAdmin}
+              onNavigate={closeMenu}
+            />
+            <AppShellNavButton
+              label="Account"
+              to="/account"
+              onNavigate={closeMenu}
+            />
+          </div>
+        ) : null}
+      </div>
+    </nav>
+  );
+}
+
 interface AppShellNavButtonProps {
   label: string;
   to?: string;
   disabled?: boolean;
   end?: boolean;
+  onNavigate?: () => void;
 }
 
 function AppShellNavButton({
@@ -126,6 +167,7 @@ function AppShellNavButton({
   to,
   disabled = false,
   end = false,
+  onNavigate,
 }: AppShellNavButtonProps) {
   if (disabled || !to) {
     return (
@@ -139,7 +181,12 @@ function AppShellNavButton({
   }
 
   return (
-    <NavLink className="c-btn c-btn--nav t-small" to={to} end={end}>
+    <NavLink
+      className="c-btn c-btn--nav t-small"
+      to={to}
+      end={end}
+      onClick={onNavigate}
+    >
       {label}
     </NavLink>
   );

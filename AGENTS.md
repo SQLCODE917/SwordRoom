@@ -15,6 +15,10 @@ Before changing code, read:
 
 If the human corrects the same class of mistake twice, update the relevant agent guidance so the fix persists.
 
+## Related documents
+
+- [UI](docs/ui.md) - rules for design and implementation of the UI in React/TypeScript
+
 ## Continuous Maintenance Discipline
 
 Every time you touch a file, give it a review, as to prevent drift away from the repo rules.

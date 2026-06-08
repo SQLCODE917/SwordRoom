@@ -77,6 +77,14 @@ function openRowMoreActions(row: HTMLElement): void {
   }
 }
 
+function openRowActionsTab(row: HTMLElement): void {
+  fireEvent.click(within(row).getByRole('tab', { name: 'Actions' }));
+}
+
+function openRowDangerActions(row: HTMLElement): void {
+  fireEvent.click(within(row).getByRole('tab', { name: 'Danger' }));
+}
+
 describe('HomePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -379,7 +387,7 @@ describe('HomePage', () => {
     ).toBeNull();
   });
 
-  it('shows game status inline and keeps game actions visible in My Games rows', async () => {
+  it('shows game status inline and groups secondary My Games actions', async () => {
     vi.mocked(useAuthProvider).mockReturnValue(createAuth());
     vi.mocked(useMyProfile).mockReturnValue({
       profile: {
@@ -413,13 +421,16 @@ describe('HomePage', () => {
 
     const row = (await screen.findByText('Game One')).closest('tr');
     expect(row).toBeTruthy();
+    expect(screen.queryByRole('columnheader', { name: 'Game' })).toBeNull();
     expect(screen.queryByRole('columnheader', { name: 'Visibility' })).toBeNull();
     expect(within(row as HTMLElement).getByText('PUBLIC')).toBeTruthy();
     expect(within(row as HTMLElement).getByRole('link', { name: 'Open Lobby' })).toBeTruthy();
+    expect(within(row as HTMLElement).queryByRole('tab', { name: 'Lobby' })).toBeNull();
+    expect(within(row as HTMLElement).getByRole('tab', { name: 'Actions' })).toBeTruthy();
+    openRowActionsTab(row as HTMLElement);
     expect(within(row as HTMLElement).getByRole('link', { name: 'Chat' })).toBeTruthy();
     expect(within(row as HTMLElement).getByRole('link', { name: 'Inbox' })).toBeTruthy();
     expect(within(row as HTMLElement).getByRole('link', { name: 'Play' })).toBeTruthy();
-    expect(within(row as HTMLElement).queryByText('More Actions')).toBeNull();
   });
 
   it('disables Create Character on joined games where the player already has a character', async () => {
@@ -467,7 +478,7 @@ describe('HomePage', () => {
 
     const gameRow = (await screen.findByText('Game One')).closest('tr');
     expect(gameRow).toBeTruthy();
-    openRowMoreActions(gameRow as HTMLElement);
+    openRowActionsTab(gameRow as HTMLElement);
 
     const newCharacterControl = within(gameRow as HTMLElement).getByRole('link', {
       name: '+ Create Character',
@@ -522,7 +533,7 @@ describe('HomePage', () => {
 
     const gameRow = (await screen.findByText('GM Game')).closest('tr');
     expect(gameRow).toBeTruthy();
-    openRowMoreActions(gameRow as HTMLElement);
+    openRowDangerActions(gameRow as HTMLElement);
     const deleteButton = within(gameRow as HTMLElement).getByRole('button', {
       name: 'Delete',
     });
@@ -661,5 +672,14 @@ describe('HomePage', () => {
       within(nextMovePanel).queryByRole('link', { name: '+ Create Game' }),
     ).toBeNull();
     expect(screen.queryByText('Other Paths')).toBeNull();
+
+    const publicGameRow = screen.getByText('Goblin Cave').closest('tr');
+    expect(publicGameRow).toBeTruthy();
+    expect(
+      within(publicGameRow as HTMLElement).getByRole('link', {
+        name: 'Apply to Join',
+      }),
+    ).toBeTruthy();
+    expect(within(publicGameRow as HTMLElement).queryByRole('tablist')).toBeNull();
   });
 });

@@ -8,7 +8,6 @@ import {
 } from '../api/ApiClient';
 import { notifyAuthStateChanged, useAuthProvider } from '../auth/AuthProvider';
 import { reportDebugStatusRegion } from '../debug/debugTelemetry';
-import { Panel } from '../components/Panel';
 import { ButtonLink } from '../components/ButtonLink';
 import { HomeWorkspace } from '../features/home/components/HomeWorkspace';
 import {
@@ -41,18 +40,19 @@ export function HomePage() {
   const view = useHomePageViewModel();
 
   return (
-    <div className="l-page">
-      <Panel title="Home" subtitle="Your characters and visible games.">
-        <Panel title={view.nextMove.title}>
+    <div className={`l-page ${styles.homePage}`}>
+      <section className={styles.nextMovePanel} aria-label={view.nextMove.title}>
+        <h2 className="t-h3">{view.nextMove.title}</h2>
+        <div className="c-panel__bd">
           <div className={`c-note c-note--info ${styles.nextMoveNote}`}>
             <div className="t-small">{view.nextMove.headline}</div>
             <div className="t-small">{view.nextMove.detail}</div>
           </div>
           <NextMoveActions nextMove={view.nextMove} />
-        </Panel>
+        </div>
+      </section>
 
-        <HomeWorkspace workspace={view.workspace} />
-      </Panel>
+      <HomeWorkspace workspace={view.workspace} />
     </div>
   );
 }

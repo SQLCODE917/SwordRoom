@@ -1,11 +1,10 @@
-import { Link } from 'react-router-dom';
 import { ButtonLink } from '../../../components/ButtonLink';
+import { TabbedWorkspace } from '../../../components/TabbedWorkspace';
 import {
   type ActionDeckViewModel,
   type ActionViewModel,
   type CharacterRowViewModel,
   type GameRowViewModel,
-  type HomeTabViewModel,
   type HomeWorkspaceStateViewModel,
   type HomeWorkspaceViewModel,
   type MyGamesWorkspaceStateViewModel,
@@ -21,10 +20,19 @@ export function HomeWorkspace({
 }) {
   return (
     <section className={styles.homeWorkspace} aria-label="Home workspace">
-      <HomeTabs tabs={workspace.tabs} />
-      <div className={styles.tabPanel}>
+      <h2 className="t-h3">Workspace</h2>
+      <TabbedWorkspace
+        ariaLabel="Home sections"
+        panelFlush
+        tabs={workspace.tabs.map((tab) => ({
+          id: tab.id,
+          label: tab.label,
+          href: tab.href,
+          selected: tab.selected,
+        }))}
+      >
         <HomeWorkspaceState state={workspace.active} />
-      </div>
+      </TabbedWorkspace>
     </section>
   );
 }
@@ -56,25 +64,6 @@ export function ActionDeck(input: { actions: ActionDeckViewModel }) {
   );
 }
 
-function HomeTabs({ tabs }: { tabs: HomeTabViewModel[] }) {
-  return (
-    <nav className={styles.tabList} aria-label="Home sections" role="tablist">
-      {tabs.map((tab) => (
-        <Link
-          key={tab.id}
-          className={`c-btn ${styles.tabLink}`}
-          to={tab.href}
-          role="tab"
-          aria-selected={tab.selected}
-          aria-current={tab.selected ? 'page' : undefined}
-        >
-          {tab.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
 function HomeWorkspaceState({ state }: { state: HomeWorkspaceStateViewModel }) {
   switch (state.kind) {
     case 'my-games':
@@ -88,7 +77,10 @@ function HomeWorkspaceState({ state }: { state: HomeWorkspaceStateViewModel }) {
 
 function MyGamesWorkspace({ state }: { state: MyGamesWorkspaceStateViewModel }) {
   return (
-    <section className="l-col" aria-label="My Games section">
+    <section
+      className="l-col"
+      aria-label="My Games section"
+    >
       <div className={styles.sectionHeader}>
         <SectionTitle title={state.title} />
         <ButtonLink to={state.createGameHref}>+ Create Game</ButtonLink>
@@ -108,7 +100,10 @@ function PublicGamesWorkspace({
   state: PublicGamesWorkspaceStateViewModel;
 }) {
   return (
-    <section className="l-col" aria-label="Public Games section">
+    <section
+      className="l-col"
+      aria-label="Public Games section"
+    >
       <div className={styles.sectionHeader}>
         <SectionTitle title={state.title} />
         <ButtonLink to={state.createGameHref}>+ Create Game</ButtonLink>
@@ -128,7 +123,10 @@ function YourCharactersWorkspace({
   state: YourCharactersWorkspaceStateViewModel;
 }) {
   return (
-    <section className="l-col" aria-label="Your Characters section">
+    <section
+      className="l-col"
+      aria-label="Your Characters section"
+    >
       <div className={styles.sectionHeader}>
         <SectionTitle title={state.title} />
         <ButtonLink to={state.newCharacterHref}>New Character</ButtonLink>
@@ -197,13 +195,6 @@ function MyGamesTable(input: {
 }) {
   return (
     <table className={styles.table} aria-label="My Games">
-      <thead>
-        <tr>
-          <th className={`${styles.headerCell} t-small`} scope="col">
-            Game
-          </th>
-        </tr>
-      </thead>
       <tbody>
         {input.rows.length === 0 ? (
           renderLoadingOrEmptyRows({
@@ -215,7 +206,7 @@ function MyGamesTable(input: {
         ) : (
           input.rows.map((row) => (
             <tr key={row.key}>
-              <td className={`${styles.bodyCell} t-small`}>
+              <td className={`${styles.bodyCell} ${styles.gameListCell} t-small`}>
                 <div className={styles.gameRow}>
                   <GameObjectRow row={row} />
                 </div>
@@ -252,21 +243,54 @@ function GameObjectActions({ actions }: { actions: ActionDeckViewModel }) {
   const secondaryActions = actions.secondary.filter(
     (action) => action.variant !== 'destructive',
   );
+  const actionTabs = [
+    ...(secondaryActions.length > 0
+      ? [
+          {
+            id: 'actions',
+            label: 'Actions',
+            content: (
+              <div className={styles.gameRowSecondaryActions}>
+                {secondaryActions.map((action) => renderAction(action))}
+              </div>
+            ),
+          },
+        ]
+      : []),
+    ...(destructiveActions.length > 0
+      ? [
+          {
+            id: 'danger',
+            label: 'Danger',
+            content: (
+              <div className={styles.gameRowDestructiveActions}>
+                {destructiveActions.map((action) => renderAction(action))}
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
+
+  const primaryAction = (
+    <div className={styles.gameRowPrimaryAction}>
+      {renderAction(actions.primary)}
+    </div>
+  );
+
+  if (actionTabs.length === 0) {
+    return <div className={styles.gameRowDirectActions}>{primaryAction}</div>;
+  }
 
   return (
-    <div className={styles.gameRowActions}>
-      <div className={styles.gameRowPrimaryAction}>{renderAction(actions.primary)}</div>
-      {secondaryActions.length > 0 ? (
-        <div className={styles.gameRowSecondaryActions}>
-          {secondaryActions.map((action) => renderAction(action))}
-        </div>
-      ) : null}
-      {destructiveActions.length > 0 ? (
-        <div className={styles.gameRowDestructiveActions}>
-          {destructiveActions.map((action) => renderAction(action))}
-        </div>
-      ) : null}
-    </div>
+    <TabbedWorkspace
+      ariaLabel="Game row actions"
+      className={styles.gameRowActionTabs}
+      density="compact"
+      leadingControl={primaryAction}
+      panelClassName={styles.gameRowActionPanel}
+      tabs={actionTabs}
+    />
   );
 }
 
@@ -277,13 +301,6 @@ export function PublicGamesTable(input: {
 }) {
   return (
     <table className={styles.table} aria-label="Public Games">
-      <thead>
-        <tr>
-          <th className={`${styles.headerCell} t-small`} scope="col">
-            Game
-          </th>
-        </tr>
-      </thead>
       <tbody>
         {input.rows.length === 0 ? (
           renderLoadingOrEmptyRows({
@@ -295,7 +312,7 @@ export function PublicGamesTable(input: {
         ) : (
           input.rows.map((row) => (
             <tr key={row.key}>
-              <td className={`${styles.bodyCell} t-small`}>
+              <td className={`${styles.bodyCell} ${styles.gameListCell} t-small`}>
                 <div className={styles.gameRow}>
                   <GameObjectRow row={row} />
                 </div>

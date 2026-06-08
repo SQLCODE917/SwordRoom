@@ -43,6 +43,43 @@
   align-items: flex-start;
 }
 
+.utilityNav {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-2);
+  margin-left: auto;
+}
+
+.utilityMenu {
+  position: relative;
+}
+
+.utilityMenuSummary {
+  list-style: none;
+}
+
+.utilityMenuSummary::-webkit-details-marker {
+  display: none;
+}
+
+.utilityMenuList {
+  position: absolute;
+  right: 0;
+  z-index: 20;
+  min-width: 160px;
+  margin-top: var(--s-2);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--s-2);
+  display: grid;
+  gap: var(--s-2);
+}
+
+.utilityMenuList :global(.c-btn) {
+  width: 100%;
+  justify-content: flex-start;
+}
+
 .debugButton {
   display: inline-flex;
   align-items: center;

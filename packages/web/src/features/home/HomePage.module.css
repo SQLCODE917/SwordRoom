@@ -1,3 +1,16 @@
+.homePage {
+  gap: var(--s-3);
+}
+
+.nextMovePanel {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--panel-pad);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
 .nextMoveNote {
   align-items: flex-start;
   flex-direction: column;
@@ -16,26 +29,14 @@
   justify-content: space-between;
   gap: var(--gap);
   flex-wrap: wrap;
+  padding: var(--s-3) var(--s-3) 0;
 }
 
 .homeWorkspace {
   display: flex;
   flex-direction: column;
-  gap: var(--gap);
-}
-
-.tabList {
-  display: grid;
-  grid-template-columns: 1fr;
   gap: var(--s-2);
-}
-
-.tabLink {
-  width: 100%;
-}
-
-.tabPanel {
-  min-height: 220px;
+  padding: 0 var(--s-3);
 }
 
 .table {
@@ -59,9 +60,23 @@
   vertical-align: top;
 }
 
+.table[aria-label="My Games"],
+.table[aria-label="Public Games"] {
+  border: 0;
+}
+
+.gameListCell {
+  border-bottom: 0;
+  padding: var(--s-2) var(--s-3) var(--s-3);
+}
+
 .gameRow {
   display: grid;
-  gap: var(--s-3);
+  gap: var(--s-2);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  background: var(--panel);
+  padding: var(--s-2);
 }
 
 .gameRowHeader {
@@ -84,17 +99,21 @@
   white-space: nowrap;
 }
 
-.gameRowActions {
-  display: grid;
-  gap: var(--s-2);
-}
-
+.gameRowDirectActions,
 .gameRowPrimaryAction,
 .gameRowSecondaryActions,
 .gameRowDestructiveActions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s-2);
+}
+
+.gameRowActionTabs {
+  width: 100%;
+}
+
+.gameRowActionPanel {
+  min-height: calc(var(--touch-h) + (var(--s-3) * 2));
 }
 
 .actionDeck {
@@ -150,10 +169,6 @@
 }
 
 @media (min-width: 640px) {
-  .tabList {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .actionDeck {
     grid-template-columns: minmax(120px, max-content) 1fr;
     align-items: start;
@@ -166,9 +181,6 @@
   .gameRow {
     grid-template-columns: minmax(180px, 1fr) minmax(280px, 2fr);
     align-items: start;
-  }
-
-  .gameRowActions {
-    justify-items: start;
+    gap: var(--s-3);
   }
 }

@@ -2,11 +2,12 @@
 
 ## Principles
 
-- Use semantic HTML.
-- Use the minimum number of elements needed.
+- Use semantic HTML and the minimum DOM needed.
 - Prefer existing shared primitives over one-off components.
 - Prefer theme tokens over custom component CSS.
 - Use CSS Modules.
+- Default theme is ISA-101 inspired grayscale with explicit square corners
+- Use color consistently, but sparingly, according to ISA-101 user interface guidelines
 
 ## Rendering model
 

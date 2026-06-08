@@ -30,6 +30,7 @@ describe('AppShell', () => {
     expect(screen.getByRole('link', { name: /Sword Room Online/i }).getAttribute('href')).toBe('/');
     expect(screen.getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/inbox?mode=player');
     expect(screen.queryByRole('link', { name: 'Home' })).toBeNull();
+    fireEvent.click(screen.getByText('Menu'));
     expect(screen.queryByRole('link', { name: 'GM Games' })).toBeNull();
     expect(screen.getByText('GM Games').getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
@@ -50,6 +51,7 @@ describe('AppShell', () => {
     });
 
     expect(screen.getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/inbox?mode=player');
+    fireEvent.click(screen.getByText('Menu'));
     expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
     expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
     expect(screen.getByRole('link', { name: 'Admin' }).getAttribute('href')).toBe('/admin');
@@ -68,8 +70,29 @@ describe('AppShell', () => {
     });
 
     expect(screen.getByRole('link', { name: 'Inbox' }).getAttribute('href')).toBe('/inbox?mode=player');
+    fireEvent.click(screen.getByText('Menu'));
     expect(screen.getByRole('link', { name: 'GM Games' }).getAttribute('href')).toBe('/gm/games');
     expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
+  });
+
+  it('closes the utility menu after clicking a menu link', () => {
+    useMyProfileMock.mockReturnValue({
+      profile: { playerId: 'player-aaa', roles: ['GM'] },
+      loading: false,
+      error: null,
+    });
+
+    renderWithAuth({
+      actorId: 'player-aaa',
+      isAuthenticated: true,
+    });
+
+    fireEvent.click(screen.getByText('Menu'));
+    expect(screen.getByRole('link', { name: 'Account' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('link', { name: 'Account' }));
+
+    expect(screen.queryByRole('link', { name: 'Account' })).toBeNull();
   });
 
   it('toggles the debug widget open and closed from the bug icon button', async () => {

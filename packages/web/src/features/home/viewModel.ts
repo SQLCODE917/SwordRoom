@@ -7,6 +7,10 @@ import {
 } from '../../api/ApiClient';
 import { appendCharacterWizardEntryContext } from '../character-wizard';
 import { deriveGameplayPhaseGate } from '../gameplay-lifecycle/phaseGate';
+import {
+  resolveHomeWorkspaceState,
+  type HomeTabId,
+} from './state/homeWorkspaceState';
 
 export interface DashboardState {
   characters: CharacterItem[];
@@ -21,8 +25,6 @@ export interface HomeWorkspaceViewModel {
   tabs: HomeTabViewModel[];
   active: HomeWorkspaceStateViewModel;
 }
-
-export type HomeTabId = 'my-games' | 'public-games' | 'your-characters';
 
 export interface HomeTabViewModel {
   id: HomeTabId;
@@ -180,9 +182,10 @@ export function createHomeWorkspaceViewModel(input: {
   myGameRows: GameRowViewModel[];
   publicGameRows: GameRowViewModel[];
 }): HomeWorkspaceViewModel {
-  const activeTab =
-    input.requestedTab ??
-    (input.hasJoinedGames ? 'my-games' : 'public-games');
+  const { activeTab } = resolveHomeWorkspaceState({
+    requestedTab: input.requestedTab,
+    hasJoinedGames: input.hasJoinedGames,
+  });
   const tabs = homeTabs.map((tab): HomeTabViewModel => ({
     ...tab,
     href: `/?tab=${tab.id}`,

@@ -1,0 +1,81 @@
+.workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.controlRail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0;
+  min-width: 0;
+  width: 100%;
+}
+
+.leadingControl {
+  display: flex;
+}
+
+.tabList {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.tab {
+  border-bottom-color: var(--line);
+  min-width: 0;
+}
+
+.tab[aria-selected="true"] {
+  border-bottom-color: var(--btn-bg-active);
+}
+
+.panel {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--s-3);
+}
+
+.panelFlush {
+  padding: 0;
+}
+
+.compact {
+  --tab-min: 80px;
+}
+
+.compact .controlRail {
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.compact .leadingControl {
+  flex: 0 0 auto;
+}
+
+.compact .leadingControl :global(.c-btn) {
+  min-height: 36px;
+}
+
+.compact .tab {
+  min-width: var(--tab-min);
+  min-height: 36px;
+  padding: 0 var(--s-2);
+}
+
+.compact .tabList {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  min-width: max-content;
+  width: auto;
+}
+
+.compact .panel {
+  padding: var(--s-2);
+}

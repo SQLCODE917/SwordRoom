@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { PublicGamesTable } from './HomePage';
 
 describe('PublicGamesTable', () => {
-  it('shows public game status inline and keeps row actions visible', () => {
+  it('shows public game status inline and renders direct actions for single-action rows', () => {
     render(
       <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <PublicGamesTable
@@ -26,26 +26,7 @@ describe('PublicGamesTable', () => {
                   disabledReason: null,
                   variant: 'default',
                 },
-                secondary: [
-                  {
-                    kind: 'link',
-                    key: 'game-gm:chat',
-                    label: 'Chat',
-                    to: '/games/game-gm/chat',
-                    disabled: false,
-                    disabledReason: null,
-                    variant: 'default',
-                  },
-                  {
-                    kind: 'link',
-                    key: 'game-gm:gm-inbox',
-                    label: 'Inbox',
-                    to: '/inbox?mode=gm&gameId=game-gm',
-                    disabled: false,
-                    disabledReason: null,
-                    variant: 'default',
-                  },
-                ],
+                secondary: [],
                 moreLabel: 'More Actions',
               },
             },
@@ -59,14 +40,16 @@ describe('PublicGamesTable', () => {
     expect(
       screen.queryByRole('columnheader', { name: 'Visibility' }),
     ).not.toBeTruthy();
+    expect(screen.queryByRole('columnheader', { name: 'Game' })).toBeNull();
     expect(within(row as HTMLElement).getByText('PUBLIC')).toBeTruthy();
     expect(
       within(row as HTMLElement).getByRole('link', { name: 'Lobby' }),
     ).toBeTruthy();
-    expect(within(row as HTMLElement).getByRole('link', { name: 'Chat' })).toBeTruthy();
+    expect(within(row as HTMLElement).queryByRole('tablist')).toBeNull();
+    expect(within(row as HTMLElement).queryByRole('tab', { name: 'Actions' })).toBeNull();
+    expect(within(row as HTMLElement).queryByRole('link', { name: 'Chat' })).toBeNull();
     expect(
-      within(row as HTMLElement).getByRole('link', { name: 'Inbox' }),
-    ).toBeTruthy();
-    expect(within(row as HTMLElement).queryByText('More Actions')).not.toBeTruthy();
+      within(row as HTMLElement).queryByRole('link', { name: 'Inbox' }),
+    ).toBeNull();
   });
 });
