@@ -971,12 +971,12 @@ function renderInventorySections(input: {
             return (
               <InventoryQuantityField
                 key={option.itemId}
-                label={formatInventoryItemLabel(option, quantity)}
+                label={option.label}
+                details={formatInventoryItemDetails(option, isStrengthBlocked)}
                 max={max}
                 value={quantity}
                 disabled={disableInput}
                 onChange={(value) => input.onQuantityChange(input.category, option.itemId, Math.max(0, Math.min(max, value)))}
-                hint={formatInventoryItemHint(option, isStrengthBlocked)}
               />
             );
           })}
@@ -990,25 +990,17 @@ function formatGroupLabel(group: string): string {
   return group.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
-function formatInventoryItemLabel(option: EquipmentOption, quantity: number): string {
-  const lineTotal = option.costGamels * quantity;
-  if (option.category === 'gear') {
-    return `${option.label} (${option.priceLabel}) [${lineTotal} G]`;
-  }
-  return `${option.label} (${option.priceLabel}, STR ${formatStrengthRequirement(option)})${option.usage ? `, ${option.usage}` : ''} [${lineTotal} G]`;
-}
-
-function formatInventoryItemHint(option: EquipmentOption, isStrengthBlocked: boolean): string {
+function formatInventoryItemDetails(option: EquipmentOption, isStrengthBlocked: boolean): string {
   if (option.variablePrice) {
-    return 'Open-ended market price; minimum shown.';
+    return `${option.priceLabel}; open-ended price`;
   }
-  if (isStrengthBlocked) {
-    return `Requires STR ${formatStrengthRequirement(option)}.`;
+  if (option.category === 'gear') {
+    return option.usedFor ? `${option.priceLabel}; ${formatGroupLabel(option.usedFor)}` : option.priceLabel;
   }
-  if (option.category === 'gear' && option.usedFor) {
-    return `Used for: ${formatGroupLabel(option.usedFor)}.`;
-  }
-  return ' ';
+  const strengthText = isStrengthBlocked
+    ? `needs STR ${formatStrengthRequirement(option)}`
+    : `STR ${formatStrengthRequirement(option)}`;
+  return `${option.priceLabel}, ${strengthText}${option.usage ? `, ${option.usage}` : ''}`;
 }
 
 function resolveMaxAffordableQuantity(
@@ -1033,33 +1025,46 @@ function resolveMaxAffordableQuantity(
 
 function InventoryQuantityField(props: {
   label: string;
+  details: string;
   value: number;
   max: number;
   onChange: (value: number) => void;
   disabled?: boolean;
-  hint?: string;
 }) {
-  const options = Array.from({ length: props.max + 1 }, (_, index) => index);
+  const canDecrease = props.value > 0;
+  const canIncrease = !props.disabled && props.value < props.max;
 
   return (
     <div className={`c-inventory-row ${props.disabled ? 'is-disabled' : ''}`.trim()}>
       <div className="c-inventory-row__main">
-        <label className="c-inventory-row__label">{props.label}</label>
-        <select
-          className="c-field__control c-inventory-row__control"
-          value={String(props.value)}
-          disabled={props.disabled}
-          onChange={(event) => props.onChange(Number(event.target.value))}
-          aria-label={`${props.label} quantity`}
-        >
-          {options.map((quantity) => (
-            <option key={`${props.label}-${quantity}`} value={String(quantity)}>
-              {quantity}
-            </option>
-          ))}
-        </select>
+        <div className="c-inventory-row__label">
+          <div className="c-inventory-row__name">{props.label}</div>
+          <div className="c-inventory-row__details">{props.details}</div>
+        </div>
+        <div className="c-inventory-row__stepper" aria-label={`${props.label} quantity`}>
+          <button
+            className="c-btn c-inventory-row__button"
+            type="button"
+            disabled={!canDecrease}
+            aria-label={`Remove ${props.label}`}
+            onClick={() => props.onChange(props.value - 1)}
+          >
+            -
+          </button>
+          <span className="c-inventory-row__count" aria-label={`${props.label} selected quantity`}>
+            {props.value}
+          </span>
+          <button
+            className="c-btn c-inventory-row__button"
+            type="button"
+            disabled={!canIncrease}
+            aria-label={`Add ${props.label}`}
+            onClick={() => props.onChange(props.value + 1)}
+          >
+            +
+          </button>
+        </div>
       </div>
-      {props.hint ? <div className="c-inventory-row__hint">{props.hint}</div> : null}
     </div>
   );
 }

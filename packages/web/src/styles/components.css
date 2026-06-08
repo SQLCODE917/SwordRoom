@@ -293,7 +293,7 @@
 .c-inventory-row {
   display: flex;
   flex-direction: column;
-  gap: var(--s-1);
+  gap: var(--s-2);
 }
 
 .c-inventory-row__main {
@@ -307,23 +307,37 @@
   flex: 1;
   min-width: 0;
   text-align: left;
+}
+
+.c-inventory-row__name {
+  color: var(--fg);
+}
+
+.c-inventory-row__details {
   font-size: var(--fs-1);
   color: var(--muted);
 }
 
-.c-inventory-row__control {
-  width: 88px;
+.c-inventory-row__stepper {
+  display: grid;
+  grid-template-columns: var(--touch-h) minmax(2rem, auto) var(--touch-h);
+  align-items: center;
+  gap: var(--s-1);
   flex: 0 0 auto;
 }
 
-.c-inventory-row__hint {
-  font-size: var(--fs-1);
-  line-height: 1.35;
-  color: var(--muted);
+.c-inventory-row__button {
+  inline-size: var(--touch-h);
+  padding: 0;
 }
 
-.c-inventory-row.is-disabled .c-inventory-row__control {
-  background: var(--panel);
+.c-inventory-row__count {
+  min-inline-size: 2rem;
+  text-align: center;
+}
+
+.c-inventory-row.is-disabled .c-inventory-row__name,
+.c-inventory-row.is-disabled .c-inventory-row__details {
   color: var(--muted);
 }
 
