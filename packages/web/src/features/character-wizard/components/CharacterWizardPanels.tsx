@@ -50,25 +50,21 @@ export function CharacterWizardAutofillControls(props: {
   currentCharacterId: string;
   onSelectSavedCharacter: (characterId: string) => void;
 }) {
+  const selectableCharacters = props.savedCharacters.filter((item) => item.characterId !== props.currentCharacterId);
+
   return (
     <FieldSelect
-      label="Autofill from saved character"
+      label="Start From"
       value={props.selectedSavedCharacterId}
       options={[
-        {
-          value: '',
-          label: props.savedCharacters.length > 0 ? 'Choose a saved character' : 'No saved characters available',
-        },
-        ...props.savedCharacters
-          .filter((item) => item.characterId !== props.currentCharacterId)
-          .map((item) => ({
-            value: item.characterId,
-            label: `${readCharacterIdentityName(item) || item.characterId} (${item.status})`,
-          })),
+        ...(selectableCharacters.length > 0 ? [] : [{ value: '', label: 'No saved characters available' }]),
+        ...selectableCharacters.map((item) => ({
+          value: item.characterId,
+          label: `${readCharacterIdentityName(item) || item.characterId} (${item.status})`,
+        })),
       ]}
       onChange={props.onSelectSavedCharacter}
-      disabled={props.isExecutingCommand || props.savedCharacters.length === 0}
-      hint="Copies the selected saved character into the current wizard without changing this draft's owner or target."
+      disabled={props.isExecutingCommand || selectableCharacters.length === 0}
     />
   );
 }
@@ -712,7 +708,7 @@ function FieldTextArea(props: {
         value={props.value}
         onChange={(event) => props.onChange(event.target.value)}
       />
-      <span className="c-field__hint">{props.hint ?? ' '}</span>
+      {props.hint ? <span className="c-field__hint">{props.hint}</span> : null}
     </label>
   );
 }

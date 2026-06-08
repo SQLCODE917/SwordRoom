@@ -110,6 +110,20 @@ function CharacterWizardPageContent({
     wizardMode,
   });
 
+  const applySavedCharacterToWizard = useCallback(
+    (selected: (typeof savedCharacters)[number]) => {
+      setSelectedSavedCharacterId(selected.characterId);
+      const hydrated = hydrateWizardStateFromCharacter(selected, state);
+      setState({
+        ...hydrated,
+        gameId: state.gameId,
+        characterId: state.characterId,
+      });
+      setStepError(' ');
+    },
+    [state]
+  );
+
   useEffect(() => {
     if (!routeReady || routeError) {
       return;
@@ -130,6 +144,25 @@ function CharacterWizardPageContent({
     }
     void refreshSnapshot({ syncWizardState: true });
   }, [isEditMode, routeError, routeReady, state.characterId, state.gameId, wizardMode]);
+
+  useEffect(() => {
+    if (!routeReady || routeError || isEditMode || selectedSavedCharacterId) {
+      return;
+    }
+    const firstSavedCharacter = savedCharacters.find((item) => item.characterId !== state.characterId);
+    if (!firstSavedCharacter) {
+      return;
+    }
+    applySavedCharacterToWizard(firstSavedCharacter);
+  }, [
+    applySavedCharacterToWizard,
+    isEditMode,
+    routeError,
+    routeReady,
+    savedCharacters,
+    selectedSavedCharacterId,
+    state.characterId,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -459,14 +492,7 @@ function CharacterWizardPageContent({
               if (!selected) {
                 return;
               }
-              setSelectedSavedCharacterId(value);
-              const hydrated = hydrateWizardStateFromCharacter(selected, state);
-              setState({
-                ...hydrated,
-                gameId: state.gameId,
-                characterId: state.characterId,
-              });
-              setStepError(' ');
+              applySavedCharacterToWizard(selected);
             }}
           />
 

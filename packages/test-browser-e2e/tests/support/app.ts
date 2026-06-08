@@ -209,7 +209,7 @@ export async function openLobbyFromMyGames(page: Page, gameName: string): Promis
 
 export async function autofillCharacterWizardDraft(page: Page, name: string): Promise<void> {
   await expect(page.getByRole('heading', { name: /Character Wizard|Create Personal Character|Edit Character Draft/ })).toBeVisible();
-  await page.getByLabel('Autofill from saved character').selectOption({ label: 'Ducard Sample II (DRAFT)' });
+  await page.getByLabel('Start From').selectOption({ label: 'Ducard Sample II (DRAFT)' });
   await page.getByRole('textbox', { name: /^Name$/ }).fill(name);
 }
 
@@ -543,7 +543,7 @@ function gmStepSection(page: Page, heading: string): Locator {
 }
 
 async function selectSavedCharacter(page: Page, characterName: string): Promise<void> {
-  const select = page.getByLabel('Autofill from saved character');
+  const select = page.getByLabel('Start From');
   await expect(select).toBeVisible();
   const optionValue = await select.locator('option').evaluateAll((options, targetName) => {
     const match = options.find((option) => option.textContent?.trim().startsWith(targetName));
