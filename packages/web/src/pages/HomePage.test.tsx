@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -214,8 +214,10 @@ describe('HomePage', () => {
       </MemoryRouter>,
     );
 
-    const myGamesTab = await screen.findByRole('tab', { name: 'My Games' });
-    expect(myGamesTab.getAttribute('aria-selected')).toBe('true');
+    const myGamesTab = screen.getByRole('tab', { name: 'My Games' });
+    await waitFor(() => {
+      expect(myGamesTab.getAttribute('aria-selected')).toBe('true');
+    });
     expect(screen.getByRole('table', { name: 'My Games' })).toBeTruthy();
   });
 
