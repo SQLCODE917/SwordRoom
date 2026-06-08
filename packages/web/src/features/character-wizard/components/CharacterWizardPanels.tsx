@@ -21,6 +21,7 @@ import { CHARACTER_SHARE_INTENT_OPTIONS, readCharacterIdentityName } from '../in
 import type { CharacterPlanningFocusViewModel } from '../planningFocus.js';
 import type { CharacterShareIntent, InventoryCategory, InventoryQuantitiesKey, SaveButtonState, WizardMode, WizardState } from '../types.js';
 import type { createCharacterWizardViewModel } from '../viewModel.js';
+import styles from './CharacterWizardPanels.module.css';
 
 const rollOptions: FieldOption[] = Array.from({ length: 11 }, (_, index) => {
   const total = index + 2;
@@ -96,8 +97,7 @@ export function RaceStepPanel(props: {
       />
       <InfoList
         lines={[
-          `Background table path: ${props.view.backgroundEligible ? 'Table 1-5' : 'Race table 1-6'}`,
-          `Current derived STR / MP preview: ${props.view.derived.STR} / ${props.view.derived.MP}`,
+          `STR: ${props.view.derived.STR}. MP: ${props.view.derived.MP}.`,
         ]}
       />
     </WizardStep>
@@ -114,61 +114,57 @@ export function DiceStepPanel(props: {
 }) {
   return (
     <WizardStep title="2) Dice A-H" enabled={props.active}>
-      <div className="l-split">
-        <fieldset className="l-col l-grow" disabled={props.isExecutingCommand}>
-          <div className="l-split">
-            <div className="l-col l-grow">
-              <FieldNumber
-                label={`A (${subAbilityRollFormulasByRace[props.state.race].A})`}
-                value={props.state.subAbility.A}
-                min={1}
-                onChange={(value) => props.onSetSubAbility('A', value)}
-              />
-              <FieldNumber
-                label={`B (${subAbilityRollFormulasByRace[props.state.race].B})`}
-                value={props.state.subAbility.B}
-                min={1}
-                onChange={(value) => props.onSetSubAbility('B', value)}
-              />
-              <FieldNumber
-                label={`C (${subAbilityRollFormulasByRace[props.state.race].C})`}
-                value={props.state.subAbility.C}
-                min={1}
-                onChange={(value) => props.onSetSubAbility('C', value)}
-              />
-              <FieldNumber
-                label={`D (${subAbilityRollFormulasByRace[props.state.race].D})`}
-                value={props.state.subAbility.D}
-                min={1}
-                onChange={(value) => props.onSetSubAbility('D', value)}
-              />
-            </div>
-            <div className="l-col l-grow">
-              <FieldNumber
-                label={`E (${subAbilityRollFormulasByRace[props.state.race].E})`}
-                value={props.state.subAbility.E}
-                min={1}
-                onChange={(value) => props.onSetSubAbility('E', value)}
-              />
-              <FieldNumber
-                label={`F (${subAbilityRollFormulasByRace[props.state.race].F})`}
-                value={props.state.subAbility.F}
-                min={1}
-                onChange={(value) => props.onSetSubAbility('F', value)}
-              />
-              <FieldNumber
-                label={`G (${subAbilityRollFormulasByRace[props.state.race].G})`}
-                value={props.state.subAbility.G}
-                min={1}
-                onChange={(value) => props.onSetSubAbility('G', value)}
-              />
-              <FieldNumber
-                label={`H (${subAbilityRollFormulasByRace[props.state.race].H})`}
-                value={props.state.subAbility.H}
-                min={1}
-                onChange={(value) => props.onSetSubAbility('H', value)}
-              />
-            </div>
+      <div className={styles.dicePanel}>
+        <fieldset className={styles.diceControls} disabled={props.isExecutingCommand}>
+          <div className={styles.diceGrid}>
+            <FieldNumber
+              label={`A (${subAbilityRollFormulasByRace[props.state.race].A})`}
+              value={props.state.subAbility.A}
+              min={1}
+              onChange={(value) => props.onSetSubAbility('A', value)}
+            />
+            <FieldNumber
+              label={`B (${subAbilityRollFormulasByRace[props.state.race].B})`}
+              value={props.state.subAbility.B}
+              min={1}
+              onChange={(value) => props.onSetSubAbility('B', value)}
+            />
+            <FieldNumber
+              label={`C (${subAbilityRollFormulasByRace[props.state.race].C})`}
+              value={props.state.subAbility.C}
+              min={1}
+              onChange={(value) => props.onSetSubAbility('C', value)}
+            />
+            <FieldNumber
+              label={`D (${subAbilityRollFormulasByRace[props.state.race].D})`}
+              value={props.state.subAbility.D}
+              min={1}
+              onChange={(value) => props.onSetSubAbility('D', value)}
+            />
+            <FieldNumber
+              label={`E (${subAbilityRollFormulasByRace[props.state.race].E})`}
+              value={props.state.subAbility.E}
+              min={1}
+              onChange={(value) => props.onSetSubAbility('E', value)}
+            />
+            <FieldNumber
+              label={`F (${subAbilityRollFormulasByRace[props.state.race].F})`}
+              value={props.state.subAbility.F}
+              min={1}
+              onChange={(value) => props.onSetSubAbility('F', value)}
+            />
+            <FieldNumber
+              label={`G (${subAbilityRollFormulasByRace[props.state.race].G})`}
+              value={props.state.subAbility.G}
+              min={1}
+              onChange={(value) => props.onSetSubAbility('G', value)}
+            />
+            <FieldNumber
+              label={`H (${subAbilityRollFormulasByRace[props.state.race].H})`}
+              value={props.state.subAbility.H}
+              min={1}
+              onChange={(value) => props.onSetSubAbility('H', value)}
+            />
           </div>
           <button
             className={`c-btn ${props.isExecutingCommand ? 'is-disabled' : ''}`.trim()}
@@ -179,17 +175,13 @@ export function DiceStepPanel(props: {
             Roll A-H
           </button>
         </fieldset>
-        <div className="l-col l-grow">
-          <div className="l-split">
-            <StatBox label="DEX" value={props.view.derived.DEX} bonus={computeAbilityBonus(props.view.derived.DEX)} tone="dex" />
-            <StatBox label="AGI" value={props.view.derived.AGI} bonus={computeAbilityBonus(props.view.derived.AGI)} tone="agi" />
-            <StatBox label="INT" value={props.view.derived.INT} bonus={computeAbilityBonus(props.view.derived.INT)} tone="int" />
-          </div>
-          <div className="l-split">
-            <StatBox label="STR" value={props.view.derived.STR} bonus={computeAbilityBonus(props.view.derived.STR)} tone="str" />
-            <StatBox label="LF" value={props.view.derived.LF} bonus={computeAbilityBonus(props.view.derived.LF)} tone="lf" />
-            <StatBox label="MP" value={props.view.derived.MP} bonus={computeAbilityBonus(props.view.derived.MP)} tone="mp" />
-          </div>
+        <div className={styles.statGrid}>
+          <StatBox label="DEX" value={props.view.derived.DEX} bonus={computeAbilityBonus(props.view.derived.DEX)} tone="dex" />
+          <StatBox label="AGI" value={props.view.derived.AGI} bonus={computeAbilityBonus(props.view.derived.AGI)} tone="agi" />
+          <StatBox label="INT" value={props.view.derived.INT} bonus={computeAbilityBonus(props.view.derived.INT)} tone="int" />
+          <StatBox label="STR" value={props.view.derived.STR} bonus={computeAbilityBonus(props.view.derived.STR)} tone="str" />
+          <StatBox label="LF" value={props.view.derived.LF} bonus={computeAbilityBonus(props.view.derived.LF)} tone="lf" />
+          <StatBox label="MP" value={props.view.derived.MP} bonus={computeAbilityBonus(props.view.derived.MP)} tone="mp" />
         </div>
       </div>
     </WizardStep>
@@ -284,7 +276,7 @@ export function BackgroundStepPanel(props: {
       </fieldset>
       <InfoList
         lines={[
-          props.view.backgroundEligible ? props.view.backgroundLabel : 'Background table not applicable for this race path.',
+          props.view.backgroundEligible ? props.view.backgroundLabel : 'Background is set by race.',
           `Starting skills: ${formatSkillList(props.view.startingPreview.startingSkills)}`,
           `Starting EXP / remaining EXP: ${props.view.startingPreview.expTotal} / ${props.view.purchasePreview.expUnspent}`,
           `Starting money / remaining money: ${props.view.startingPreview.moneyGamels} / ${props.view.equipmentPreview.moneyRemaining}`,
@@ -657,10 +649,10 @@ function WizardStep({
 
 function StatBox(props: { label: string; value: number; bonus: number; tone: 'dex' | 'agi' | 'int' | 'str' | 'lf' | 'mp' }) {
   return (
-    <div className={`c-stat-box c-stat-box--${props.tone}`}>
-      <div className="c-stat-box__label">{props.label}</div>
-      <div className="c-stat-box__value">{props.value}</div>
-      <div className="c-stat-box__meta">{props.bonus >= 0 ? `+${props.bonus}` : String(props.bonus)}</div>
+    <div className={`c-stat c-stat--${props.tone} ${styles.compactStat}`}>
+      <div className={styles.statLabel}>{props.label}</div>
+      <div className={styles.statValue}>{props.value}</div>
+      <div className={styles.statMeta}>{props.bonus >= 0 ? `+${props.bonus}` : String(props.bonus)}</div>
     </div>
   );
 }
@@ -767,7 +759,6 @@ function FieldNumber(props: {
         disabled={props.disabled}
         onChange={(event) => props.onChange(Number(event.target.value))}
       />
-      <span className="c-field__hint">Manual entry is allowed.</span>
     </label>
   );
 }
@@ -1031,7 +1022,7 @@ function formatInventoryItemLabel(option: EquipmentOption, quantity: number): st
 
 function formatInventoryItemHint(option: EquipmentOption, isStrengthBlocked: boolean): string {
   if (option.variablePrice) {
-    return 'Open-ended market price; minimum shown from the rulebook.';
+    return 'Open-ended market price; minimum shown.';
   }
   if (isStrengthBlocked) {
     return `Requires STR ${formatStrengthRequirement(option)}.`;

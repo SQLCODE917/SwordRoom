@@ -137,6 +137,7 @@ export function computeStartingPackagePreview(input: {
     };
   }
 
+  // Rule audit boundary: applyStartingPackage chooses the background/race starting-package path from shared rule tables.
   const applied = applyStartingPackage(
     base.state,
     {

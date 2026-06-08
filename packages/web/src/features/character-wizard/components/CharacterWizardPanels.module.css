@@ -1,0 +1,47 @@
+.dicePanel {
+  display: grid;
+  gap: var(--gap);
+}
+
+.diceControls {
+  display: grid;
+  gap: var(--gap);
+  min-inline-size: 0;
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+}
+
+.diceGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.compactStat {
+  min-height: 58px;
+  padding: var(--s-2);
+}
+
+.statLabel,
+.statMeta {
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+
+.statValue {
+  font-weight: var(--fw-bold);
+  line-height: 1.1;
+}
+
+@media (min-width: 640px) {
+  .dicePanel {
+    grid-template-columns: minmax(0, 1.3fr) minmax(14rem, 0.7fr);
+    align-items: start;
+  }
+}
